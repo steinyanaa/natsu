@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-electron/
+release/
+
+# Temp / internal files
+tmp-*.txt
+*.log
+oracle-thinking-answer.txt
+NATSU-审查报告.md
+
+# Claude Code internal
+.claude/
+
+# Internal docs
+docs/superpowers/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Electron cache
+.electron/

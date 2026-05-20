@@ -1,0 +1,77 @@
+{
+  "name": "natsu",
+  "version": "1.0.0",
+  "description": "A Material 3 desktop reader for manga and light novels.",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "npm run build:electron && concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json",
+    "build": "npm run build:electron && vite build",
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "build": {
+    "appId": "com.codex.natsu",
+    "productName": "Natsu",
+    "artifactName": "Natsu-${version}.${ext}",
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "electron/preload.cjs",
+      "package.json",
+      "build/icon.ico",
+      "build/icon.png"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "signAndEditExecutable": false,
+      "signExts": [
+        "!.exe"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "forceCodeSigning": false,
+    "extraResources": [
+      {
+        "from": "build/icon.ico",
+        "to": "icon.ico"
+      }
+    ]
+  },
+  "dependencies": {
+    "@lingo-reader/mobi-parser": "^0.4.6",
+    "@material/material-color-utilities": "^0.4.0",
+    "@material/web": "^2.4.1",
+    "@zip.js/zip.js": "^2.8.26",
+    "electron-store": "^11.0.2",
+    "lucide-react": "^1.11.0",
+    "node-html-parser": "^7.1.0",
+    "node-unrar-js": "^2.0.2",
+    "pdfjs-dist": "^5.6.205",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^41.3.0",
+    "electron-builder": "^26.8.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.10",
+    "wait-on": "^9.0.5"
+  }
+}

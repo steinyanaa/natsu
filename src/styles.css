@@ -1,0 +1,3528 @@
+:root {
+  color-scheme: light;
+  font-family:
+    Inter, "SF Pro Display", "Segoe UI", "Noto Sans SC", "Hiragino Sans",
+    "Yu Gothic UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: geometricPrecision;
+  --ease-spring: cubic-bezier(.2, 1.35, .32, 1);
+  --ease-soft: cubic-bezier(.2, .8, .2, 1);
+  --ease-shutter: cubic-bezier(.87, .05, .02, .97);
+  --ease-drop: cubic-bezier(.22, 1.18, .34, 1);
+  --motion-fast: 180ms;
+  --motion-medium: 340ms;
+  --motion-slow: 620ms;
+  --rail-width: 86px;
+  --panel-width: 360px;
+  --radius-sm: 8px;
+  --radius-md: 18px;
+  --radius-lg: 28px;
+  --shadow-soft: 0 18px 46px rgb(37 55 69 / 10%);
+  --shadow-tight: 0 10px 26px rgb(37 55 69 / 10%);
+  --shadow-paper: 0 16px 34px rgb(37 55 69 / 14%);
+  --glass-bg: color-mix(in oklab, var(--md-sys-color-surface) 62%, transparent);
+  --glass-line: color-mix(in oklab, white 42%, var(--md-sys-color-outline-variant));
+  --glass-highlight: linear-gradient(135deg, rgb(255 255 255 / 45%), transparent 48%);
+  --reader-placeholder-tint: color-mix(in oklab, var(--reader-accent) 12%, var(--reader-paper));
+  --reader-placeholder-glow: color-mix(in oklab, var(--reader-warm) 22%, transparent);
+  --reader-placeholder-line: color-mix(in oklab, var(--reader-ink) 8%, transparent);
+}
+
+:root[data-theme="ramune"] {
+  --md-sys-color-primary: #35a7d8;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-secondary: #ffc4d6;
+  --md-sys-color-tertiary: #ffe27a;
+  --md-sys-color-surface: #ffffff;
+  --md-sys-color-surface-container: #eef8fc;
+  --md-sys-color-outline-variant: #cfe6ee;
+  --reader-bg: #f7fcff;
+  --reader-ink: #1b3440;
+  --reader-muted: #607984;
+  --reader-accent: #35a7d8;
+  --reader-warm: #ffb5c7;
+  --reader-paper: #fffefa;
+  --cover-shade: rgb(15 39 48 / 78%);
+}
+
+:root[data-theme="seaside"] {
+  --md-sys-color-primary: #2c9c87;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-secondary: #ff9f80;
+  --md-sys-color-tertiary: #f7d36d;
+  --md-sys-color-surface: #fffdf6;
+  --md-sys-color-surface-container: #edf8f3;
+  --md-sys-color-outline-variant: #c7e5dc;
+  --reader-bg: #f8fff9;
+  --reader-ink: #173b3b;
+  --reader-muted: #647c75;
+  --reader-accent: #2c9c87;
+  --reader-warm: #ffb08f;
+  --reader-paper: #fffaf0;
+  --cover-shade: rgb(12 50 47 / 78%);
+}
+
+:root[data-theme="natsumatsuri"] {
+  color-scheme: dark;
+  --md-sys-color-primary: #ffb64d;
+  --md-sys-color-on-primary: #211404;
+  --md-sys-color-secondary: #ff8177;
+  --md-sys-color-tertiary: #b69cf3;
+  --md-sys-color-surface: #17203f;
+  --md-sys-color-surface-container: #202b52;
+  --md-sys-color-outline-variant: #485579;
+  --reader-bg: #101831;
+  --reader-ink: #f8eddd;
+  --reader-muted: #bac3dd;
+  --reader-accent: #ffb64d;
+  --reader-warm: #ff8177;
+  --reader-paper: #18213f;
+  --cover-shade: rgb(5 9 22 / 78%);
+  --shadow-soft: 0 24px 70px rgb(0 0 0 / 24%);
+  --shadow-tight: 0 10px 28px rgb(0 0 0 / 24%);
+}
+
+:root[data-theme="google-night"] {
+  color-scheme: dark;
+  --md-sys-color-primary: #8ab4f8;
+  --md-sys-color-on-primary: #0b1d34;
+  --md-sys-color-secondary: #c58af9;
+  --md-sys-color-tertiary: #fdd663;
+  --md-sys-color-surface: #202124;
+  --md-sys-color-surface-container: #292a2d;
+  --md-sys-color-outline-variant: #3c4043;
+  --reader-bg: #111418;
+  --reader-ink: #e8eaed;
+  --reader-muted: #bdc1c6;
+  --reader-accent: #8ab4f8;
+  --reader-warm: #f28b82;
+  --reader-paper: #171a1f;
+  --cover-shade: rgb(9 12 16 / 80%);
+  --shadow-soft: 0 24px 70px rgb(0 0 0 / 28%);
+  --shadow-tight: 0 12px 30px rgb(0 0 0 / 26%);
+  --shadow-paper: 0 18px 38px rgb(0 0 0 / 28%);
+  --glass-bg: color-mix(in oklab, var(--md-sys-color-surface) 70%, transparent);
+  --glass-line: color-mix(in oklab, white 14%, var(--md-sys-color-outline-variant));
+  --glass-highlight: linear-gradient(135deg, rgb(255 255 255 / 12%), transparent 48%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow: hidden;
+  background: var(--reader-bg);
+  color: var(--reader-ink);
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid color-mix(in oklab, var(--reader-accent) 40%, white);
+  outline-offset: 3px;
+}
+
+.gooey-filter {
+  position: fixed;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--rail-width) minmax(0, 1fr);
+  height: 100%;
+  background:
+    radial-gradient(circle at 16% 8%, color-mix(in oklab, var(--reader-accent) 16%, transparent), transparent 260px),
+    linear-gradient(180deg, color-mix(in oklab, var(--reader-accent) 7%, transparent), transparent 240px),
+    var(--reader-bg);
+}
+
+.side-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 10px 18px;
+  border-right: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 70%, transparent);
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px) saturate(1.35);
+  -webkit-app-region: drag;
+}
+
+.side-rail::before,
+.settings-panel::before,
+.reader-toolbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: var(--glass-highlight);
+  opacity: .35;
+}
+
+.side-rail {
+  position: relative;
+  overflow: hidden;
+}
+
+.rail-spacer {
+  flex: 1 1 auto;
+}
+
+.rail-item-bottom {
+  margin-top: auto;
+}
+
+.side-rail button,
+.library-view button,
+.reader-shell button,
+.settings-panel button {
+  -webkit-app-region: no-drag;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin-bottom: 8px;
+  border-radius: 16px;
+  color: var(--md-sys-color-on-primary);
+  background: var(--md-sys-color-primary);
+  font-weight: 900;
+}
+
+.rail-rule {
+  width: 22px;
+  height: 1px;
+  margin: 2px 0 8px;
+  background: var(--md-sys-color-outline-variant);
+}
+
+.rail-item {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  width: 62px;
+  min-height: 58px;
+  padding: 9px 6px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  color: var(--reader-muted);
+  cursor: pointer;
+  transition:
+    background var(--motion-medium) var(--ease-spring),
+    color var(--motion-medium) var(--ease-soft),
+    transform var(--motion-fast) var(--ease-soft);
+}
+
+.rail-item span {
+  max-width: 58px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rail-item.active,
+.rail-item:hover {
+  background: color-mix(in oklab, var(--reader-accent) 14%, transparent);
+  color: var(--reader-accent);
+}
+
+.rail-item svg {
+  transition:
+    transform var(--motion-medium) var(--ease-spring),
+    opacity var(--motion-medium) var(--ease-soft);
+}
+
+.rail-item:hover svg {
+  transform: translateY(-2px) scale(1.08);
+}
+
+.rail-item.active svg {
+  animation: icon-hop 420ms var(--ease-drop) both;
+}
+
+.rail-item.active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  width: 18px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--reader-accent);
+  transform: translateX(-50%);
+  animation: liquid-dot 380ms var(--ease-spring) both;
+}
+
+.library-view {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+  padding: 30px clamp(30px, 5vw, 68px) 34px;
+  overflow: hidden;
+}
+
+.library-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  min-width: 0;
+}
+
+.library-title {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  align-self: center;
+  padding-block: 24px 10px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--reader-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.library-brand {
+  margin: 0;
+  max-width: 14em;
+  color: var(--reader-ink);
+  font-size: clamp(24px, 2.45vw, 34px);
+  font-weight: 900;
+  line-height: 1.08;
+  letter-spacing: .08em;
+  text-transform: none;
+}
+
+.library-header h1,
+.panel-header h2 {
+  margin: 0;
+  font-size: clamp(34px, 4.5vw, 58px);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.library-title span,
+.library-count {
+  color: var(--reader-muted);
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.header-actions,
+.shelf-toolbar,
+.book-actions,
+.reader-toolbar,
+.media-controls,
+.panel-header {
+  display: flex;
+  align-items: center;
+}
+
+.header-actions {
+  gap: 12px;
+  width: min(720px, 58vw);
+  min-width: 460px;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 180px;
+  height: 48px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--reader-ink) 7%, var(--md-sys-color-surface));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 28%);
+  transition:
+    border-color var(--motion-medium) var(--ease-soft),
+    box-shadow var(--motion-medium) var(--ease-soft),
+    transform var(--motion-medium) var(--ease-spring);
+}
+
+.search-box:focus-within {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 35%),
+    0 0 0 5px color-mix(in oklab, var(--reader-accent) 12%, transparent);
+  transform: translateY(-1px);
+}
+
+.search-box input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--reader-ink);
+}
+
+.primary-button,
+.soft-button,
+.icon-button {
+  border: 0;
+  cursor: pointer;
+  transition:
+    transform var(--motion-fast) var(--ease-soft),
+    background var(--motion-medium) var(--ease-soft),
+    color var(--motion-medium) var(--ease-soft),
+    box-shadow var(--motion-medium) var(--ease-soft);
+}
+
+.primary-button,
+.soft-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.primary-button {
+  color: var(--md-sys-color-on-primary);
+  background: var(--md-sys-color-primary);
+  box-shadow: none;
+}
+
+.primary-button:hover,
+.soft-button:hover,
+.icon-button:hover {
+  transform: translateY(-1px);
+}
+
+.soft-button {
+  color: var(--reader-ink);
+  background: color-mix(in oklab, var(--reader-accent) 10%, transparent);
+}
+
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--md-sys-color-surface) 58%, transparent);
+  color: var(--reader-ink);
+}
+
+.pressable:active {
+  animation: press-pop 260ms var(--ease-spring);
+}
+
+.stretch-button:active {
+  animation: button-squash 320ms var(--ease-spring);
+}
+
+@keyframes press-pop {
+  0% { transform: scale(1); }
+  38% { transform: scale(.9, .84); }
+  68% { transform: scale(1.05, 1.08); }
+  100% { transform: scale(1); }
+}
+
+@keyframes liquid-dot {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(.45, 1.5);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+@keyframes button-squash {
+  0% { scale: 1 1; }
+  42% { scale: 1.1 .86; }
+  74% { scale: .98 1.04; }
+  100% { scale: 1 1; }
+}
+
+@keyframes icon-hop {
+  0% { transform: translateY(0) scale(1); }
+  42% { transform: translateY(-5px) scale(.92, 1.16); }
+  72% { transform: translateY(1px) scale(1.08, .94); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+.shelf-toolbar {
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 4px;
+  border-bottom: 0;
+}
+
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.segmented-control {
+  --segments: 3;
+  --active-index: 0;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--segments), minmax(72px, 1fr));
+  gap: 0;
+  min-height: 36px;
+  padding: 4px;
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--reader-ink) 6%, transparent);
+  overflow: hidden;
+}
+
+.segmented-control::after {
+  content: "";
+  position: absolute;
+  inset-block: 5px;
+  left: 4px;
+  z-index: 0;
+  width: calc((100% - 8px) / var(--segments));
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--reader-accent) 28%, transparent);
+  filter: blur(8px);
+  opacity: .34;
+  pointer-events: none;
+  transform: translateX(calc(var(--active-index) * 100%)) scale(.72, .72);
+  transition:
+    transform var(--motion-medium) var(--ease-spring),
+    opacity var(--motion-medium) var(--ease-soft);
+}
+
+.segmented-control button {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--reader-muted);
+  cursor: pointer;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.segmented-control button.selected {
+  color: var(--reader-ink);
+  animation: segment-label-pop 360ms var(--ease-drop) both;
+}
+
+.segmented-indicator {
+  position: absolute;
+  inset-block: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / var(--segments));
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--md-sys-color-surface) 86%, white);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 60%),
+    0 5px 12px rgb(37 55 69 / 9%);
+  transform: translateX(calc(var(--active-index) * 100%));
+  transition:
+    transform var(--motion-medium) var(--ease-spring),
+    width var(--motion-medium) var(--ease-spring);
+}
+
+@keyframes segment-label-pop {
+  0% { transform: translateY(2px) scale(.96, .92); }
+  62% { transform: translateY(-1px) scale(1.04, 1.08); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+.view-morph {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 40px;
+  padding: 4px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.view-morph-indicator {
+  position: absolute;
+  inset-block: 4px;
+  left: 4px;
+  z-index: 0;
+  width: 38px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--reader-accent) 12%, transparent);
+  transform: translateX(0);
+  transition: transform var(--motion-medium) var(--ease-spring);
+}
+
+.view-morph.list .view-morph-indicator {
+  transform: translateX(42px);
+}
+
+.view-morph button {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--reader-muted);
+  cursor: pointer;
+}
+
+.view-morph button.active {
+  color: var(--reader-accent);
+}
+
+.morph-lines {
+  position: absolute;
+  inset: 9px auto 9px 13px;
+  z-index: 1;
+  width: 26px;
+  pointer-events: none;
+  transform: translateX(0);
+  transition: transform var(--motion-medium) var(--ease-spring);
+}
+
+.morph-lines i {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--reader-accent);
+  transition:
+    transform var(--motion-medium) var(--ease-spring),
+    width var(--motion-medium) var(--ease-spring),
+    opacity var(--motion-medium) var(--ease-soft);
+}
+
+.morph-lines i:nth-child(1) { transform: translate(0, 0); }
+.morph-lines i:nth-child(2) { transform: translate(13px, 0); }
+.morph-lines i:nth-child(3) { transform: translate(0, 13px); }
+.morph-lines i:nth-child(4) { transform: translate(13px, 13px); }
+
+.morph-lines.list {
+  transform: translateX(42px);
+}
+
+.morph-lines.list i {
+  width: 20px;
+  height: 4px;
+  border-radius: 999px;
+}
+
+.morph-lines.list i:nth-child(1) { transform: translate(0, 1px); }
+.morph-lines.list i:nth-child(2) { transform: translate(0, 8px); }
+.morph-lines.list i:nth-child(3) { transform: translate(0, 15px); }
+.morph-lines.list i:nth-child(4) { transform: translate(0, 22px); opacity: 0; }
+
+.loading-strip {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 38px;
+  color: var(--reader-muted);
+  animation: loader-arrive 520ms var(--ease-drop) both;
+}
+
+.gooey-dots {
+  display: flex;
+  gap: 3px;
+  filter: url("#gooey");
+}
+
+.gooey-dots i {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--reader-accent);
+  animation: gooey-travel 1100ms var(--ease-spring) infinite;
+}
+
+.gooey-dots i:nth-child(2) { animation-delay: 100ms; }
+.gooey-dots i:nth-child(3) { animation-delay: 200ms; }
+
+@keyframes gooey-travel {
+  0%, 100% { transform: translateX(0) scale(1); }
+  45% { transform: translateX(13px) scale(1.18, .82); }
+}
+
+.loading-stagger {
+  position: relative;
+  isolation: isolate;
+  padding: 12px 18px;
+  border-radius: 999px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 16% 18%, var(--reader-placeholder-glow), transparent 38%),
+    color-mix(in oklab, var(--md-sys-color-surface) 74%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--reader-accent) 14%, transparent),
+    0 14px 34px color-mix(in oklab, var(--reader-accent) 10%, transparent);
+  color: var(--reader-muted);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  animation: loading-breathe 1800ms var(--ease-soft) infinite;
+}
+
+.loading-stagger::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    105deg,
+    transparent 18%,
+    color-mix(in oklab, white 42%, transparent) 42%,
+    transparent 64%
+  );
+  transform: translateX(-120%);
+  animation: placeholder-shimmer 2200ms var(--ease-shutter) infinite;
+}
+
+.loading-stagger span {
+  display: inline-block;
+  animation: kana-bounce 900ms ease-in-out infinite;
+  animation-delay: calc(var(--i) * 80ms);
+}
+
+@keyframes kana-bounce {
+  0%, 100% { translate: 0 0; opacity: .55; }
+  50% { translate: 0 -7px; opacity: 1; }
+}
+
+@keyframes loading-breathe {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in oklab, var(--reader-accent) 14%, transparent),
+      0 14px 34px color-mix(in oklab, var(--reader-accent) 10%, transparent);
+  }
+  50% {
+    transform: translateY(-1px) scale(1.012);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in oklab, var(--reader-accent) 20%, transparent),
+      0 18px 42px color-mix(in oklab, var(--reader-accent) 14%, transparent);
+  }
+}
+
+@keyframes loader-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.book-shelf {
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 2px 24px;
+}
+
+.book-shelf.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 188px);
+  align-content: start;
+  justify-content: start;
+  gap: 28px 24px;
+}
+
+.book-shelf.list {
+  display: grid;
+  align-content: start;
+  gap: 0;
+}
+
+.book-tile {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  animation: shelf-enter 560ms var(--ease-drop) both;
+  animation-delay: calc(min(var(--stagger), 10) * 45ms);
+}
+
+.book-shelf.list .book-tile {
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  padding: 14px 2px;
+  border-bottom: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 70%, transparent);
+  border-radius: 0;
+  background: transparent;
+}
+
+@keyframes shelf-enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(.96, .9);
+  }
+  64% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.015, 1.04);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.cover-button {
+  display: grid;
+  justify-items: center;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.book-shelf.grid .cover-button {
+  filter: drop-shadow(0 18px 28px rgb(37 55 69 / 12%));
+}
+
+.book-cover {
+  position: relative;
+  display: grid;
+  align-content: space-between;
+  width: 100%;
+  aspect-ratio: 3 / 4.15;
+  min-height: 244px;
+  padding: 18px;
+  overflow: hidden;
+  border-radius: 7px 12px 12px 7px;
+  color: #15313d;
+  background:
+    linear-gradient(150deg, hsl(var(--cover-hue) 76% 84%), var(--cover-accent)),
+    var(--reader-paper);
+  box-shadow:
+    inset 8px 0 0 rgb(0 0 0 / 11%),
+    inset 0 1px 0 rgb(255 255 255 / 38%);
+  transform: translateY(0) scale(1);
+  transform-origin: center bottom;
+  transition:
+    transform var(--motion-medium) var(--ease-spring),
+    box-shadow var(--motion-medium) var(--ease-soft);
+}
+
+.book-shelf.grid .book-cover {
+  min-height: 260px;
+}
+
+.cover-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.book-cover.has-art {
+  padding: 0;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--md-sys-color-surface) 92%, white);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--md-sys-color-outline-variant) 72%, transparent),
+    0 10px 24px rgb(37 55 69 / 9%);
+}
+
+.book-cover.has-art::after {
+  display: none;
+}
+
+.book-cover.has-art::before {
+  display: none;
+}
+
+.book-shelf.list .book-cover {
+  min-height: 86px;
+  aspect-ratio: 3 / 4.35;
+  padding: 8px;
+  border-radius: 4px 7px 7px 4px;
+  box-shadow: 0 8px 18px rgb(37 55 69 / 12%);
+}
+
+.book-cover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgb(0 0 0 / 13%) 0 8px, transparent 8px),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 18%) 0 1px, transparent 1px 11px),
+    linear-gradient(180deg, rgb(255 255 255 / 38%), transparent 42%);
+  mix-blend-mode: soft-light;
+}
+
+.book-cover span,
+.book-cover strong {
+  position: relative;
+  z-index: 1;
+}
+
+.book-cover span {
+  width: fit-content;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 64%);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.book-cover strong {
+  align-self: end;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  font-size: 21px;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.book-shelf.list .book-cover strong {
+  display: none;
+}
+
+.book-shelf.list .book-cover span {
+  font-size: 9px;
+}
+
+.book-cover i {
+  position: absolute;
+  right: -34px;
+  bottom: 34px;
+  width: 178px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 32%);
+  transform: rotate(-18deg);
+}
+
+.book-tile:hover .book-cover {
+  transform: translateY(-7px) scale(1.012);
+  box-shadow:
+    inset 8px 0 0 rgb(0 0 0 / 11%),
+    inset 0 1px 0 rgb(255 255 255 / 38%);
+}
+
+.book-shelf.list .book-tile:hover .book-cover {
+  transform: translateY(-2px) scale(1.004);
+  box-shadow: 0 10px 20px rgb(37 55 69 / 12%);
+}
+
+.book-tile:active .book-cover {
+  animation: cover-press 280ms var(--ease-spring) both;
+}
+
+@keyframes cover-press {
+  0% { transform: translateY(-7px) scale(1.012); }
+  48% { transform: translateY(-2px) scale(.97, .94); }
+  100% { transform: translateY(-5px) scale(1.006); }
+}
+
+.book-info {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
+}
+
+.book-shelf.grid .book-info {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 3;
+  min-height: 92px;
+  padding: 34px 12px 12px;
+  color: white;
+  background: linear-gradient(180deg, transparent, var(--cover-shade) 38%, rgb(0 0 0 / 74%));
+  border-radius: 0 0 12px 7px;
+  pointer-events: none;
+}
+
+.book-shelf.list .book-info {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+}
+
+.book-info h2 {
+  display: -webkit-box;
+  min-height: 2.25em;
+  margin: 0 0 7px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 15px;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.book-shelf.list .book-info h2 {
+  min-height: 0;
+  margin: 0 0 6px;
+  font-size: 16px;
+  -webkit-line-clamp: 1;
+}
+
+.book-shelf.grid .book-info h2 {
+  color: white;
+  text-shadow: 0 1px 6px rgb(0 0 0 / 34%);
+}
+
+.book-info p {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  color: var(--reader-muted);
+  font-size: 12px;
+}
+
+.book-shelf.grid .book-info p {
+  color: rgb(255 255 255 / 78%);
+}
+
+.format-chip {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--reader-accent) 12%, transparent);
+  color: var(--reader-accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .04em;
+}
+
+.book-shelf.grid .format-chip {
+  background: rgb(255 255 255 / 20%);
+  color: white;
+}
+
+.book-actions {
+  gap: 8px;
+  justify-content: space-between;
+  transition: opacity var(--motion-medium) var(--ease-soft), transform var(--motion-medium) var(--ease-spring);
+}
+
+.book-actions .soft-button {
+  flex: 1;
+  min-width: 0;
+}
+
+.book-shelf.grid .book-actions {
+  position: absolute;
+  z-index: 5;
+  top: 10px;
+  right: 10px;
+  left: 10px;
+  display: flex;
+  justify-content: flex-end;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+}
+
+.book-shelf.grid .book-tile:hover .book-actions,
+.book-shelf.grid .book-tile:focus-within .book-actions {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.book-shelf.grid .book-actions .soft-button {
+  display: none;
+}
+
+.book-shelf.grid .book-actions .icon-button {
+  background: rgb(255 255 255 / 76%);
+  color: #20313a;
+  backdrop-filter: blur(14px);
+}
+
+.compact-action {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 12px;
+}
+
+.book-shelf.list .book-actions {
+  min-width: 168px;
+  justify-content: flex-end;
+}
+
+.empty-shelf {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 16px;
+  min-height: 0;
+  padding-bottom: 7vh;
+  text-align: center;
+}
+
+.summer-orbit {
+  position: relative;
+  width: 170px;
+  height: 112px;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--reader-accent) 16%, white), transparent),
+    color-mix(in oklab, var(--md-sys-color-surface) 86%, transparent);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.summer-orbit span {
+  position: absolute;
+  left: 34px;
+  top: 22px;
+  width: 42px;
+  height: 66px;
+  border-radius: 8px 8px 12px 12px;
+  background: var(--md-sys-color-tertiary);
+  box-shadow: inset 0 -12px 0 rgb(255 255 255 / 28%);
+  animation: sun-wobble 2200ms var(--ease-spring) infinite;
+}
+
+.summer-orbit i {
+  position: absolute;
+  right: -12px;
+  bottom: 24px;
+  width: 128px;
+  height: 38px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--reader-accent) 42%, white);
+}
+
+@keyframes sun-wobble {
+  0%, 100% { transform: translate(0, 0) rotate(-4deg) scale(1); }
+  50% { transform: translate(10px, -4px) rotate(3deg) scale(1.04, .96); }
+}
+
+.empty-shelf h2 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 46px);
+}
+
+.empty-shelf p {
+  max-width: 520px;
+  margin: 0;
+  color: var(--reader-muted);
+  line-height: 1.7;
+}
+
+.online-panel {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 72%, transparent);
+  border-radius: 18px;
+  background: color-mix(in oklab, var(--md-sys-color-surface) 72%, transparent);
+  box-shadow: var(--shadow-tight);
+  animation: panel-content-in 420ms var(--ease-drop) both;
+}
+
+.online-panel-header,
+.online-search-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.online-panel-header {
+  justify-content: space-between;
+}
+
+.online-panel h2,
+.online-result h3 {
+  margin: 0;
+}
+
+.online-panel h2 {
+  font-size: 18px;
+}
+
+.online-search-row .search-box {
+  flex: 1;
+}
+
+.online-error {
+  margin: 0;
+  color: var(--reader-warm);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.online-results {
+  display: grid;
+  gap: 10px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.online-source-summary {
+  margin: -2px 0 0;
+  color: var(--reader-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.online-result {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--reader-ink) 4%, transparent);
+  animation: shelf-enter 420ms var(--ease-drop) both;
+}
+
+.online-result-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.online-cover-shell {
+  position: relative;
+  width: 52px;
+  height: 72px;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--reader-accent) 20%, transparent);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, color-mix(in oklab, var(--reader-accent) 28%, transparent), transparent 52%),
+    color-mix(in oklab, var(--md-sys-color-surface) 72%, var(--reader-accent) 10%);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 12%);
+}
+
+.online-cover-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.online-cover-fallback {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  color: var(--reader-accent);
+  text-align: center;
+}
+
+.online-cover-fallback::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 7px;
+  background: color-mix(in oklab, var(--reader-ink) 14%, transparent);
+}
+
+.online-cover-fallback i {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--reader-accent) 22%, transparent);
+}
+
+.online-cover-fallback strong {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.online-cover-fallback span {
+  max-width: 42px;
+  margin: 0;
+  color: var(--reader-accent);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+.online-result-main {
+  min-width: 0;
+}
+
+.online-result h3 {
+  overflow: hidden;
+  color: var(--reader-ink);
+  font-size: 14px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.online-result p {
+  display: block;
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--reader-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.online-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  min-width: 0;
+}
+
+.online-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 170px;
+  min-height: 22px;
+  padding: 0 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--reader-accent) 14%, transparent);
+  color: var(--reader-accent);
+  font-size: 11px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.online-meta-chip.size-chip {
+  background: color-mix(in oklab, var(--md-sys-color-tertiary) 18%, transparent);
+  color: var(--reader-ink);
+}
+
+.online-meta-chip.source-chip,
+.online-meta-chip.muted-chip {
+  background: color-mix(in oklab, var(--reader-ink) 7%, transparent);
+  color: var(--reader-muted);
+  font-weight: 700;
+}
+
+.settings-panel {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(var(--panel-width), 92vw);
+  padding: 28px;
+  overflow: auto;
+  background: var(--glass-bg);
+  border-left: 1px solid var(--glass-line);
+  box-shadow: -24px 0 80px rgb(37 55 69 / 14%);
+  backdrop-filter: blur(30px) saturate(1.42);
+  transform: translateX(106%);
+  transition: transform var(--motion-slow) var(--ease-spring);
+  z-index: 30;
+  overflow: hidden auto;
+}
+
+.settings-panel::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      100deg,
+      transparent 0 34%,
+      color-mix(in oklab, white 26%, transparent) 46%,
+      transparent 58% 100%
+    );
+  transform: translateX(110%) skewX(-10deg);
+  opacity: 0;
+}
+
+.settings-panel.open::after {
+  animation: panel-shutter-sheen 720ms var(--ease-shutter) 90ms both;
+}
+
+.settings-scrim {
+  position: fixed;
+  inset: 0;
+  border: 0;
+  background: rgb(6 12 18 / 22%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-medium) var(--ease-soft);
+  z-index: 29;
+}
+
+.settings-scrim.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.settings-panel.open {
+  transform: translateX(0);
+}
+
+@keyframes panel-shutter-sheen {
+  0% {
+    opacity: 0;
+    transform: translateX(110%) skewX(-10deg);
+  }
+  26%,
+  70% {
+    opacity: .72;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-110%) skewX(-10deg);
+  }
+}
+
+.panel-header {
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.setting-group,
+.range-setting {
+  display: grid;
+  gap: 12px;
+  padding: 18px 0;
+  border-top: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 62%, transparent);
+}
+
+.setting-group h3,
+.range-setting span {
+  margin: 0;
+  color: var(--reader-muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.theme-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.theme-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 12px 8px 14px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 800;
+  transition:
+    transform var(--motion-medium) var(--ease-spring),
+    background var(--motion-medium) var(--ease-soft),
+    border-color var(--motion-medium) var(--ease-soft);
+}
+
+.theme-option.active {
+  border-color: var(--reader-accent);
+  background: color-mix(in oklab, var(--reader-accent) 14%, transparent);
+  animation: option-bounce 420ms var(--ease-drop) both;
+}
+
+.theme-option span {
+  display: flex;
+  filter: url("#gooey");
+}
+
+.theme-option i {
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin-left: -4px;
+  border-radius: 999px;
+  border: 2px solid color-mix(in oklab, var(--md-sys-color-surface) 80%, white);
+}
+
+.theme-option:hover {
+  transform: translateX(-4px);
+}
+
+@keyframes option-bounce {
+  0% { transform: translateX(0) scale(.98, .94); }
+  58% { transform: translateX(-5px) scale(1.02, 1.04); }
+  100% { transform: translateX(0) scale(1); }
+}
+
+.choice-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.choice-list button {
+  min-height: 38px;
+  padding: 0 12px;
+  overflow: hidden;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--reader-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    transform var(--motion-fast) var(--ease-soft),
+    background var(--motion-medium) var(--ease-soft),
+    color var(--motion-medium) var(--ease-soft),
+    border-color var(--motion-medium) var(--ease-soft);
+}
+
+.choice-list button:hover {
+  transform: translateY(-1px);
+}
+
+.choice-list button.active {
+  border-color: var(--reader-accent);
+  background: color-mix(in oklab, var(--reader-accent) 14%, transparent);
+  color: var(--reader-ink);
+  animation: option-bounce 360ms var(--ease-drop) both;
+}
+
+.font-preview {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 72%, transparent);
+  border-radius: 12px;
+  color: var(--reader-ink);
+  background: color-mix(in oklab, var(--md-sys-color-surface) 70%, transparent);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.range-setting span {
+  display: flex;
+  justify-content: space-between;
+}
+
+.range-setting strong {
+  color: var(--reader-ink);
+}
+
+.range-setting.disabled {
+  opacity: .55;
+}
+
+.toggle-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 0;
+  border-top: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 62%, transparent);
+}
+
+.toggle-setting span {
+  color: var(--reader-muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.text-setting,
+.color-setting {
+  display: grid;
+  gap: 10px;
+  padding: 18px 0;
+  border-top: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 62%, transparent);
+}
+
+.color-setting {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 4px 0;
+  border-top: 0;
+}
+
+.text-setting span,
+.color-setting span {
+  color: var(--reader-muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.text-setting input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 12px;
+  outline: 0;
+  background: color-mix(in oklab, var(--md-sys-color-surface) 72%, transparent);
+  color: var(--reader-ink);
+}
+
+.compact-text-setting {
+  padding: 0;
+  border-top: 0;
+}
+
+.compact-text-setting textarea {
+  width: 100%;
+  min-height: 94px;
+  resize: vertical;
+  padding: 12px 14px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 12px;
+  outline: 0;
+  background: color-mix(in oklab, var(--md-sys-color-surface) 72%, transparent);
+  color: var(--reader-ink);
+  font: 12px/1.55 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+}
+
+.online-source-manager {
+  display: grid;
+  gap: 12px;
+}
+
+.online-source-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 72%, transparent);
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--md-sys-color-surface) 54%, transparent);
+}
+
+.online-source-card.draft {
+  background: color-mix(in oklab, var(--reader-accent) 7%, transparent);
+}
+
+.online-source-card.source-pack-card {
+  background:
+    linear-gradient(135deg, color-mix(in oklab, var(--reader-accent) 10%, transparent), transparent 58%),
+    color-mix(in oklab, var(--md-sys-color-surface) 58%, transparent);
+}
+
+.online-source-card.source-test-card {
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in oklab, var(--md-sys-color-tertiary) 14%, transparent), transparent 38%),
+    color-mix(in oklab, var(--md-sys-color-surface) 60%, transparent);
+}
+
+.online-source-card-head,
+.online-source-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.online-source-card-head {
+  justify-content: space-between;
+}
+
+.online-source-card-head strong {
+  min-width: 0;
+  color: var(--reader-ink);
+  font-size: 14px;
+}
+
+.online-source-kind {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--reader-accent) 12%, transparent);
+  color: var(--reader-accent);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.source-card-note {
+  margin: 0;
+  color: var(--reader-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.source-card-note code {
+  color: var(--reader-accent);
+  font: 11px/1.4 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+}
+
+.source-pack-message {
+  margin: -2px 0 0;
+  color: var(--reader-accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.source-test-button {
+  min-height: 28px;
+  padding-inline: 10px;
+}
+
+.source-test-report {
+  display: grid;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.source-test-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--reader-accent) 10%, transparent);
+  color: var(--reader-ink);
+}
+
+.source-test-report.fail .source-test-summary {
+  background: color-mix(in oklab, #ff8a80 16%, transparent);
+}
+
+.source-test-summary strong {
+  color: var(--reader-accent);
+}
+
+.source-test-meta {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.source-test-meta div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.source-test-meta dt {
+  color: var(--reader-muted);
+  font-size: 10px;
+}
+
+.source-test-meta dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--reader-ink);
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-test-url,
+.source-test-item p {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--reader-muted);
+  line-height: 1.5;
+}
+
+.source-test-items {
+  display: grid;
+  gap: 8px;
+  max-height: 360px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.source-test-item {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 70%, transparent);
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--md-sys-color-surface) 62%, transparent);
+}
+
+.source-test-item header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--reader-ink);
+}
+
+.source-test-item header strong {
+  min-width: 0;
+}
+
+.source-test-item header span {
+  color: var(--reader-accent);
+  font-weight: 900;
+}
+
+.source-test-item.fail header span,
+.source-test-reason {
+  color: #ff8a80 !important;
+}
+
+.source-kind-list {
+  grid-template-columns: repeat(3, minmax(50px, 1fr));
+  gap: 6px;
+}
+
+.source-kind-list button {
+  min-height: 30px;
+}
+
+.code-text-setting textarea {
+  width: 100%;
+  min-height: 168px;
+  resize: vertical;
+  padding: 12px 14px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 12px;
+  outline: 0;
+  background: color-mix(in oklab, var(--md-sys-color-surface) 72%, transparent);
+  color: var(--reader-ink);
+  font: 12px/1.55 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+}
+
+.source-config-help {
+  margin: 0;
+  padding: 12px 14px;
+  overflow: auto;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--reader-ink) 4%, transparent);
+  color: var(--reader-muted);
+  font: 11px/1.5 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  white-space: pre-wrap;
+}
+
+.color-setting input {
+  width: 42px;
+  height: 42px;
+  padding: 3px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.toggle-switch {
+  position: relative;
+  width: 54px;
+  height: 32px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--reader-ink) 12%, transparent);
+  cursor: pointer;
+  transition: background var(--motion-medium) var(--ease-soft);
+}
+
+.toggle-switch.checked {
+  background: color-mix(in oklab, var(--reader-accent) 54%, var(--md-sys-color-surface));
+}
+
+.toggle-thumb {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--md-sys-color-surface);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 18%);
+  transition: transform var(--motion-medium) var(--ease-spring);
+}
+
+.toggle-switch.checked .toggle-thumb {
+  transform: translateX(22px);
+}
+
+.toggle-switch:active .toggle-thumb {
+  animation: thumb-squash 320ms var(--ease-spring);
+}
+
+@keyframes thumb-squash {
+  0% { scale: 1 1; }
+  45% { scale: 1.35 .82; }
+  100% { scale: 1 1; }
+}
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--reader-accent);
+}
+
+input[type="range"]:disabled {
+  cursor: not-allowed;
+}
+
+.reader-shell {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background: var(--reader-bg);
+}
+
+.reader-toolbar {
+  gap: 12px;
+  min-width: 0;
+  position: absolute;
+  top: 12px;
+  left: 18px;
+  right: 18px;
+  z-index: 20;
+  padding: 12px 20px;
+  border: 1px solid color-mix(in oklab, var(--md-sys-color-outline) 30%, transparent);
+  border-radius: 28px;
+  overflow: hidden;
+  background: var(--glass-bg);
+  backdrop-filter: blur(28px) saturate(180%);
+  box-shadow: 0 18px 42px rgb(0 0 0 / 10%);
+  transform: translateY(0);
+  opacity: 1;
+  transition:
+    transform 420ms var(--ease-shutter),
+    opacity 260ms var(--ease-soft),
+    box-shadow 420ms var(--ease-soft);
+  -webkit-app-region: drag;
+}
+
+.reader-shell.controls-hidden .reader-toolbar {
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(calc(-100% - 28px));
+  box-shadow: none;
+}
+
+.reader-toolbar button {
+  -webkit-app-region: no-drag;
+}
+
+.reader-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.reader-title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reader-progress {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 32px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--reader-accent) 12%, var(--md-sys-color-surface));
+  color: var(--reader-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.reader-progress i {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  background: color-mix(in oklab, var(--reader-accent) 34%, transparent);
+  transition: scale var(--motion-medium) var(--ease-spring);
+}
+
+.reader-progress::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 34%), transparent);
+  transform: translateX(-120%);
+  opacity: .48;
+  animation: progress-sweep 1800ms var(--ease-shutter) infinite;
+}
+
+.reader-progress span {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes progress-sweep {
+  0%, 44% {
+    transform: translateX(-120%);
+  }
+  70%, 100% {
+    transform: translateX(120%);
+  }
+}
+
+.bookmark-pop:active svg {
+  animation: bookmark-pop 340ms var(--ease-spring);
+}
+
+@keyframes bookmark-pop {
+  0% { transform: scale(.7) rotate(-8deg); }
+  60% { transform: scale(1.22) rotate(5deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+.reader-workspace {
+  display: grid;
+  grid-template-columns: 0 minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  transition: grid-template-columns var(--motion-slow) var(--ease-shutter);
+}
+
+.reader-workspace.toc-open {
+  grid-template-columns: 280px minmax(0, 1fr);
+}
+
+.toc-panel {
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border-right: 0;
+  background: color-mix(in oklab, var(--md-sys-color-surface) 72%, transparent);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--motion-medium) var(--ease-soft),
+    visibility var(--motion-medium) var(--ease-soft);
+}
+
+.reader-workspace.toc-open .toc-panel {
+  overflow: auto;
+  padding: 92px 20px 24px;
+  border-right: 1px solid var(--md-sys-color-outline-variant);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  animation: panel-content-in 520ms var(--ease-drop) both;
+}
+
+@keyframes panel-content-in {
+  from {
+    transform: translateX(-14px);
+    opacity: 0;
+  }
+  66% {
+    transform: translateX(2px);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.toc-section,
+.bookmark-manager {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.toc-tree {
+  display: grid;
+  gap: 4px;
+}
+
+.toc-node .toc-tree {
+  margin-left: 10px;
+  padding-left: 10px;
+  border-left: 1px solid color-mix(in oklab, var(--reader-accent) 20%, transparent);
+}
+
+.toc-panel h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+
+.toc-panel a,
+.toc-panel span,
+.toc-panel p {
+  display: block;
+  margin: 0 0 9px;
+  color: var(--reader-muted);
+  font-size: 13px;
+  line-height: 1.45;
+  text-decoration: none;
+}
+
+.toc-panel a {
+  padding: 7px 9px;
+  border-radius: 12px;
+  transition:
+    color var(--motion-fast) var(--ease-soft),
+    background var(--motion-fast) var(--ease-soft),
+    transform var(--motion-fast) var(--ease-soft);
+}
+
+.toc-panel a:hover {
+  color: var(--reader-ink);
+  background: color-mix(in oklab, var(--reader-accent) 12%, transparent);
+  transform: translateX(2px);
+}
+
+.bookmark-actions-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.soft-button:disabled {
+  opacity: .45;
+  cursor: default;
+  transform: none;
+}
+
+.bookmark-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--md-sys-color-surface) 52%, transparent);
+}
+
+.bookmark-check {
+  display: grid;
+  place-items: center;
+}
+
+.bookmark-check input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.bookmark-check span {
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 2px solid var(--md-sys-color-outline-variant);
+  border-radius: 6px;
+  transition:
+    background var(--motion-medium) var(--ease-soft),
+    border-color var(--motion-medium) var(--ease-soft),
+    transform var(--motion-fast) var(--ease-soft);
+}
+
+.bookmark-check input:checked + span {
+  border-color: var(--reader-accent);
+  background:
+    linear-gradient(135deg, transparent 45%, rgb(255 255 255 / 80%) 45% 56%, transparent 56%),
+    var(--reader-accent);
+  transform: scale(.94);
+}
+
+.bookmark-main {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bookmark-main strong,
+.bookmark-main span {
+  display: block;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bookmark-main strong {
+  color: var(--reader-ink);
+  font-size: 13px;
+}
+
+.bookmark-main span {
+  color: var(--reader-muted);
+  font-size: 11px;
+}
+
+.mini-icon {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+}
+
+.reader-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  z-index: 40;
+  padding: 10px 16px;
+  border-radius: 999px;
+  color: var(--md-sys-color-on-primary);
+  background: var(--md-sys-color-primary);
+  box-shadow: var(--shadow-tight);
+  font-size: 13px;
+  font-weight: 900;
+  transform: translateX(-50%);
+  animation: toast-pop 1600ms var(--ease-drop) both;
+}
+
+.epub-note-overlay {
+  width: min(420px, calc(100vw - 32px));
+  min-width: min(320px, calc(100vw - 32px));
+  max-height: min(360px, calc(100vh - 32px));
+  overflow: hidden;
+  padding: 18px 18px 16px;
+  border: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 78%, transparent);
+  border-radius: 24px;
+  color: var(--reader-ink);
+  background: color-mix(in oklab, var(--glass-bg) 94%, var(--md-sys-color-surface));
+  box-shadow:
+    0 22px 52px rgb(0 0 0 / 22%),
+    inset 0 1px 0 rgb(255 255 255 / 18%);
+  backdrop-filter: blur(26px) saturate(1.24);
+  animation: note-pop 260ms var(--ease-drop) both;
+}
+
+.epub-note-overlay-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--reader-muted);
+  background: color-mix(in oklab, var(--reader-ink) 8%, transparent);
+  cursor: pointer;
+}
+
+.epub-note-overlay-content {
+  max-height: min(312px, calc(100vh - 86px));
+  overflow: auto;
+  padding-right: 18px;
+  font-family: var(--reader-font-family);
+  font-size: max(14px, calc(var(--reader-font-size) * .82));
+  line-height: 1.72;
+}
+
+.epub-note-overlay-content :first-child {
+  margin-top: 0;
+}
+
+.epub-note-overlay-content :last-child {
+  margin-bottom: 0;
+}
+
+.epub-note-overlay-content a {
+  color: var(--reader-accent);
+}
+
+/* 注释引用链接：悬停提示 + 跳转指针 */
+[data-epub-note-ref="true"] {
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+[data-epub-note-ref="true"]:hover {
+  color: var(--reader-accent);
+}
+
+.epub-note-overlay-loading {
+  display: grid;
+  min-height: 56px;
+  place-items: center;
+  color: var(--reader-muted);
+  font-size: 24px;
+}
+
+@keyframes note-pop {
+  0% { opacity: 0; transform: translateY(8px) scale(.96); }
+  72% { opacity: 1; transform: translateY(-2px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toast-pop {
+  0% { opacity: 0; transform: translate(-50%, 12px) scale(.94); }
+  18%, 82% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, 8px) scale(.98); }
+}
+
+/* 左栏注释列表面板 */
+.epub-note-list {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: min(340px, 86vw);
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  padding: 92px 0 0;
+  background: color-mix(in oklab, var(--glass-bg) 96%, var(--md-sys-color-surface));
+  border-right: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 72%, transparent);
+  box-shadow: 0 22px 52px rgb(0 0 0 / 18%);
+  backdrop-filter: blur(26px) saturate(1.2);
+  animation: note-list-in 280ms var(--ease-drop) both;
+}
+
+@keyframes note-list-in {
+  from { opacity: 0; transform: translateX(-18px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.epub-note-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 20px 12px;
+  font-weight: 700;
+  color: var(--reader-ink);
+}
+
+.epub-note-list-clear {
+  border: 0;
+  background: transparent;
+  color: var(--reader-accent);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.epub-note-list-clear:hover {
+  background: color-mix(in oklab, var(--reader-accent) 14%, transparent);
+}
+
+.epub-note-list-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 16px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.epub-note-card {
+  position: relative;
+  padding: 14px 38px 14px 14px;
+  border: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 64%, transparent);
+  border-radius: 16px;
+  background: color-mix(in oklab, var(--reader-paper) 90%, transparent);
+  color: var(--reader-ink);
+  font-family: var(--reader-font-family);
+  font-size: max(13px, calc(var(--reader-font-size) * .82));
+  line-height: 1.7;
+  animation: note-pop 220ms var(--ease-drop) both;
+}
+
+.epub-note-card-label {
+  display: inline-block;
+  font-weight: 700;
+  color: var(--reader-accent);
+  margin-bottom: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  font-family: inherit;
+  cursor: default;
+  text-align: left;
+}
+
+.epub-note-card-label--link {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--reader-accent) 40%, transparent);
+  text-underline-offset: 2px;
+}
+
+.epub-note-card-label--link:hover {
+  text-decoration-color: var(--reader-accent);
+}
+
+.epub-note-card-content :first-child {
+  margin-top: 0;
+}
+
+.epub-note-card-content :last-child {
+  margin-bottom: 0;
+}
+
+.epub-note-card-content a {
+  color: var(--reader-accent);
+}
+
+.epub-note-card-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+.epub-note-card-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--reader-muted);
+  background: color-mix(in oklab, var(--reader-ink) 8%, transparent);
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.epub-note-card-close:hover {
+  color: var(--reader-ink);
+  background: color-mix(in oklab, var(--reader-ink) 16%, transparent);
+}
+
+.text-reader.notes-open {
+  padding-left: calc(min(340px, 86vw) + clamp(24px, 7vw, 96px));
+  transition: padding-left 280ms var(--ease-soft);
+}
+
+.text-reader,
+.epub-reader,
+.paged-reader,
+.reader-state {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.text-reader {
+  overflow: auto;
+  overflow-x: hidden;
+  padding: 96px clamp(24px, 7vw, 96px) 80px;
+  scrollbar-gutter: stable both-edges;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.text-reader.paged {
+  overflow-y: hidden;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+}
+
+.text-document {
+  width: min(100%, var(--reader-column-width));
+  max-width: var(--reader-column-width);
+  margin: 0 auto;
+  color: var(--reader-ink);
+  font-family: var(--reader-font-family);
+  font-size: var(--reader-font-size);
+  line-height: var(--reader-line-height);
+  font-kerning: normal;
+  hanging-punctuation: first last;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  text-size-adjust: 100%;
+  overflow-wrap: break-word;
+}
+
+.text-reader:not(.epub-text-reader) .text-document,
+.text-reader:not(.epub-text-reader) .text-document :where(p, span, div, section, article, h1, h2, h3, h4, h5, h6, li, a, strong, em, ruby, rt) {
+  font-family: var(--reader-font-family) !important;
+}
+
+.text-reader.paged .text-document {
+  width: auto;
+  max-width: none;
+  height: calc(100vh - 176px);
+  column-width: var(--reader-column-width);
+  column-gap: 58px;
+  column-fill: auto;
+}
+
+.text-reader.paged .text-chapter {
+  scroll-snap-align: start;
+  break-before: column;
+}
+
+/* A2: 分页模式防止标题/图片被列截断 */
+.text-reader.paged .text-document h1,
+.text-reader.paged .text-document h2,
+.text-reader.paged .text-document h3,
+.text-reader.paged .text-document h4,
+.text-reader.paged .text-document h5,
+.text-reader.paged .text-document h6 {
+  break-after: avoid;
+  break-inside: avoid;
+}
+
+.text-reader.paged .text-document img,
+.text-reader.paged .text-document figure,
+.text-reader.paged .text-document blockquote,
+.text-reader.paged .text-document pre,
+.text-reader.paged .text-document table {
+  break-inside: avoid;
+}
+
+.text-document h1 {
+  margin: 0 0 18px;
+  font-size: clamp(30px, 4vw, 52px);
+  line-height: 1.1;
+}
+
+.text-document h2 {
+  margin: 2.2em 0 1em;
+  font-size: 1.4em;
+}
+
+.text-reader.scroll .text-chapter {
+  content-visibility: auto;
+  contain-intrinsic-size: 1400px;
+}
+
+.text-reader.epub-text-reader.scroll .text-chapter {
+  content-visibility: visible;
+  contain-intrinsic-size: auto;
+  min-height: calc(100vh - 154px);
+}
+
+.text-reader.epub-text-reader .text-chapter.lazy-chapter-placeholder {
+  min-height: var(--lazy-chapter-height, 960px);
+  display: grid;
+  place-items: center;
+}
+
+.chapter-lazy-shell {
+  position: relative;
+  isolation: isolate;
+  width: min(82%, var(--reader-column-width));
+  height: min(72px, 12vh);
+  border-radius: 999px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 28%, var(--reader-placeholder-glow), transparent 34%),
+    linear-gradient(90deg, color-mix(in oklab, var(--reader-accent) 7%, transparent), transparent 42%),
+    color-mix(in oklab, var(--reader-ink) 4%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--reader-ink) 6%, transparent),
+    0 12px 28px color-mix(in oklab, var(--reader-accent) 7%, transparent);
+  opacity: .58;
+  animation: placeholder-breathe 2400ms var(--ease-soft) infinite;
+}
+
+.chapter-lazy-shell::before,
+.chapter-lazy-shell::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.chapter-lazy-shell::before {
+  inset: 22px 12% 22px 16%;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, var(--reader-placeholder-line) 0 26%, transparent 26% 32%, var(--reader-placeholder-line) 32% 66%, transparent 66% 72%, var(--reader-placeholder-line) 72% 100%);
+  opacity: .74;
+}
+
+.chapter-lazy-shell::after {
+  inset: 0;
+  background: linear-gradient(105deg, transparent 18%, color-mix(in oklab, white 40%, transparent) 44%, transparent 66%);
+  transform: translateX(-120%);
+  animation: placeholder-shimmer 2400ms var(--ease-shutter) infinite;
+}
+
+.text-document p {
+  margin: 0 0 1.05em;
+  widows: 2;
+  orphans: 2;
+}
+
+.text-reader:not(.epub-text-reader).auto-align .text-document p {
+  text-align: start;
+}
+
+.text-reader:not(.epub-text-reader).justify-align .text-document p {
+  text-align: justify;
+  text-justify: inter-character;
+}
+
+/* B2: CJK 段落首行缩进（两端对齐模式下） */
+.text-reader.justify-align:not(.epub-text-reader) .text-document p {
+  text-indent: 2em;
+}
+
+.text-reader.epub-text-reader.justify-align .epub-chapter-body[lang^="zh"] p,
+.text-reader.epub-text-reader.justify-align .epub-chapter-body[lang^="ja"] p {
+  text-indent: 2em;
+}
+
+/* 紧跟标题的段落不缩进 */
+.text-document h1 + p,
+.text-document h2 + p,
+.text-document h3 + p,
+.text-document h4 + p {
+  text-indent: 0 !important;
+}
+
+
+/* A3: 分页翻页渐入 */
+.text-reader.paged .text-chapter {
+  animation: page-fade-in 320ms var(--ease-soft) both;
+}
+
+@keyframes page-fade-in {
+  from { opacity: 0.4; }
+  to   { opacity: 1; }
+}
+
+.text-reader.epub-text-reader .epub-chapter-body {
+  max-width: 100%;
+  min-height: inherit;
+  overflow-wrap: normal;
+  word-break: normal;
+  font-size: var(--reader-font-size);
+  line-height: var(--reader-line-height);
+}
+
+.text-reader.epub-text-reader .text-chapter.epub-fixed-chapter {
+  --epub-page-ratio: calc(var(--epub-page-width) / var(--epub-page-height));
+  position: relative;
+  width: min(100%, calc((100vh - 190px) * var(--epub-page-ratio)));
+  max-width: min(100%, calc(var(--epub-page-width) * 1px));
+  min-height: auto;
+  aspect-ratio: var(--epub-page-width) / var(--epub-page-height);
+  margin: 0 auto 48px;
+  overflow: hidden;
+  background: var(--reader-paper);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, .12);
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.text-reader.epub-text-reader .text-chapter.epub-fixed-chapter .epub-chapter-body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
+  background-size: cover;
+  background-position: center top;
+}
+
+.epub-fixed-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+
+.text-reader.epub-text-reader .text-chapter.epub-fixed-chapter svg {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none;
+  max-height: none;
+  margin: 0 !important;
+  border-radius: 0;
+}
+
+.text-reader.epub-text-reader .text-chapter.epub-fixed-chapter img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 0;
+}
+
+.text-reader.epub-text-reader .text-chapter.epub-fixed-chapter .duokan-image-single,
+.text-reader.epub-text-reader .text-chapter.epub-fixed-chapter .illus {
+  width: 100%;
+  height: 100%;
+  text-align: center;
+}
+
+.text-reader.epub-text-reader .text-chapter.epub-fixed-chapter .duokan-image-single img,
+.text-reader.epub-text-reader .text-chapter.epub-fixed-chapter .illus > img:only-child {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  margin: 0 auto;
+}
+
+.text-reader.epub-text-reader .text-chapter.epub-vertical-chapter .epub-chapter-body,
+.text-reader.epub-text-reader .epub-chapter-body.vrtl {
+  writing-mode: vertical-rl;
+  -webkit-writing-mode: vertical-rl;
+  text-orientation: mixed;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.text-reader.epub-text-reader .text-document p {
+  margin-block-start: 0.75em;
+  margin-block-end: 0.75em;
+}
+
+/* C1: 单图章节/常见插图容器全幅展示 */
+.text-reader.epub-text-reader .epub-chapter-body > img:only-child,
+.text-reader.epub-text-reader .epub-chapter-body > figure:only-child img,
+.text-reader.epub-text-reader .epub-chapter-body > .duokan-image-single img,
+.text-reader.epub-text-reader .epub-chapter-body > .illus img {
+  max-width: min(100%, calc(100vw - 48px));
+  max-height: 88vh;
+  width: auto;
+  margin: 0 auto;
+  border-radius: 4px;
+}
+
+/* C2: EPUB 章节首个 h1 装饰样式 */
+.text-reader.epub-text-reader .epub-chapter-body > h1:first-child,
+.text-reader.epub-text-reader .epub-chapter-body > header:first-child h1 {
+  margin-top: max(80px, 12vh);
+  margin-bottom: 1.8em;
+  padding-bottom: 0.6em;
+  border-bottom: 1px solid color-mix(in oklab, var(--reader-ink) 12%, transparent);
+  font-size: clamp(28px, 3.6vw, 48px);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+/* C3: 滚动模式章节间分隔 */
+.text-reader.scroll.epub-text-reader .text-chapter + .text-chapter {
+  margin-top: max(64px, 8vh);
+  padding-top: max(48px, 6vh);
+  border-top: 1px solid color-mix(in oklab, var(--reader-ink) 6%, transparent);
+}
+
+.text-document img,
+.text-document picture,
+.text-document svg,
+.text-document video {
+  display: block;
+  max-width: 100%;
+  max-height: 72vh;
+  height: auto;
+  margin: 1.6em auto;
+  object-fit: contain;
+  object-position: center;
+  border-radius: 6px;
+  break-inside: avoid;
+}
+
+.text-reader:not(.epub-text-reader).manual-images .text-document img,
+.text-reader:not(.epub-text-reader).manual-images .text-document picture,
+.text-reader:not(.epub-text-reader).manual-images .text-document svg,
+.text-reader:not(.epub-text-reader).manual-images .text-document video {
+  width: calc(var(--reader-image-width) * 1%) !important;
+}
+
+.text-reader:not(.epub-text-reader).fit-screen-images .text-document img,
+.text-reader:not(.epub-text-reader).fit-screen-images .text-document picture,
+.text-reader:not(.epub-text-reader).fit-screen-images .text-document svg,
+.text-reader:not(.epub-text-reader).fit-screen-images .text-document video {
+  width: auto !important;
+  max-width: min(100%, calc(100vw - 180px)) !important;
+  max-height: calc(100vh - 180px) !important;
+}
+
+.text-reader.epub-text-reader.manual-images .text-document img,
+.text-reader.epub-text-reader.manual-images .text-document picture,
+.text-reader.epub-text-reader.manual-images .text-document svg,
+.text-reader.epub-text-reader.manual-images .text-document video {
+  max-width: min(100%, calc(var(--reader-image-width) * 1%));
+}
+
+.text-reader.epub-text-reader.fit-screen-images .text-document img,
+.text-reader.epub-text-reader.fit-screen-images .text-document picture,
+.text-reader.epub-text-reader.fit-screen-images .text-document svg,
+.text-reader.epub-text-reader.fit-screen-images .text-document video {
+  max-width: min(100%, calc(100vw - 180px));
+  max-height: calc(100vh - 180px);
+}
+
+.text-document picture img {
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.text-document figure {
+  max-width: 100%;
+  margin: 1.6em auto;
+  text-align: center;
+  break-inside: avoid;
+}
+
+.text-document figure img,
+.text-document figure svg {
+  margin: 0 auto;
+}
+
+.reader-author {
+  color: var(--reader-muted);
+  font-family: inherit;
+}
+
+.epub-reader {
+  position: relative;
+  padding: 28px;
+}
+
+.epub-mount {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--reader-paper);
+  box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant);
+}
+
+.floating-pager,
+.media-controls {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--md-sys-color-surface) 82%, transparent);
+  box-shadow: var(--shadow-tight);
+}
+
+.floating-pager {
+  right: 34px;
+  bottom: 34px;
+}
+
+.paged-reader {
+  position: relative;
+}
+
+.media-controls {
+  top: 18px;
+  right: 28px;
+}
+
+.media-controls span {
+  min-width: 52px;
+  color: var(--reader-muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.pdf-pages,
+.comic-pages {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 28px;
+  height: 100%;
+  overflow: auto;
+  padding: 82px 28px 42px;
+}
+
+.pdf-page,
+.comic-page-slot {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  margin: 0;
+  width: 100%;
+}
+
+.pdf-page canvas,
+.comic-pages img {
+  max-width: 100%;
+  border-radius: 6px;
+  box-shadow: var(--shadow-tight);
+  background: white;
+}
+
+.pdf-page figcaption {
+  color: var(--reader-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.comic-pages img {
+  display: block;
+  height: auto;
+  object-fit: contain;
+}
+
+.virtual-page-placeholder {
+  position: relative;
+  isolation: isolate;
+  width: min(100%, 760px);
+  min-height: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 22% 12%, var(--reader-placeholder-glow), transparent 26%),
+    linear-gradient(135deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, .04)),
+    color-mix(in oklab, var(--reader-placeholder-tint) 44%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--reader-ink) 8%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 24%);
+  animation: placeholder-breathe 2600ms var(--ease-soft) infinite;
+}
+
+.virtual-page-placeholder::before,
+.virtual-page-placeholder::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.virtual-page-placeholder::before {
+  inset: clamp(20px, 8%, 58px) clamp(18px, 9%, 72px);
+  border-radius: 10px;
+  background:
+    linear-gradient(var(--reader-placeholder-line) 0 0) 0 0 / 44% 10px no-repeat,
+    linear-gradient(var(--reader-placeholder-line) 0 0) 0 34px / 78% 9px no-repeat,
+    linear-gradient(var(--reader-placeholder-line) 0 0) 0 66px / 62% 9px no-repeat,
+    linear-gradient(var(--reader-placeholder-line) 0 0) 0 100% / 34% 10px no-repeat;
+  opacity: .62;
+}
+
+.virtual-page-placeholder::after {
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 22%,
+    color-mix(in oklab, white 38%, transparent) 46%,
+    transparent 68%
+  );
+  transform: translateX(-120%);
+  animation: placeholder-shimmer 2500ms var(--ease-shutter) infinite;
+}
+
+.virtual-page-placeholder figcaption {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes placeholder-shimmer {
+  0%, 38% { transform: translateX(-120%); }
+  72%, 100% { transform: translateX(120%); }
+}
+
+@keyframes placeholder-breathe {
+  0%, 100% {
+    opacity: .58;
+    filter: saturate(1);
+  }
+  50% {
+    opacity: .74;
+    filter: saturate(1.08);
+  }
+}
+
+.reader-state {
+  display: grid;
+  place-items: center;
+}
+
+.error-bubble {
+  max-width: min(520px, 80vw);
+  padding: 18px 22px;
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--reader-warm) 18%, var(--md-sys-color-surface));
+  color: var(--reader-ink);
+  box-shadow: var(--shadow-tight);
+  font-weight: 800;
+  line-height: 1.6;
+  text-align: center;
+}
+
+@media (max-width: 980px) {
+  .app-shell {
+    grid-template-columns: 76px minmax(0, 1fr);
+    --rail-width: 76px;
+  }
+
+  .rail-item {
+    width: 54px;
+  }
+
+  .rail-item span {
+    display: none;
+  }
+
+  .library-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .header-actions {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}
+
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after,
+[data-motion="reduced"] *,
+[data-motion="reduced"] *::before,
+[data-motion="reduced"] *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 1ms !important;
+}
+
+[data-motion="gentle"] {
+  --ease-spring: cubic-bezier(.2, .9, .2, 1);
+  --motion-medium: 260ms;
+  --motion-slow: 420ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-stagger,
+  .loading-stagger span,
+  .loading-stagger::before,
+  .chapter-lazy-shell,
+  .chapter-lazy-shell::after,
+  .virtual-page-placeholder,
+  .virtual-page-placeholder::after {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+.reduce-motion .loading-stagger,
+.reduce-motion .loading-stagger span,
+.reduce-motion .loading-stagger::before,
+.reduce-motion .chapter-lazy-shell,
+.reduce-motion .chapter-lazy-shell::after,
+.reduce-motion .virtual-page-placeholder,
+.reduce-motion .virtual-page-placeholder::after,
+[data-motion="reduced"] .loading-stagger,
+[data-motion="reduced"] .loading-stagger span,
+[data-motion="reduced"] .loading-stagger::before,
+[data-motion="reduced"] .chapter-lazy-shell,
+[data-motion="reduced"] .chapter-lazy-shell::after,
+[data-motion="reduced"] .virtual-page-placeholder,
+[data-motion="reduced"] .virtual-page-placeholder::after {
+  animation: none !important;
+  transform: none !important;
+}
+
+/* ── Immersive cursor hide ────────────────────────────────── */
+.reader-shell.cursor-hidden {
+  cursor: none;
+}
+.reader-shell.cursor-hidden * {
+  cursor: none !important;
+}
+
+/* ── Chapter ETA ──────────────────────────────────────────── */
+.reader-chapter-eta {
+  font-size: 11px;
+  color: var(--reader-muted);
+  opacity: 0.8;
+  white-space: nowrap;
+  margin-left: 8px;
+}
+
+/* ── Chapter enter animation ──────────────────────────────── */
+@keyframes chapter-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.text-chapter-entering {
+  animation: chapter-enter 250ms var(--ease-soft) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-chapter-entering {
+    animation: none;
+  }
+}
+
+/* ── Apple 阅读器纸色预设 ── */
+.reader-shell[data-color-preset="paper"] {
+  --reader-bg: #fbf0d9;
+  --reader-ink: #2c1f0e;
+  --reader-muted: #7a6040;
+  --reader-paper: #fbf0d9;
+  --reader-accent: #8b6914;
+  --reader-warm: #c8943a;
+}
+
+.reader-shell[data-color-preset="quiet"] {
+  --reader-bg: #f7f4ee;
+  --reader-ink: #1c1c1e;
+  --reader-muted: #6c6c70;
+  --reader-paper: #f7f4ee;
+  --reader-accent: #636366;
+  --reader-warm: #aeaeb2;
+}
+
+.reader-shell[data-color-preset="gray"] {
+  --reader-bg: #2b2b2b;
+  --reader-ink: #e5e5e5;
+  --reader-muted: #aeaeb2;
+  --reader-paper: #323232;
+  --reader-accent: #aeaeb2;
+  --reader-warm: #636366;
+}
+
+.reader-shell[data-color-preset="night"] {
+  --reader-bg: #000000;
+  --reader-ink: #d4d4d4;
+  --reader-muted: #8e8e93;
+  --reader-paper: #0d0d0d;
+  --reader-accent: #8e8e93;
+  --reader-warm: #48484a;
+}
+
+/* ── 亮度遮罩 ── */
+.reader-brightness-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* ── 排版增强 ── */
+.text-reader.justify .text-document {
+  text-align: justify;
+  text-justify: inter-character;
+}
+
+.text-reader.justify.hyphenate .text-document {
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+
+/* ── 页边距 ── */
+.reader-shell[data-page-margin="narrow"] .text-reader {
+  padding-left: clamp(16px, 3vw, 32px);
+  padding-right: clamp(16px, 3vw, 32px);
+}
+.reader-shell[data-page-margin="narrow"] .text-document {
+  max-width: 680px;
+}
+
+.reader-shell[data-page-margin="wide"] .text-reader {
+  padding-left: clamp(48px, 12vw, 160px);
+  padding-right: clamp(48px, 12vw, 160px);
+}
+.reader-shell[data-page-margin="wide"] .text-document {
+  max-width: 640px;
+}
+
+/* ── 阅读纸色预设选择器 ── */
+.reader-preset-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 4px 0;
+}
+
+.reader-preset-dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  box-shadow: 0 0 0 1px var(--md-sys-color-outline-variant);
+  cursor: pointer;
+  transition: box-shadow var(--motion-fast) var(--ease-soft),
+              border-color var(--motion-fast) var(--ease-soft);
+}
+
+.reader-preset-dot.active {
+  border-color: var(--md-sys-color-primary);
+  box-shadow: 0 0 0 2px var(--md-sys-color-primary);
+}
+
+/* ── 设置面板分组标题 ── */
+.settings-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--reader-muted, var(--md-sys-color-on-surface-variant));
+  padding: 20px 24px 4px;
+  margin: 0;
+}
+
+/* ── 选词菜单 ── */
+.selection-menu {
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 60%, transparent);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+  user-select: none;
+  animation: selection-menu-appear 120ms var(--ease-soft);
+}
+
+@keyframes selection-menu-appear {
+  from { opacity: 0; transform: translateY(4px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+
+.selection-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--md-sys-color-on-surface);
+  transition: background var(--motion-fast) var(--ease-soft);
+}
+.selection-menu-btn:hover {
+  background: color-mix(in oklab, var(--md-sys-color-primary) 12%, transparent);
+}
+
+.selection-menu-colors {
+  display: flex;
+  gap: 4px;
+}
+
+.selection-color-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: transform var(--motion-fast) var(--ease-spring),
+              border-color var(--motion-fast) var(--ease-soft);
+}
+.selection-color-dot:hover {
+  transform: scale(1.2);
+  border-color: rgb(0 0 0 / 20%);
+}
+
+.selection-menu-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--md-sys-color-outline-variant);
+  margin: 0 2px;
+}
+
+/* ── 笔记面板 ── */
+.notes-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+}
+
+.notes-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  transition: background var(--motion-fast) var(--ease-soft);
+}
+.notes-item:hover {
+  background: color-mix(in oklab, var(--md-sys-color-primary) 6%, transparent);
+}
+
+.notes-item-bar {
+  width: 4px;
+  min-height: 40px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.notes-item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.notes-item-text {
+  font-size: 13px;
+  color: var(--md-sys-color-on-surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  margin: 0 0 4px;
+}
+
+.notes-item-note {
+  font-size: 12px;
+  color: var(--reader-muted);
+  margin: 0;
+}
+
+.notes-item-remove {
+  opacity: 0;
+  flex-shrink: 0;
+  transition: opacity var(--motion-fast) var(--ease-soft);
+}
+.notes-item:hover .notes-item-remove {
+  opacity: 1;
+}
+
+/* ── 全书搜索面板 ── */
+.search-panel-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 80px;
+  background: rgb(0 0 0 / 24%);
+  backdrop-filter: blur(4px);
+}
+
+.search-panel {
+  width: min(600px, 90vw);
+  background: var(--md-sys-color-surface);
+  border-radius: 20px;
+  box-shadow: 0 24px 64px rgb(0 0 0 / 28%);
+  overflow: hidden;
+  animation: search-panel-appear 180ms var(--ease-soft);
+}
+
+@keyframes search-panel-appear {
+  from { opacity: 0; transform: translateY(-12px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+.search-panel-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+}
+
+.search-icon {
+  color: var(--md-sys-color-on-surface-variant);
+  flex-shrink: 0;
+}
+
+.search-panel-input {
+  flex: 1;
+  font-size: 16px;
+  background: none;
+  border: none;
+  color: var(--md-sys-color-on-surface);
+  outline: none;
+}
+
+.search-count {
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+  white-space: nowrap;
+}
+
+.search-results {
+  max-height: 480px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.search-result-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  text-align: left;
+  transition: background var(--motion-fast) var(--ease-soft);
+}
+.search-result-item:hover,
+.search-result-item.active {
+  background: color-mix(in oklab, var(--md-sys-color-primary) 8%, transparent);
+}
+
+.search-result-chapter {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--md-sys-color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.search-result-snippet {
+  font-size: 13px;
+  color: var(--md-sys-color-on-surface);
+  line-height: 1.5;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.search-result-snippet mark {
+  background: color-mix(in oklab, var(--md-sys-color-primary) 22%, transparent);
+  color: var(--md-sys-color-primary);
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+/* ── TTS 朗读条 ── */
+.tts-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 60%, transparent);
+  border-radius: 999px;
+  box-shadow: 0 8px 32px rgb(0 0 0 / 22%);
+  animation: tts-bar-appear 200ms var(--ease-soft);
+  white-space: nowrap;
+}
+
+@keyframes tts-bar-appear {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.tts-play-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  transition: background var(--motion-fast) var(--ease-soft),
+              transform var(--motion-fast) var(--ease-spring);
+}
+.tts-play-btn:active { transform: scale(0.92); }
+
+.tts-rate-select,
+.tts-voice-select {
+  font-size: 13px;
+  background: none;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 8px;
+  padding: 4px 8px;
+  color: var(--md-sys-color-on-surface);
+  cursor: pointer;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tts-progress {
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+  min-width: 48px;
+  text-align: center;
+}
+
+/* ── 阅读统计 ── */
+.reader-session-time {
+  font-size: 11px;
+  color: var(--reader-muted, var(--md-sys-color-on-surface-variant));
+  opacity: 0.7;
+  white-space: nowrap;
+}

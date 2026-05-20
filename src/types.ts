@@ -224,6 +224,12 @@ export interface ReaderApi {
   updateHighlight(bookId: string, highlightId: string, patch: Partial<Pick<Highlight, "color" | "note">>): Promise<BookRecord | undefined>;
   removeHighlights(bookId: string, highlightIds: string[]): Promise<BookRecord | undefined>;
   removeBook(id: string): Promise<BookRecord[]>;
+  removeBooks(ids: string[]): Promise<BookRecord[]>;
+  importByPaths(paths: string[]): Promise<BookRecord[]>;
+  updateBookMeta(id: string, patch: { title?: string; author?: string }): Promise<BookRecord | undefined>;
+  saveReadingSession(bookId: string, session: ReadingSession): Promise<BookRecord | undefined>;
+  exportData(): Promise<boolean>;
+  importData(): Promise<boolean>;
   getPreferences(): Promise<ReaderPreferences>;
   savePreferences(preferences: Partial<ReaderPreferences>): Promise<ReaderPreferences>;
   hasCover(bookId: string): Promise<boolean>;

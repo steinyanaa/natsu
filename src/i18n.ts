@@ -89,7 +89,28 @@ export type TranslationKey =
   | "noRecent"
   | "notes"
   | "closeNote"
-  | "clearNotes";
+  | "clearNotes"
+  | "confirmRemove"
+  | "cancel"
+  | "editMetadata"
+  | "saveChanges"
+  | "titleLabel"
+  | "authorLabel"
+  | "dropToImport"
+  | "sortBy"
+  | "sortRecent"
+  | "sortTitle"
+  | "sortAuthor"
+  | "sortProgress"
+  | "sortSize"
+  | "stats"
+  | "thisWeek"
+  | "totalMinutes"
+  | "activeDays"
+  | "noStats"
+  | "exportData"
+  | "importData"
+  | "dataManagement";
 
 const zh: Record<TranslationKey, string> = {
   appName: "Natsu",
@@ -180,7 +201,28 @@ const zh: Record<TranslationKey, string> = {
   noRecent: "还没有最近阅读",
   notes: "注释",
   closeNote: "关闭注释",
-  clearNotes: "清空"
+  clearNotes: "清空",
+  confirmRemove: "确认移除",
+  cancel: "取消",
+  editMetadata: "编辑书籍信息",
+  saveChanges: "保存",
+  titleLabel: "书名",
+  authorLabel: "作者",
+  dropToImport: "松开以导入",
+  sortBy: "排序",
+  sortRecent: "最近",
+  sortTitle: "书名",
+  sortAuthor: "作者",
+  sortProgress: "进度",
+  sortSize: "大小",
+  stats: "统计",
+  thisWeek: "本周",
+  totalMinutes: "总分钟",
+  activeDays: "活跃天数",
+  noStats: "还没有阅读记录",
+  exportData: "导出数据",
+  importData: "导入数据",
+  dataManagement: "数据管理"
 };
 
 const ja: Record<TranslationKey, string> = {
@@ -272,7 +314,28 @@ const ja: Record<TranslationKey, string> = {
   noRecent: "最近読んだ本はまだありません",
   notes: "注釈",
   closeNote: "注釈を閉じる",
-  clearNotes: "クリア"
+  clearNotes: "クリア",
+  confirmRemove: "削除確認",
+  cancel: "キャンセル",
+  editMetadata: "書籍情報を編集",
+  saveChanges: "保存",
+  titleLabel: "タイトル",
+  authorLabel: "著者",
+  dropToImport: "ドロップして読み込む",
+  sortBy: "並び替え",
+  sortRecent: "最近",
+  sortTitle: "タイトル",
+  sortAuthor: "著者",
+  sortProgress: "進捗",
+  sortSize: "サイズ",
+  stats: "統計",
+  thisWeek: "今週",
+  totalMinutes: "合計分",
+  activeDays: "活動日数",
+  noStats: "読書記録はまだありません",
+  exportData: "データをエクスポート",
+  importData: "データをインポート",
+  dataManagement: "データ管理"
 };
 
 const en: Record<TranslationKey, string> = {
@@ -364,7 +427,28 @@ const en: Record<TranslationKey, string> = {
   noRecent: "No recent books yet",
   notes: "Notes",
   closeNote: "Close note",
-  clearNotes: "Clear"
+  clearNotes: "Clear",
+  confirmRemove: "Confirm removal",
+  cancel: "Cancel",
+  editMetadata: "Edit book info",
+  saveChanges: "Save",
+  titleLabel: "Title",
+  authorLabel: "Author",
+  dropToImport: "Drop to import",
+  sortBy: "Sort",
+  sortRecent: "Recent",
+  sortTitle: "Title",
+  sortAuthor: "Author",
+  sortProgress: "Progress",
+  sortSize: "Size",
+  stats: "Stats",
+  thisWeek: "This week",
+  totalMinutes: "Total min",
+  activeDays: "Active days",
+  noStats: "No reading sessions yet",
+  exportData: "Export data",
+  importData: "Import data",
+  dataManagement: "Data management"
 };
 
 const dictionaries = {

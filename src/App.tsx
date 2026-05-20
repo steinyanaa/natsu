@@ -1,5 +1,6 @@
 ﻿import {
   ArrowLeft,
+  BarChart3,
   Bookmark,
   BookmarkCheck,
   BookOpen,
@@ -83,6 +84,8 @@ const fallbackPreferences: ReaderPreferences = {
 
 type ShelfFilter = "all" | "novels" | "comics" | "pdf";
 type ShelfView = "grid" | "list";
+type ShelfSort = "recent" | "title" | "author" | "progress" | "size";
+type AppSection = "library" | "recent" | "stats";
 
 const novelFormats: BookFormat[] = ["epub", "txt", "mobi", "azw3"];
 const comicFormats: BookFormat[] = ["cbz", "zip", "cbr", "rar"];
@@ -171,7 +174,11 @@ export function App() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ShelfFilter>("all");
   const [view, setView] = useState<ShelfView>("grid");
-  const [section, setSection] = useState<"library" | "recent">("library");
+  const [section, setSection] = useState<AppSection>("library");
+  const [sort, setSort] = useState<ShelfSort>("recent");
+  const [confirmBook, setConfirmBook] = useState<BookRecord | undefined>();
+  const [editBook, setEditBook] = useState<BookRecord | undefined>();
+  const [dragActive, setDragActive] = useState(false);
   const [settingsMounted, setSettingsMounted] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -459,8 +466,15 @@ export function App() {
     }
   }, []);
 
-  const removeBook = useCallback(
+  // 弹确认框
+  const removeBook = useCallback((book: BookRecord) => {
+    setConfirmBook(book);
+  }, []);
+
+  // 确认后实际删除
+  const confirmRemoveBook = useCallback(
     async (book: BookRecord) => {
+      setConfirmBook(undefined);
       const nextBooks = await window.readerApi.removeBook(book.id);
       setBooks(nextBooks);
       if (activeBook?.id === book.id) {
@@ -469,6 +483,51 @@ export function App() {
     },
     [activeBook]
   );
+
+  // 拖放导入
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragActive(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragActive(false);
+    const paths: string[] = [];
+    for (const file of Array.from(e.dataTransfer.files)) {
+      const p = (file as File & { path?: string }).path;
+      if (p) paths.push(p);
+    }
+    if (!paths.length) return;
+    setImporting(true);
+    try {
+      const imported = await window.readerApi.importByPaths(paths);
+      if (imported.length) {
+        setBooks((current) => {
+          const existingIds = new Set(current.map((b) => b.id));
+          return [...imported.filter((b) => !existingIds.has(b.id)), ...current];
+        });
+      }
+    } finally {
+      setImporting(false);
+    }
+  }, []);
+
+  // 元数据编辑保存
+  const saveBookMeta = useCallback(async (id: string, patch: { title?: string; author?: string }) => {
+    setEditBook(undefined);
+    const updated = await window.readerApi.updateBookMeta(id, patch);
+    if (updated) {
+      setBooks((current) => current.map((b) => (b.id === updated.id ? updated : b)));
+      if (activeBook?.id === updated.id) setActiveBook(updated);
+    }
+  }, [activeBook]);
 
   const filteredBooks = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -492,8 +551,16 @@ export function App() {
         .sort((a, b) => bookActivityTime(b) - bookActivityTime(a));
     }
 
-    return filtered.sort((a, b) => bookActivityTime(b) - bookActivityTime(a));
-  }, [books, filter, query, section]);
+    const comparators: Record<ShelfSort, (a: BookRecord, b: BookRecord) => number> = {
+      recent: (a, b) => bookActivityTime(b) - bookActivityTime(a),
+      title: (a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
+      author: (a, b) => (a.author ?? "").localeCompare(b.author ?? "", undefined, { sensitivity: "base" }),
+      progress: (a, b) => (b.progress?.percent ?? 0) - (a.progress?.percent ?? 0),
+      size: (a, b) => b.size - a.size
+    };
+
+    return [...filtered].sort(comparators[sort]);
+  }, [books, filter, query, section, sort]);
 
   if (activeBook) {
     return (
@@ -517,7 +584,12 @@ export function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main
+      className="app-shell"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <svg className="gooey-filter" aria-hidden="true">
         <filter id="gooey">
           <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur" />
@@ -551,6 +623,14 @@ export function App() {
         >
           <BookOpen size={21} />
           <span>{t("recent")}</span>
+        </button>
+        <button
+          className={`rail-item ${section === "stats" ? "active" : ""}`}
+          title={t("stats")}
+          onClick={() => setSection("stats")}
+        >
+          <BarChart3 size={21} />
+          <span>{t("stats")}</span>
         </button>
         <div className="rail-spacer" aria-hidden="true" />
         <button
@@ -615,6 +695,20 @@ export function App() {
           </div>
 
           <div className="toolbar-right">
+            {section !== "stats" && section !== "recent" && (
+              <select
+                className="sort-select"
+                value={sort}
+                onChange={(e) => setSort(e.target.value as ShelfSort)}
+                title={t("sortBy")}
+              >
+                <option value="recent">{t("sortRecent")}</option>
+                <option value="title">{t("sortTitle")}</option>
+                <option value="author">{t("sortAuthor")}</option>
+                <option value="progress">{t("sortProgress")}</option>
+                <option value="size">{t("sortSize")}</option>
+              </select>
+            )}
             <ViewMorph value={view} t={t} onChange={setView} />
           </div>
         </div>
@@ -637,7 +731,9 @@ export function App() {
           />
         ) : null}
 
-        {filteredBooks.length ? (
+        {section === "stats" ? (
+          <StatsView books={books} t={t} />
+        ) : filteredBooks.length ? (
           <BookShelf
             books={filteredBooks}
             view={view}
@@ -645,6 +741,7 @@ export function App() {
             t={t}
             onOpen={openBook}
             onRemove={removeBook}
+            onEdit={setEditBook}
           />
         ) : (
           <EmptyShelf t={t} onImport={importBooks} recent={section === "recent"} />
@@ -662,6 +759,39 @@ export function App() {
           />
         </Suspense>
       ) : null}
+
+      {/* 删除确认弹窗 */}
+      {confirmBook ? (
+        <ConfirmDialog
+          title={t("confirmRemove")}
+          body={`《${confirmBook.title}》的书签、高亮和进度将一并删除，此操作不可撤销。`}
+          confirmLabel={t("remove")}
+          cancelLabel={t("cancel")}
+          danger
+          onConfirm={() => void confirmRemoveBook(confirmBook)}
+          onCancel={() => setConfirmBook(undefined)}
+        />
+      ) : null}
+
+      {/* 元数据编辑弹窗 */}
+      {editBook ? (
+        <EditMetaDialog
+          book={editBook}
+          t={t}
+          onSave={(patch) => void saveBookMeta(editBook.id, patch)}
+          onCancel={() => setEditBook(undefined)}
+        />
+      ) : null}
+
+      {/* 拖放 overlay */}
+      {dragActive ? (
+        <div className="drop-overlay" aria-hidden="true">
+          <div className="drop-overlay-inner">
+            <FolderPlus size={40} />
+            <span>{t("dropToImport")}</span>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -672,7 +802,8 @@ function BookShelf({
   coverUrls,
   t,
   onOpen,
-  onRemove
+  onRemove,
+  onEdit
 }: {
   books: BookRecord[];
   view: ShelfView;
@@ -680,6 +811,7 @@ function BookShelf({
   t: ReturnType<typeof createTranslator>;
   onOpen: (book: BookRecord) => void;
   onRemove: (book: BookRecord) => void;
+  onEdit: (book: BookRecord) => void;
 }) {
   return (
     <section className={`book-shelf ${view}`}>
@@ -705,6 +837,9 @@ function BookShelf({
               <button className="soft-button pressable compact-action" onClick={() => onOpen(book)}>
                 <BookOpen size={16} />
                 <span>{book.progress ? t("continueReading") : t("open")}</span>
+              </button>
+              <button className="icon-button pressable" title={t("editMetadata")} onClick={() => onEdit(book)}>
+                <Pencil size={17} />
               </button>
               <button className="icon-button pressable" title={t("remove")} onClick={() => onRemove(book)}>
                 <Trash2 size={17} />
@@ -766,6 +901,149 @@ function EmptyShelf({
           <span>{t("import")}</span>
         </button>
       ) : null}
+    </section>
+  );
+}
+
+// ─── 确认删除弹窗 ────────────────────────────────────────────────────────────
+function ConfirmDialog({
+  title,
+  body,
+  confirmLabel,
+  cancelLabel,
+  danger,
+  onConfirm,
+  onCancel
+}: {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  cancelLabel: string;
+  danger?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="dialog-backdrop" onClick={onCancel}>
+      <div className="dialog-card" onClick={(e) => e.stopPropagation()}>
+        <h3>{title}</h3>
+        <p>{body}</p>
+        <div className="dialog-actions">
+          <button className="soft-button pressable" onClick={onCancel}>{cancelLabel}</button>
+          <button className={`primary-button pressable${danger ? " danger" : ""}`} onClick={onConfirm}>{confirmLabel}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── 元数据编辑弹窗 ──────────────────────────────────────────────────────────
+function EditMetaDialog({
+  book,
+  t,
+  onSave,
+  onCancel
+}: {
+  book: BookRecord;
+  t: ReturnType<typeof createTranslator>;
+  onSave: (patch: { title?: string; author?: string }) => void;
+  onCancel: () => void;
+}) {
+  const [title, setTitle] = useState(book.title);
+  const [author, setAuthor] = useState(book.author ?? "");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({ title: title.trim() || book.title, author: author.trim() });
+  };
+
+  return (
+    <div className="dialog-backdrop" onClick={onCancel}>
+      <form className="dialog-card" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
+        <h3>{t("editMetadata")}</h3>
+        <label className="meta-field">
+          <span>{t("titleLabel")}</span>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
+        </label>
+        <label className="meta-field">
+          <span>{t("authorLabel")}</span>
+          <input value={author} onChange={(e) => setAuthor(e.target.value)} />
+        </label>
+        <div className="dialog-actions">
+          <button type="button" className="soft-button pressable" onClick={onCancel}>{t("cancel")}</button>
+          <button type="submit" className="primary-button pressable">{t("saveChanges")}</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+// ─── 阅读统计视图 ────────────────────────────────────────────────────────────
+function StatsView({
+  books,
+  t
+}: {
+  books: BookRecord[];
+  t: ReturnType<typeof createTranslator>;
+}) {
+  const stats = useMemo(() => {
+    const now = Date.now();
+    const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+    let weekMinutes = 0;
+    const activeDays = new Set<string>();
+    const bookMap = new Map<string, { title: string; minutes: number }>();
+
+    for (const book of books) {
+      for (const session of book.readingSessions ?? []) {
+        const start = new Date(session.start).getTime();
+        if (start >= weekAgo) {
+          const mins = (new Date(session.end).getTime() - start) / 60000;
+          weekMinutes += mins;
+          activeDays.add(session.start.slice(0, 10));
+          const entry = bookMap.get(book.id) ?? { title: book.title, minutes: 0 };
+          entry.minutes += mins;
+          bookMap.set(book.id, entry);
+        }
+      }
+    }
+
+    const topBooks = [...bookMap.values()].sort((a, b) => b.minutes - a.minutes).slice(0, 6);
+    const maxMinutes = topBooks[0]?.minutes ?? 1;
+
+    return { weekMinutes: Math.round(weekMinutes), activeDays: activeDays.size, topBooks, maxMinutes };
+  }, [books]);
+
+  return (
+    <section className="stats-view">
+      <div className="stats-cards">
+        <div className="stat-card">
+          <span className="stat-value">{stats.weekMinutes}</span>
+          <span className="stat-label">{t("totalMinutes")}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value">{stats.activeDays}</span>
+          <span className="stat-label">{t("activeDays")}</span>
+        </div>
+      </div>
+      {stats.topBooks.length > 0 ? (
+        <div className="stats-chart">
+          <p className="stats-section-label">{t("thisWeek")}</p>
+          {stats.topBooks.map((b) => (
+            <div key={b.title} className="stats-bar-row">
+              <span className="stats-bar-title" title={b.title}>{b.title}</span>
+              <div className="stats-bar-track">
+                <div
+                  className="stats-bar-fill"
+                  style={{ width: `${Math.round((b.minutes / stats.maxMinutes) * 100)}%` }}
+                />
+              </div>
+              <span className="stats-bar-value">{Math.round(b.minutes)}m</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="stats-empty">{t("noStats")}</p>
+      )}
     </section>
   );
 }

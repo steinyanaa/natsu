@@ -120,13 +120,25 @@ export function ReaderScreen({
   }, [progress]);
 
   useEffect(() => {
+    const start = new Date().toISOString();
+    const bookId = book.id;
     return () => {
       window.clearTimeout(saveTimer.current);
       const pending = latestProgressRef.current;
-      if (Math.abs(lastSavedPercentRef.current - pending.percent) < 0.0015) {
-        return;
+      if (Math.abs(lastSavedPercentRef.current - pending.percent) >= 0.0015) {
+        void window.readerApi.saveProgress(bookId, pending);
       }
-      void window.readerApi.saveProgress(book.id, pending);
+      // 保存本次阅读 session（至少读了 30 秒）
+      const end = new Date().toISOString();
+      const elapsedMs = Date.now() - sessionStartRef.current;
+      if (elapsedMs >= 30_000) {
+        void window.readerApi.saveReadingSession(bookId, {
+          bookId,
+          start,
+          end,
+          charsRead: 0
+        });
+      }
     };
   }, [book.id]);
   const addBookmark = useCallback(async () => {

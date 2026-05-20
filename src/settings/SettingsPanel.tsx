@@ -558,6 +558,29 @@ export function SettingsPanel({
         checked={preferences.immersive}
         onChange={(immersive) => onChange({ immersive })}
       />
+
+      <SettingSection label={t("dataManagement")} />
+
+      <SettingGroup label={t("dataManagement")}>
+        <div className="data-management-row">
+          <button
+            className="soft-button pressable stretch-button"
+            type="button"
+            onClick={() => void window.readerApi.exportData()}
+          >
+            <span>{t("exportData")}</span>
+          </button>
+          <button
+            className="soft-button pressable stretch-button"
+            type="button"
+            onClick={() => void window.readerApi.importData()}
+          >
+            <span>{t("importData")}</span>
+          </button>
+        </div>
+        <p className="setting-help-text">导出书签、高亮和阅读记录为 JSON；导入时按文件哈希合并，本地文件路径不受影响。</p>
+      </SettingGroup>
+
       </aside>
     </>
   );

@@ -937,7 +937,26 @@ export function TextPane({
         return;
       }
 
-      const behavior: ScrollBehavior = preferences.motion === "reduced" || preferences.reduceMotion ? "auto" : "smooth";
+      const isReduced = preferences.motion === "reduced" || preferences.reduceMotion;
+      const pageTurnStyle = preferences.pageTurnStyle ?? "slide";
+
+      if (effectiveReaderMode === "paged" && !isReduced && pageTurnStyle === "fade") {
+        // fade：短暂淡出，滚动后淡入
+        scroller.classList.add("page-turn-fade-out");
+        const target = scroller.scrollLeft + direction * Math.max(320, scroller.clientWidth * 0.86);
+        setTimeout(() => {
+          scroller.scrollLeft = target;
+          scroller.classList.remove("page-turn-fade-out");
+          scroller.classList.add("page-turn-fade-in");
+          setTimeout(() => scroller.classList.remove("page-turn-fade-in"), 200);
+        }, 130);
+        suspendedProgressUntilRef.current = performance.now() + 400;
+        scheduleScrollSettle(400);
+        return;
+      }
+
+      const behavior: ScrollBehavior =
+        isReduced || pageTurnStyle === "none" ? "auto" : "smooth";
       suspendedProgressUntilRef.current = performance.now() + (behavior === "smooth" ? 480 : 120);
 
       if (effectiveReaderMode === "paged") {
@@ -948,7 +967,7 @@ export function TextPane({
 
       scheduleScrollSettle(behavior === "smooth" ? 420 : 0);
     },
-    [preferences.motion, effectiveReaderMode, preferences.reduceMotion, scheduleScrollSettle]
+    [preferences.motion, preferences.pageTurnStyle, effectiveReaderMode, preferences.reduceMotion, scheduleScrollSettle]
   );
 
   useEffect(() => {

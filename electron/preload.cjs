@@ -38,6 +38,12 @@ contextBridge.exposeInMainWorld("readerApi", {
   removeHighlights: (bookId, highlightIds) =>
     ipcRenderer.invoke("library:removeHighlights", bookId, highlightIds),
   removeBook: (id) => ipcRenderer.invoke("library:removeBook", id),
+  removeBooks: (ids) => ipcRenderer.invoke("library:removeBooks", ids),
+  importByPaths: (paths) => ipcRenderer.invoke("library:importByPaths", paths),
+  updateBookMeta: (id, patch) => ipcRenderer.invoke("library:updateBookMeta", id, patch),
+  saveReadingSession: (bookId, session) => ipcRenderer.invoke("library:saveReadingSession", bookId, session),
+  exportData: () => ipcRenderer.invoke("library:exportData"),
+  importData: () => ipcRenderer.invoke("library:importData"),
   getPreferences: () => ipcRenderer.invoke("preferences:get"),
   savePreferences: (preferences) =>
     ipcRenderer.invoke("preferences:save", preferences),

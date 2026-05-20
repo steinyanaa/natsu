@@ -181,6 +181,13 @@ interface HtmlSourceConfig {
   timeout?: number;
 }
 
+interface ReadingSession {
+  bookId: string;
+  start: string;
+  end: string;
+  charsRead: number;
+}
+
 interface BookRecord {
   id: string;
   hash: string;
@@ -197,6 +204,7 @@ interface BookRecord {
   highlights: Highlight[];
   preferences?: Partial<ReaderPreferences>;
   coverSeed: number;
+  readingSessions?: ReadingSession[];
 }
 
 interface ClientBookRecord extends Omit<BookRecord, "filePath"> {
@@ -2278,6 +2286,110 @@ function registerIpc(): void {
     const nextPreferences = normalizePreferences(migratePreferences(merged));
     store.set("preferences", nextPreferences);
     return nextPreferences;
+  });
+
+  // 批量删除
+  ipcMain.handle("library:removeBooks", async (_event, ids: string[]) => {
+    const idSet = new Set<string>(ids);
+    const books = store.get("books", []);
+    for (const book of books) {
+      if (idSet.has(book.id)) {
+        await fs.rm(book.filePath, { force: true });
+        await fs.rm(coverPathFor(book.id), { force: true });
+      }
+    }
+    store.set("books", books.filter((b) => !idSet.has(b.id)));
+    return store.get("books", []).map(bookToClient);
+  });
+
+  // 拖放导入（路径列表直接导入）
+  ipcMain.handle("library:importByPaths", async (_event, paths: string[]) => {
+    const imported: ClientBookRecord[] = [];
+    for (const filePath of paths) {
+      const book = await importOneBook(filePath);
+      if (book) imported.push(book);
+    }
+    return imported;
+  });
+
+  // 编辑书籍元数据（标题/作者）
+  ipcMain.handle("library:updateBookMeta", (_event, id: string, patch: { title?: string; author?: string }) => {
+    const book = updateBook(id, (current) => ({
+      ...current,
+      ...(patch.title?.trim() ? { title: patch.title.trim() } : {}),
+      ...(patch.author !== undefined ? { author: patch.author.trim() || undefined } : {})
+    }));
+    return book ? bookToClient(book) : undefined;
+  });
+
+  // 保存阅读 session
+  ipcMain.handle("library:saveReadingSession", (_event, bookId: string, session: ReadingSession) => {
+    const book = updateBook(bookId, (current) => ({
+      ...current,
+      readingSessions: [...(current.readingSessions ?? []), session].slice(-500)
+    }));
+    return book ? bookToClient(book) : undefined;
+  });
+
+  // 导出数据到 JSON 文件
+  ipcMain.handle("library:exportData", async () => {
+    const result = await dialog.showSaveDialog({
+      title: "导出 Natsu 数据",
+      defaultPath: `natsu-backup-${new Date().toISOString().slice(0, 10)}.json`,
+      filters: [{ name: "JSON", extensions: ["json"] }]
+    });
+    if (result.canceled || !result.filePath) return false;
+    const books = store.get("books", []).map((b) => {
+      const { filePath: _fp, ...rest } = b;
+      return rest;
+    });
+    const preferences = store.get("preferences");
+    await fs.writeFile(result.filePath, JSON.stringify({ version: 1, books, preferences }, null, 2), "utf-8");
+    return true;
+  });
+
+  // 从 JSON 文件导入数据（按 hash 合并）
+  ipcMain.handle("library:importData", async () => {
+    const result = await dialog.showOpenDialog({
+      title: "导入 Natsu 数据",
+      filters: [{ name: "JSON", extensions: ["json"] }],
+      properties: ["openFile"]
+    });
+    if (result.canceled || !result.filePaths[0]) return false;
+    let parsed: { version?: number; books?: Partial<BookRecord>[]; preferences?: Partial<ReaderPreferences> };
+    try {
+      const raw = await fs.readFile(result.filePaths[0], "utf-8");
+      parsed = JSON.parse(raw) as typeof parsed;
+    } catch {
+      return false;
+    }
+    if (!parsed || !Array.isArray(parsed.books)) return false;
+    const existing = store.get("books", []);
+    const existingByHash = new Map(existing.map((b) => [b.hash, b]));
+    for (const imported of parsed.books) {
+      if (!imported.hash || !imported.id) continue;
+      const match = existingByHash.get(imported.hash);
+      if (match) {
+        // 合并书签、高亮、阅读 sessions
+        const merged: BookRecord = {
+          ...match,
+          bookmarks: imported.bookmarks ?? match.bookmarks,
+          highlights: imported.highlights ?? match.highlights,
+          readingSessions: [
+            ...(match.readingSessions ?? []),
+            ...(imported.readingSessions ?? [])
+          ].slice(-500),
+          progress: imported.progress ?? match.progress
+        };
+        existingByHash.set(match.hash, merged);
+      }
+    }
+    store.set("books", [...existingByHash.values()]);
+    if (parsed.preferences) {
+      const userPrefs = store.get("preferences");
+      store.set("preferences", normalizePreferences(migratePreferences({ ...defaultPreferences(), ...userPrefs, ...parsed.preferences })));
+    }
+    return true;
   });
 }
 

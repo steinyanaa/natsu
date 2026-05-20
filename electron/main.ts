@@ -83,6 +83,7 @@ interface ReaderPreferences {
   justify: boolean;
   hyphenate: boolean;
   preferencesVersion: number;
+  dailyGoalMinutes?: number;
 }
 
 interface OnlineBookResult {
@@ -211,9 +212,18 @@ interface ClientBookRecord extends Omit<BookRecord, "filePath"> {
   fileUrl: string;
 }
 
+interface Collection {
+  id: string;
+  name: string;
+  bookIds: string[];
+  color?: string;
+  createdAt: string;
+}
+
 interface StoreShape {
   books: BookRecord[];
   preferences: ReaderPreferences;
+  collections: Collection[];
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -2348,6 +2358,98 @@ function registerIpc(): void {
     return true;
   });
 
+  // ── 收藏夹 ──────────────────────────────────────────────────────────────────
+  ipcMain.handle("library:listCollections", () => {
+    return store.get("collections", []);
+  });
+
+  ipcMain.handle("library:saveCollection", (_event, collection: Collection) => {
+    const current = store.get("collections", []);
+    const exists = current.find((c) => c.id === collection.id);
+    const next = exists
+      ? current.map((c) => (c.id === collection.id ? collection : c))
+      : [...current, collection];
+    store.set("collections", next);
+    return next;
+  });
+
+  ipcMain.handle("library:removeCollection", (_event, id: string) => {
+    const next = store.get("collections", []).filter((c) => c.id !== id);
+    store.set("collections", next);
+    return next;
+  });
+
+  ipcMain.handle("library:addBookToCollection", (_event, collectionId: string, bookId: string) => {
+    const collections = store.get("collections", []);
+    const next = collections.map((c) =>
+      c.id === collectionId
+        ? { ...c, bookIds: c.bookIds.includes(bookId) ? c.bookIds : [...c.bookIds, bookId] }
+        : c
+    );
+    store.set("collections", next);
+    return next;
+  });
+
+  ipcMain.handle("library:removeBookFromCollection", (_event, collectionId: string, bookId: string) => {
+    const collections = store.get("collections", []);
+    const next = collections.map((c) =>
+      c.id === collectionId ? { ...c, bookIds: c.bookIds.filter((id) => id !== bookId) } : c
+    );
+    store.set("collections", next);
+    return next;
+  });
+
+  // 书籍标签
+  ipcMain.handle("library:updateBookTags", (_event, bookId: string, tags: string[]) => {
+    const book = updateBook(bookId, (current) => ({ ...current, tags }));
+    return book ? bookToClient(book) : undefined;
+  });
+
+  // 阅读目标统计（今日分钟、连续天数）
+  ipcMain.handle("library:getGoalStats", () => {
+    const preferences = store.get("preferences");
+    const dailyGoalMinutes = preferences.dailyGoalMinutes ?? 30;
+    const books = store.get("books", []);
+    const today = new Date().toISOString().slice(0, 10);
+    const now = Date.now();
+
+    let todayMinutes = 0;
+    const dayMinutes = new Map<string, number>();
+
+    for (const book of books) {
+      for (const session of book.readingSessions ?? []) {
+        const dayKey = session.start.slice(0, 10);
+        const mins = (new Date(session.end).getTime() - new Date(session.start).getTime()) / 60000;
+        dayMinutes.set(dayKey, (dayMinutes.get(dayKey) ?? 0) + mins);
+        if (dayKey === today) todayMinutes += mins;
+      }
+    }
+
+    // 连续打卡：从今天往前数连续达标天数
+    let streak = 0;
+    let checkDay = new Date(now);
+    for (let i = 0; i < 365; i++) {
+      const key = checkDay.toISOString().slice(0, 10);
+      const mins = dayMinutes.get(key) ?? 0;
+      if (mins >= dailyGoalMinutes) {
+        streak++;
+        checkDay.setDate(checkDay.getDate() - 1);
+      } else if (i === 0) {
+        // 今天还没达标，从昨天开始算
+        checkDay.setDate(checkDay.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+
+    return {
+      todayMinutes: Math.round(todayMinutes),
+      dailyGoalMinutes,
+      streak,
+      goalReachedToday: todayMinutes >= dailyGoalMinutes
+    };
+  });
+
   // 从 JSON 文件导入数据（按 hash 合并）
   ipcMain.handle("library:importData", async () => {
     const result = await dialog.showOpenDialog({
@@ -2398,7 +2500,8 @@ app.whenReady().then(async () => {
     name: "natsu",
     defaults: {
       books: [],
-      preferences: defaultPreferences()
+      preferences: defaultPreferences(),
+      collections: []
     }
   });
 

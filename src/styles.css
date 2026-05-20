@@ -4006,3 +4006,364 @@ input[type="range"]:disabled {
   line-height: 1.5;
   margin: 0;
 }
+
+/* ═══ 收藏夹侧栏项 ══════════════════════════════════════════════════════════ */
+.rail-item-collection {
+  opacity: 0.85;
+}
+
+.rail-item-collection.active {
+  opacity: 1;
+}
+
+.rail-item-add-col {
+  opacity: 0.55;
+  font-size: 11px;
+}
+
+.rail-item-add-col:hover {
+  opacity: 0.85;
+}
+
+/* ═══ 书籍选中状态 ══════════════════════════════════════════════════════════ */
+.book-tile.selected {
+  outline: 2.5px solid var(--md-sys-color-primary);
+  border-radius: 14px;
+}
+
+.tile-selected-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--md-sys-color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tile-selected-badge::after {
+  content: "✓";
+  color: var(--md-sys-color-on-primary);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ═══ 标签/收藏夹下拉菜单 ═══════════════════════════════════════════════════ */
+.tag-menu-anchor {
+  position: relative;
+}
+
+.tag-dropdown {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  background: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+  min-width: 160px;
+  z-index: 200;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tag-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--md-sys-color-on-surface);
+  text-align: left;
+  transition: background 120ms;
+}
+
+.tag-dropdown-item:hover {
+  background: var(--md-sys-color-surface-container-highest);
+}
+
+.tag-dropdown-item.active {
+  color: var(--md-sys-color-primary);
+}
+
+.tag-check {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--md-sys-color-primary);
+}
+
+/* ═══ 批量操作浮动栏 ════════════════════════════════════════════════════════ */
+.batch-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 28px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  z-index: 300;
+  animation: batch-bar-in 200ms var(--ease-soft) both;
+}
+
+@keyframes batch-bar-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.batch-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+}
+
+/* ═══ 命令面板 ══════════════════════════════════════════════════════════════ */
+.command-backdrop {
+  background: rgba(0, 0, 0, 0.45);
+  align-items: flex-start;
+  padding-top: 120px;
+}
+
+.command-palette {
+  width: min(560px, calc(100vw - 40px));
+  background: var(--md-sys-color-surface-container);
+  border-radius: 18px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  animation: dialog-in 160ms var(--ease-soft) both;
+}
+
+.command-search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.command-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 17px;
+  color: var(--md-sys-color-on-surface);
+  outline: none;
+}
+
+.command-input::placeholder {
+  color: var(--md-sys-color-on-surface-variant);
+  opacity: 0.7;
+}
+
+.command-esc-hint {
+  font-size: 11px;
+  font-family: monospace;
+  background: var(--md-sys-color-surface-container-high);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: 4px;
+  padding: 2px 6px;
+  color: var(--md-sys-color-on-surface-variant);
+  opacity: 0.8;
+}
+
+.command-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.command-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 100ms;
+}
+
+.command-item.active {
+  background: var(--md-sys-color-secondary-container);
+}
+
+.command-title {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--md-sys-color-on-surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.command-author {
+  font-size: 12px;
+  color: var(--md-sys-color-on-surface-variant);
+  white-space: nowrap;
+}
+
+.command-progress {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--md-sys-color-primary);
+  min-width: 36px;
+  text-align: right;
+}
+
+.format-chip.small {
+  font-size: 9px;
+  padding: 1px 5px;
+}
+
+/* ═══ 目标环 & 连续打卡 ═════════════════════════════════════════════════════ */
+.goal-panel {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: var(--md-sys-color-surface-container);
+  border-radius: 20px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+}
+
+.goal-ring-wrap {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+}
+
+.goal-ring {
+  width: 64px;
+  height: 64px;
+  transform: rotate(-90deg);
+}
+
+.goal-ring-bg {
+  fill: none;
+  stroke: var(--md-sys-color-surface-container-highest);
+  stroke-width: 5;
+}
+
+.goal-ring-fill {
+  fill: none;
+  stroke: var(--md-sys-color-primary);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 144.51;
+  stroke-dashoffset: 144.51;
+  transition: stroke-dashoffset 600ms var(--ease-soft);
+}
+
+.goal-ring-fill.reached {
+  stroke: var(--md-sys-color-tertiary, #4caf50);
+}
+
+.goal-ring-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--md-sys-color-on-surface);
+}
+
+.goal-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.goal-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface);
+}
+
+.goal-sub {
+  font-size: 13px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.goal-streak {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e65100;
+  margin-top: 2px;
+}
+
+/* ═══ 设置数字输入 ══════════════════════════════════════════════════════════ */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+
+.setting-label {
+  font-size: 14px;
+  color: var(--md-sys-color-on-surface);
+}
+
+.setting-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.setting-number-input {
+  width: 72px;
+  padding: 6px 10px;
+  border: 1.5px solid var(--md-sys-color-outline-variant);
+  border-radius: 10px;
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  outline: none;
+  transition: border-color 150ms;
+}
+
+.setting-number-input:focus {
+  border-color: var(--md-sys-color-primary);
+}
+
+.setting-unit {
+  font-size: 13px;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* ═══ 章节进度标签 ══════════════════════════════════════════════════════════ */
+.reader-chapter-pos {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--md-sys-color-on-surface-variant);
+  padding: 2px 8px;
+  background: var(--md-sys-color-surface-container);
+  border-radius: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}

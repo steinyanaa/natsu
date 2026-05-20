@@ -504,6 +504,14 @@ export function ReaderScreen({
           <i style={{ scale: `${Math.max(0.03, progress.percent)} 1` }} />
           <span>{percentLabel(progress)}</span>
         </div>
+        {chapters.length > 1 && progress.chapterId ? (() => {
+          const idx = chapters.findIndex((ch) => ch.id === progress.chapterId);
+          return idx >= 0 ? (
+            <span className="reader-chapter-pos" title={t("chapterOf")}>
+              {idx + 1} / {chapters.length}
+            </span>
+          ) : null;
+        })() : null}
         {chapterEta ? <span className="reader-chapter-eta">{chapterEta}</span> : null}
         {sessionMinutes >= 1 && (
           <span className="reader-session-time">已读 {sessionMinutes} 分</span>

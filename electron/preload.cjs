@@ -44,6 +44,13 @@ contextBridge.exposeInMainWorld("readerApi", {
   saveReadingSession: (bookId, session) => ipcRenderer.invoke("library:saveReadingSession", bookId, session),
   exportData: () => ipcRenderer.invoke("library:exportData"),
   importData: () => ipcRenderer.invoke("library:importData"),
+  listCollections: () => ipcRenderer.invoke("library:listCollections"),
+  saveCollection: (collection) => ipcRenderer.invoke("library:saveCollection", collection),
+  removeCollection: (id) => ipcRenderer.invoke("library:removeCollection", id),
+  addBookToCollection: (collectionId, bookId) => ipcRenderer.invoke("library:addBookToCollection", collectionId, bookId),
+  removeBookFromCollection: (collectionId, bookId) => ipcRenderer.invoke("library:removeBookFromCollection", collectionId, bookId),
+  updateBookTags: (bookId, tags) => ipcRenderer.invoke("library:updateBookTags", bookId, tags),
+  getGoalStats: () => ipcRenderer.invoke("library:getGoalStats"),
   getPreferences: () => ipcRenderer.invoke("preferences:get"),
   savePreferences: (preferences) =>
     ipcRenderer.invoke("preferences:save", preferences),

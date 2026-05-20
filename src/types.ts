@@ -96,6 +96,7 @@ export interface ReaderPreferences {
   mangaSnapToPage: boolean;
   immersive: boolean;
   preferencesVersion: number;
+  dailyGoalMinutes: number;
 }
 
 export interface OnlineSource {
@@ -138,6 +139,21 @@ export interface ReadingSession {
   charsRead: number;
 }
 
+export interface Collection {
+  id: string;
+  name: string;
+  bookIds: string[];
+  color?: string;
+  createdAt: string;
+}
+
+export interface GoalStats {
+  todayMinutes: number;
+  dailyGoalMinutes: number;
+  streak: number;
+  goalReachedToday: boolean;
+}
+
 export interface BookRecord {
   id: string;
   hash: string;
@@ -155,6 +171,7 @@ export interface BookRecord {
   preferences?: Partial<ReaderPreferences>;
   coverSeed: number;
   readingSessions?: ReadingSession[];
+  tags?: string[];
 }
 
 export interface TextChapter {
@@ -230,6 +247,13 @@ export interface ReaderApi {
   saveReadingSession(bookId: string, session: ReadingSession): Promise<BookRecord | undefined>;
   exportData(): Promise<boolean>;
   importData(): Promise<boolean>;
+  listCollections(): Promise<Collection[]>;
+  saveCollection(collection: Collection): Promise<Collection[]>;
+  removeCollection(id: string): Promise<Collection[]>;
+  updateBookTags(bookId: string, tags: string[]): Promise<BookRecord | undefined>;
+  addBookToCollection(collectionId: string, bookId: string): Promise<Collection[]>;
+  removeBookFromCollection(collectionId: string, bookId: string): Promise<Collection[]>;
+  getGoalStats(): Promise<GoalStats>;
   getPreferences(): Promise<ReaderPreferences>;
   savePreferences(preferences: Partial<ReaderPreferences>): Promise<ReaderPreferences>;
   hasCover(bookId: string): Promise<boolean>;

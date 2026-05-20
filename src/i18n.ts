@@ -110,7 +110,24 @@ export type TranslationKey =
   | "noStats"
   | "exportData"
   | "importData"
-  | "dataManagement";
+  | "dataManagement"
+  | "collections"
+  | "newCollection"
+  | "collectionName"
+  | "noCollections"
+  | "addToCollection"
+  | "removeFromCollection"
+  | "allBooks"
+  | "batchDelete"
+  | "commandPalette"
+  | "switchBook"
+  | "dailyGoal"
+  | "minutesPerDay"
+  | "streak"
+  | "streakDays"
+  | "todayProgress"
+  | "goalReached"
+  | "chapterOf";
 
 const zh: Record<TranslationKey, string> = {
   appName: "Natsu",
@@ -222,7 +239,24 @@ const zh: Record<TranslationKey, string> = {
   noStats: "还没有阅读记录",
   exportData: "导出数据",
   importData: "导入数据",
-  dataManagement: "数据管理"
+  dataManagement: "数据管理",
+  collections: "收藏夹",
+  newCollection: "新建收藏夹",
+  collectionName: "收藏夹名称",
+  noCollections: "还没有收藏夹",
+  addToCollection: "加入收藏夹",
+  removeFromCollection: "从收藏夹移除",
+  allBooks: "全部书籍",
+  batchDelete: "批量删除",
+  commandPalette: "快速切换书籍",
+  switchBook: "切换书籍",
+  dailyGoal: "每日阅读目标",
+  minutesPerDay: "分钟 / 天",
+  streak: "连续打卡",
+  streakDays: "天",
+  todayProgress: "今日进度",
+  goalReached: "达成目标 🎉",
+  chapterOf: "章节"
 };
 
 const ja: Record<TranslationKey, string> = {
@@ -335,7 +369,24 @@ const ja: Record<TranslationKey, string> = {
   noStats: "読書記録はまだありません",
   exportData: "データをエクスポート",
   importData: "データをインポート",
-  dataManagement: "データ管理"
+  dataManagement: "データ管理",
+  collections: "コレクション",
+  newCollection: "新規コレクション",
+  collectionName: "コレクション名",
+  noCollections: "コレクションがありません",
+  addToCollection: "コレクションに追加",
+  removeFromCollection: "コレクションから削除",
+  allBooks: "すべての本",
+  batchDelete: "一括削除",
+  commandPalette: "本をすばやく切り替え",
+  switchBook: "本を切り替え",
+  dailyGoal: "毎日の読書目標",
+  minutesPerDay: "分 / 日",
+  streak: "連続記録",
+  streakDays: "日",
+  todayProgress: "今日の進捗",
+  goalReached: "目標達成 🎉",
+  chapterOf: "章"
 };
 
 const en: Record<TranslationKey, string> = {
@@ -448,7 +499,24 @@ const en: Record<TranslationKey, string> = {
   noStats: "No reading sessions yet",
   exportData: "Export data",
   importData: "Import data",
-  dataManagement: "Data management"
+  dataManagement: "Data management",
+  collections: "Collections",
+  newCollection: "New collection",
+  collectionName: "Collection name",
+  noCollections: "No collections yet",
+  addToCollection: "Add to collection",
+  removeFromCollection: "Remove from collection",
+  allBooks: "All books",
+  batchDelete: "Delete selected",
+  commandPalette: "Quick book switch",
+  switchBook: "Switch book",
+  dailyGoal: "Daily reading goal",
+  minutesPerDay: "min / day",
+  streak: "Streak",
+  streakDays: "days",
+  todayProgress: "Today",
+  goalReached: "Goal reached 🎉",
+  chapterOf: "Chapter"
 };
 
 const dictionaries = {

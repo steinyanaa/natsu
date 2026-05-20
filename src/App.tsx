@@ -6,6 +6,8 @@
   BookOpen,
   ChevronRight,
   Download,
+  Flame,
+  FolderOpen,
   FolderPlus,
   Globe2,
   Grid3X3,
@@ -18,6 +20,8 @@
   ExternalLink,
   Settings,
   SlidersHorizontal,
+  Tag,
+  Target,
   Trash2,
   X
 } from "lucide-react";
@@ -31,7 +35,7 @@ import { SegmentedControl } from "./components/SegmentedControl";
 import { ViewMorph } from "./components/ViewMorph";
 import { LoadingStrip } from "./reader/ReaderState";
 import { applyReaderTheme } from "./themeEngine";
-import type { BookFormat, BookRecord, OnlineBookResult, OnlineSource, ReaderPreferences, ReaderProgress } from "./types";
+import type { BookFormat, BookRecord, Collection, GoalStats, OnlineBookResult, OnlineSource, ReaderPreferences, ReaderProgress } from "./types";
 
 const fallbackPreferences: ReaderPreferences = {
   theme: "ramune",
@@ -71,6 +75,7 @@ const fallbackPreferences: ReaderPreferences = {
   mangaSnapToPage: true,
   immersive: false,
   preferencesVersion: 5,
+  dailyGoalMinutes: 30,
   onlineSources: [
     {
       id: "gutenberg",
@@ -179,6 +184,13 @@ export function App() {
   const [confirmBook, setConfirmBook] = useState<BookRecord | undefined>();
   const [editBook, setEditBook] = useState<BookRecord | undefined>();
   const [dragActive, setDragActive] = useState(false);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchConfirm, setBatchConfirm] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [newColName, setNewColName] = useState("");
+  const [newColMode, setNewColMode] = useState(false);
   const [settingsMounted, setSettingsMounted] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -205,9 +217,10 @@ export function App() {
     let mounted = true;
 
     async function boot() {
-      const [savedPreferences, records] = await Promise.all([
+      const [savedPreferences, records, cols] = await Promise.all([
         window.readerApi.getPreferences(),
-        window.readerApi.listBooks()
+        window.readerApi.listBooks(),
+        window.readerApi.listCollections()
       ]);
 
       if (!mounted) {
@@ -216,6 +229,7 @@ export function App() {
 
       setPreferences(normalizePreferences(savedPreferences));
       setBooks(records);
+      setCollections(cols);
     }
 
     void boot();
@@ -529,8 +543,57 @@ export function App() {
     }
   }, [activeBook]);
 
+  // 收藏夹操作
+  const createCollection = useCallback(async (name: string) => {
+    const col: Collection = { id: `col-${Date.now()}`, name: name.trim(), bookIds: [], createdAt: new Date().toISOString() };
+    const updated = await window.readerApi.saveCollection(col);
+    setCollections(updated);
+  }, []);
+
+  const deleteCollection = useCallback(async (id: string) => {
+    const updated = await window.readerApi.removeCollection(id);
+    setCollections(updated);
+    if (activeCollectionId === id) setActiveCollectionId(null);
+  }, [activeCollectionId]);
+
+  const toggleBookInCollection = useCallback(async (collectionId: string, bookId: string, add: boolean) => {
+    const updated = add
+      ? await window.readerApi.addBookToCollection(collectionId, bookId)
+      : await window.readerApi.removeBookFromCollection(collectionId, bookId);
+    setCollections(updated);
+  }, []);
+
+  // 批量删除
+  const batchRemoveBooks = useCallback(async () => {
+    const ids = [...selectedIds];
+    const nextBooks = await window.readerApi.removeBooks(ids);
+    setBooks(nextBooks);
+    setSelectedIds(new Set());
+    setBatchConfirm(false);
+  }, [selectedIds]);
+
+  // 命令面板快捷键
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setCommandOpen((v) => !v);
+      }
+      if (e.key === "Escape") {
+        setCommandOpen(false);
+        setNewColMode(false);
+        setBatchConfirm(false);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   const filteredBooks = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
+    const colBookIds = activeCollectionId
+      ? (collections.find((c) => c.id === activeCollectionId)?.bookIds ?? [])
+      : null;
 
     const filtered = books.filter((book) => {
       const matchesQuery =
@@ -541,8 +604,9 @@ export function App() {
         (filter === "novels" && isNovel(book.format)) ||
         (filter === "comics" && isComic(book.format)) ||
         (filter === "pdf" && book.format === "pdf");
+      const matchesCollection = !colBookIds || colBookIds.includes(book.id);
 
-      return matchesQuery && matchesFilter;
+      return matchesQuery && matchesFilter && matchesCollection;
     });
 
     if (section === "recent") {
@@ -560,7 +624,7 @@ export function App() {
     };
 
     return [...filtered].sort(comparators[sort]);
-  }, [books, filter, query, section, sort]);
+  }, [books, filter, query, section, sort, activeCollectionId, collections]);
 
   if (activeBook) {
     return (
@@ -609,9 +673,9 @@ export function App() {
         </div>
         <div className="rail-rule" aria-hidden="true" />
         <button
-          className={`rail-item ${section === "library" ? "active" : ""}`}
+          className={`rail-item ${section === "library" && !activeCollectionId ? "active" : ""}`}
           title={t("library")}
-          onClick={() => setSection("library")}
+          onClick={() => { setSection("library"); setActiveCollectionId(null); }}
         >
           <Library size={21} />
           <span>{t("library")}</span>
@@ -619,7 +683,7 @@ export function App() {
         <button
           className={`rail-item ${section === "recent" ? "active" : ""}`}
           title={t("recent")}
-          onClick={() => setSection("recent")}
+          onClick={() => { setSection("recent"); setActiveCollectionId(null); }}
         >
           <BookOpen size={21} />
           <span>{t("recent")}</span>
@@ -627,10 +691,30 @@ export function App() {
         <button
           className={`rail-item ${section === "stats" ? "active" : ""}`}
           title={t("stats")}
-          onClick={() => setSection("stats")}
+          onClick={() => { setSection("stats"); setActiveCollectionId(null); }}
         >
           <BarChart3 size={21} />
           <span>{t("stats")}</span>
+        </button>
+        {collections.length > 0 && <div className="rail-rule" aria-hidden="true" />}
+        {collections.map((col) => (
+          <button
+            key={col.id}
+            className={`rail-item rail-item-collection ${activeCollectionId === col.id ? "active" : ""}`}
+            title={col.name}
+            onClick={() => { setActiveCollectionId(col.id); setSection("library"); }}
+          >
+            <FolderOpen size={21} />
+            <span>{col.name}</span>
+          </button>
+        ))}
+        <button
+          className="rail-item rail-item-add-col"
+          title={t("newCollection")}
+          onClick={() => setNewColMode(true)}
+        >
+          <Plus size={18} />
+          <span>{t("newCollection")}</span>
         </button>
         <div className="rail-spacer" aria-hidden="true" />
         <button
@@ -732,16 +816,28 @@ export function App() {
         ) : null}
 
         {section === "stats" ? (
-          <StatsView books={books} t={t} />
+          <StatsView books={books} t={t} preferences={preferences} />
         ) : filteredBooks.length ? (
           <BookShelf
             books={filteredBooks}
             view={view}
             coverUrls={epubCovers}
             t={t}
+            selectedIds={selectedIds}
+            collections={collections}
             onOpen={openBook}
             onRemove={removeBook}
             onEdit={setEditBook}
+            onSelect={(id, ctrl) => {
+              if (ctrl) {
+                setSelectedIds((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(id)) next.delete(id); else next.add(id);
+                  return next;
+                });
+              }
+            }}
+            onToggleCollection={toggleBookInCollection}
           />
         ) : (
           <EmptyShelf t={t} onImport={importBooks} recent={section === "recent"} />
@@ -792,6 +888,74 @@ export function App() {
           </div>
         </div>
       ) : null}
+
+      {/* 新建收藏夹对话框 */}
+      {newColMode ? (
+        <div className="dialog-backdrop" onClick={() => setNewColMode(false)}>
+          <form
+            className="dialog-card"
+            onClick={(e) => e.stopPropagation()}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (newColName.trim()) {
+                void createCollection(newColName);
+                setNewColName("");
+                setNewColMode(false);
+              }
+            }}
+          >
+            <h3>{t("newCollection")}</h3>
+            <label className="meta-field">
+              <span>{t("collectionName")}</span>
+              <input
+                value={newColName}
+                onChange={(e) => setNewColName(e.target.value)}
+                autoFocus
+                placeholder={t("collectionName")}
+              />
+            </label>
+            <div className="dialog-actions">
+              <button type="button" className="soft-button pressable" onClick={() => { setNewColMode(false); setNewColName(""); }}>{t("cancel")}</button>
+              <button type="submit" className="primary-button pressable">{t("saveChanges")}</button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {/* 批量操作浮动栏 */}
+      {selectedIds.size > 0 ? (
+        <div className="batch-bar">
+          <span className="batch-count">{selectedIds.size} 本已选</span>
+          <button className="soft-button pressable" onClick={() => setSelectedIds(new Set())}>{t("cancel")}</button>
+          <button className="primary-button pressable danger" onClick={() => setBatchConfirm(true)}>
+            <Trash2 size={16} />
+            <span>{t("batchDelete")}</span>
+          </button>
+        </div>
+      ) : null}
+
+      {/* 批量删除确认 */}
+      {batchConfirm ? (
+        <ConfirmDialog
+          title={t("batchDelete")}
+          body={`将删除 ${selectedIds.size} 本书及其所有书签、高亮和进度，此操作不可撤销。`}
+          confirmLabel={t("remove")}
+          cancelLabel={t("cancel")}
+          danger
+          onConfirm={batchRemoveBooks}
+          onCancel={() => setBatchConfirm(false)}
+        />
+      ) : null}
+
+      {/* 命令面板 */}
+      {commandOpen ? (
+        <CommandPalette
+          books={books}
+          t={t}
+          onSelect={(book) => { setCommandOpen(false); void openBook(book); }}
+          onClose={() => setCommandOpen(false)}
+        />
+      ) : null}
     </main>
   );
 }
@@ -801,53 +965,97 @@ function BookShelf({
   view,
   coverUrls,
   t,
+  selectedIds,
+  collections,
   onOpen,
   onRemove,
-  onEdit
+  onEdit,
+  onSelect,
+  onToggleCollection
 }: {
   books: BookRecord[];
   view: ShelfView;
   coverUrls: Map<string, string>;
   t: ReturnType<typeof createTranslator>;
+  selectedIds: Set<string>;
+  collections: Collection[];
   onOpen: (book: BookRecord) => void;
   onRemove: (book: BookRecord) => void;
   onEdit: (book: BookRecord) => void;
+  onSelect: (id: string, ctrl: boolean) => void;
+  onToggleCollection: (collectionId: string, bookId: string, add: boolean) => void;
 }) {
+  const [tagMenuBook, setTagMenuBook] = useState<BookRecord | null>(null);
+
   return (
     <section className={`book-shelf ${view}`}>
-      {books.map((book, index) => (
-        <article
-          key={book.id}
-          className="book-tile"
-          style={{ "--stagger": index } as React.CSSProperties}
-        >
-          <button className="cover-button" onClick={() => onOpen(book)} title={book.title}>
-            <BookCover book={book} coverUrl={coverUrls.get(book.id)} />
-          </button>
-          <div className="book-info">
-            <div>
-              <h2>{book.title}</h2>
-              <p>
-                <span className="format-chip">{book.format.toUpperCase()}</span>
-                <span>{formatBytes(book.size)}</span>
-                <span>{percentLabel(book.progress)}</span>
-              </p>
+      {books.map((book, index) => {
+        const isSelected = selectedIds.has(book.id);
+        return (
+          <article
+            key={book.id}
+            className={`book-tile${isSelected ? " selected" : ""}`}
+            style={{ "--stagger": index } as React.CSSProperties}
+            onClick={(e) => { if (e.ctrlKey || e.metaKey) { onSelect(book.id, true); e.preventDefault(); } }}
+          >
+            <button className="cover-button" onClick={(e) => { if (!(e.ctrlKey || e.metaKey)) onOpen(book); }} title={book.title}>
+              <BookCover book={book} coverUrl={coverUrls.get(book.id)} />
+              {isSelected && <div className="tile-selected-badge" aria-label="已选中" />}
+            </button>
+            <div className="book-info">
+              <div>
+                <h2>{book.title}</h2>
+                <p>
+                  <span className="format-chip">{book.format.toUpperCase()}</span>
+                  <span>{formatBytes(book.size)}</span>
+                  <span>{percentLabel(book.progress)}</span>
+                </p>
+              </div>
+              <div className="book-actions">
+                <button className="soft-button pressable compact-action" onClick={() => onOpen(book)}>
+                  <BookOpen size={16} />
+                  <span>{book.progress ? t("continueReading") : t("open")}</span>
+                </button>
+                <button className="icon-button pressable" title={t("editMetadata")} onClick={() => onEdit(book)}>
+                  <Pencil size={17} />
+                </button>
+                {collections.length > 0 && (
+                  <div className="tag-menu-anchor">
+                    <button
+                      className="icon-button pressable"
+                      title={t("addToCollection")}
+                      onClick={(e) => { e.stopPropagation(); setTagMenuBook(tagMenuBook?.id === book.id ? null : book); }}
+                    >
+                      <Tag size={17} />
+                    </button>
+                    {tagMenuBook?.id === book.id && (
+                      <div className="tag-dropdown" onClick={(e) => e.stopPropagation()}>
+                        {collections.map((col) => {
+                          const inCol = col.bookIds.includes(book.id);
+                          return (
+                            <button
+                              key={col.id}
+                              className={`tag-dropdown-item${inCol ? " active" : ""}`}
+                              onClick={() => { onToggleCollection(col.id, book.id, !inCol); setTagMenuBook(null); }}
+                            >
+                              <FolderOpen size={14} />
+                              <span>{col.name}</span>
+                              {inCol && <span className="tag-check">✓</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <button className="icon-button pressable" title={t("remove")} onClick={() => onRemove(book)}>
+                  <Trash2 size={17} />
+                </button>
+              </div>
             </div>
-            <div className="book-actions">
-              <button className="soft-button pressable compact-action" onClick={() => onOpen(book)}>
-                <BookOpen size={16} />
-                <span>{book.progress ? t("continueReading") : t("open")}</span>
-              </button>
-              <button className="icon-button pressable" title={t("editMetadata")} onClick={() => onEdit(book)}>
-                <Pencil size={17} />
-              </button>
-              <button className="icon-button pressable" title={t("remove")} onClick={() => onRemove(book)}>
-                <Trash2 size={17} />
-              </button>
-            </div>
-          </div>
-        </article>
-      ))}
+          </article>
+        );
+      })}
     </section>
   );
 }
@@ -981,11 +1189,19 @@ function EditMetaDialog({
 // ─── 阅读统计视图 ────────────────────────────────────────────────────────────
 function StatsView({
   books,
-  t
+  t,
+  preferences
 }: {
   books: BookRecord[];
   t: ReturnType<typeof createTranslator>;
+  preferences: ReaderPreferences;
 }) {
+  const [goalStats, setGoalStats] = useState<GoalStats | null>(null);
+
+  useEffect(() => {
+    void window.readerApi.getGoalStats().then(setGoalStats);
+  }, [books]);
+
   const stats = useMemo(() => {
     const now = Date.now();
     const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
@@ -1013,8 +1229,39 @@ function StatsView({
     return { weekMinutes: Math.round(weekMinutes), activeDays: activeDays.size, topBooks, maxMinutes };
   }, [books]);
 
+  const dailyGoal = preferences.dailyGoalMinutes ?? 30;
+  const todayMins = goalStats?.todayMinutes ?? 0;
+  const goalPercent = Math.min(1, todayMins / Math.max(1, dailyGoal));
+  const streak = goalStats?.streak ?? 0;
+  const goalReached = goalStats?.goalReachedToday ?? false;
+
   return (
     <section className="stats-view">
+      {/* 今日目标 */}
+      <div className="goal-panel">
+        <div className="goal-ring-wrap">
+          <svg className="goal-ring" viewBox="0 0 56 56" aria-hidden="true">
+            <circle cx="28" cy="28" r="23" className="goal-ring-bg" />
+            <circle
+              cx="28" cy="28" r="23"
+              className={`goal-ring-fill${goalReached ? " reached" : ""}`}
+              style={{ strokeDashoffset: `${(1 - goalPercent) * 144.51}` }}
+            />
+          </svg>
+          <span className="goal-ring-label">{todayMins}m</span>
+        </div>
+        <div className="goal-text">
+          <span className="goal-title">{goalReached ? t("goalReached") : t("todayProgress")}</span>
+          <span className="goal-sub">{todayMins} / {dailyGoal} {t("minutesPerDay")}</span>
+          {streak > 0 && (
+            <span className="goal-streak">
+              <Flame size={14} />
+              {streak} {t("streakDays")} {t("streak")}
+            </span>
+          )}
+        </div>
+      </div>
+
       <div className="stats-cards">
         <div className="stat-card">
           <span className="stat-value">{stats.weekMinutes}</span>
@@ -1023,6 +1270,10 @@ function StatsView({
         <div className="stat-card">
           <span className="stat-value">{stats.activeDays}</span>
           <span className="stat-label">{t("activeDays")}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value">{streak}</span>
+          <span className="stat-label">{t("streak")}</span>
         </div>
       </div>
       {stats.topBooks.length > 0 ? (
@@ -1337,6 +1588,76 @@ function OnlineSearchPanelManaged({
         ))}
       </div>
     </section>
+  );
+}
+
+// ─── 命令面板 ────────────────────────────────────────────────────────────────
+function CommandPalette({
+  books,
+  t,
+  onSelect,
+  onClose
+}: {
+  books: BookRecord[];
+  t: ReturnType<typeof createTranslator>;
+  onSelect: (book: BookRecord) => void;
+  onClose: () => void;
+}) {
+  const [q, setQ] = useState("");
+  const [cursor, setCursor] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const results = useMemo(() => {
+    const norm = q.trim().toLowerCase();
+    if (!norm) return books.slice(0, 8);
+    return books
+      .filter((b) => `${b.title} ${b.author ?? ""}`.toLowerCase().includes(norm))
+      .slice(0, 8);
+  }, [books, q]);
+
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setCursor((c) => Math.min(c + 1, results.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setCursor((c) => Math.max(c - 1, 0)); }
+    else if (e.key === "Enter") { if (results[cursor]) onSelect(results[cursor]); }
+    else if (e.key === "Escape") { onClose(); }
+  };
+
+  return (
+    <div className="dialog-backdrop command-backdrop" onClick={onClose}>
+      <div className="command-palette" onClick={(e) => e.stopPropagation()}>
+        <div className="command-search-row">
+          <Search size={18} />
+          <input
+            ref={inputRef}
+            className="command-input"
+            value={q}
+            onChange={(e) => { setQ(e.target.value); setCursor(0); }}
+            onKeyDown={handleKey}
+            placeholder={t("commandPalette")}
+          />
+          <kbd className="command-esc-hint">ESC</kbd>
+        </div>
+        <ul className="command-list" role="listbox">
+          {results.map((book, i) => (
+            <li
+              key={book.id}
+              className={`command-item${i === cursor ? " active" : ""}`}
+              role="option"
+              aria-selected={i === cursor}
+              onMouseEnter={() => setCursor(i)}
+              onClick={() => onSelect(book)}
+            >
+              <span className="format-chip small">{book.format.toUpperCase()}</span>
+              <span className="command-title">{book.title}</span>
+              {book.author && <span className="command-author">{book.author}</span>}
+              <span className="command-progress">{percentLabel(book.progress)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }
 

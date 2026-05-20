@@ -559,6 +559,28 @@ export function SettingsPanel({
         onChange={(immersive) => onChange({ immersive })}
       />
 
+      <SettingSection label={t("dailyGoal")} />
+
+      <SettingGroup label={t("dailyGoal")}>
+        <div className="setting-row">
+          <label className="setting-label">{t("dailyGoal")}</label>
+          <div className="setting-control">
+            <input
+              type="number"
+              className="setting-number-input"
+              min={1}
+              max={480}
+              value={preferences.dailyGoalMinutes ?? 30}
+              onChange={(e) => {
+                const v = Math.max(1, Math.min(480, parseInt(e.target.value, 10) || 30));
+                onChange({ dailyGoalMinutes: v });
+              }}
+            />
+            <span className="setting-unit">{t("minutesPerDay")}</span>
+          </div>
+        </div>
+      </SettingGroup>
+
       <SettingSection label={t("dataManagement")} />
 
       <SettingGroup label={t("dataManagement")}>

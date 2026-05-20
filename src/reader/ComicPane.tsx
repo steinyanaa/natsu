@@ -67,6 +67,8 @@ export function ComicPane({
       ? Math.max(360, viewport.height - 20)
       : layout === "webtoon"
       ? Math.round(viewport.height * 0.9 + 12)
+      : layout === "double"
+      ? Math.round(640 * scale + 28)
       : Math.round(1120 * scale + 28);
   const renderWindow = 4;
   const preloadWindow = 6;

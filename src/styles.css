@@ -2983,6 +2983,16 @@ input[type="range"]:disabled {
   gap: 4px;
   justify-content: center;
   align-items: flex-start;
+  width: 100%;
+}
+
+.comic-spread-slot.double > img {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: calc(50% - 2px);
+  width: auto;
+  height: auto;
+  object-fit: contain;
 }
 
 .comic-pages.dir-rtl .comic-spread-slot.double {
@@ -3009,11 +3019,25 @@ input[type="range"]:disabled {
   height: auto;
 }
 
+.comic-pages.fit-width .comic-spread-slot.double > img {
+  width: calc(50% - 2px);
+  max-width: calc(50% - 2px);
+  height: auto;
+}
+
 .comic-pages.fit-height .comic-spread-slot img,
 .pdf-pages.fit-height .pdf-page canvas {
   width: auto;
   max-width: 100%;
   max-height: calc(100vh - 120px);
+}
+
+.comic-pages.fit-height .comic-spread-slot.double > img,
+.comic-pages.fit-page .comic-spread-slot.double > img {
+  max-width: calc(50% - 2px);
+  max-height: calc(100vh - 120px);
+  width: auto;
+  height: auto;
 }
 
 .comic-pages.fit-page .comic-spread-slot img,

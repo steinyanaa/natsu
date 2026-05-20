@@ -1,7 +1,7 @@
 import { Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createTranslator } from "../i18n";
-import { readRarComic, readZipComic, type ComicPage } from "../readers/comic";
+import { openRarComic, openZipComic, type ComicPage, type ComicSource } from "../readers/comic";
 import type { BookRecord, ComicFitMode, ReaderPreferences, ReaderProgress } from "../types";
 import { ErrorState, LoadingState } from "./ReaderState";
 import type { JumpRequest } from "./types";
@@ -62,6 +62,9 @@ export function ComicPane({
   const stableScrollAnchorRef = useRef<PageScrollAnchor | undefined>(undefined);
   const resizeScrollAnchorRef = useRef<PageScrollAnchor | undefined>(undefined);
   const preloadedImagesRef = useRef<Map<string, { image: HTMLImageElement; index: number }>>(new Map());
+  const comicSourceRef = useRef<ComicSource | null>(null);
+  // Track which page indexes are currently being extracted (to avoid duplicate requests)
+  const extractingRef = useRef<Set<number>>(new Set());
   const estimatedSpreadHeight =
     fit === "height"
       ? Math.max(360, viewport.height - 20)
@@ -128,7 +131,6 @@ export function ComicPane({
 
   useEffect(() => {
     let cancelled = false;
-    let ownedPages: ComicPage[] = [];
 
     async function load() {
       setError("");
@@ -136,23 +138,39 @@ export function ComicPane({
       stableScrollAnchorRef.current = undefined;
       resizeScrollAnchorRef.current = undefined;
       clearPreloadedImages();
+      extractingRef.current.clear();
+
+      // Dispose previous source
+      comicSourceRef.current?.dispose();
+      comicSourceRef.current = null;
 
       try {
+        let source: ComicSource;
         if (book.format === "zip" || book.format === "cbz") {
-          const blob = await fetch(book.fileUrl).then((response) => response.blob());
-          ownedPages = await readZipComic(blob);
+          const blob = await fetch(book.fileUrl).then((r) => r.blob());
+          if (cancelled) return;
+          source = await openZipComic(blob);
         } else {
-          const buffer = await fetch(book.fileUrl).then((response) => response.arrayBuffer());
-          ownedPages = await readRarComic(buffer);
+          const buffer = await fetch(book.fileUrl).then((r) => r.arrayBuffer());
+          if (cancelled) return;
+          source = await openRarComic(buffer);
         }
 
-        if (!cancelled) {
-          setPages(ownedPages);
+        if (cancelled) { source.dispose(); return; }
+
+        comicSourceRef.current = source;
+        // Expose pages array (all urls start as ""); React state holds a reference to it
+        setPages([...source.pages]);
+
+        // Eagerly extract first 3 pages so the reader is instantly useful
+        const firstBatch = Math.min(3, source.pages.length);
+        for (let i = 0; i < firstBatch; i++) {
+          void source.extractPage(i).then(() => {
+            if (!cancelled) setPages((prev) => [...prev]);
+          });
         }
       } catch {
-        if (!cancelled) {
-          setError(t("unsupported"));
-        }
+        if (!cancelled) setError(t("unsupported"));
       }
     }
 
@@ -161,7 +179,9 @@ export function ComicPane({
     return () => {
       cancelled = true;
       clearPreloadedImages();
-      ownedPages.forEach((page) => URL.revokeObjectURL(page.url));
+      extractingRef.current.clear();
+      comicSourceRef.current?.dispose();
+      comicSourceRef.current = null;
     };
   }, [book.fileUrl, book.format, clearPreloadedImages, t]);
 
@@ -200,8 +220,23 @@ export function ComicPane({
 
     for (const index of preloadCandidates) {
       const page = pages[index];
-      const existing = preloadedImagesRef.current.get(page.url);
 
+      // If the page hasn't been extracted yet, trigger lazy extraction
+      if (!page.url && comicSourceRef.current && !extractingRef.current.has(index)) {
+        extractingRef.current.add(index);
+        void comicSourceRef.current.extractPage(index).then((url) => {
+          extractingRef.current.delete(index);
+          if (url) {
+            // Trigger re-render so the img src gets the real url
+            setPages((prev) => [...prev]);
+          }
+        });
+        continue;
+      }
+
+      if (!page.url) continue;
+
+      const existing = preloadedImagesRef.current.get(page.url);
       if (existing) {
         existing.index = index;
         continue;
@@ -395,14 +430,25 @@ export function ComicPane({
               style={{ minHeight: visible ? undefined : estimatedSpreadHeight }}
             >
               {visible ? (
-                spread.map((pi) => (
-                  <img
-                    key={pages[pi].url}
-                    src={pages[pi].url}
-                    alt={`${t("page")} ${pi + 1}`}
-                    style={fit === "manual" ? { width: `${Math.round(scale * 100)}%` } : undefined}
-                  />
-                ))
+                spread.map((pi) => {
+                  const pageUrl = pages[pi]?.url;
+                  return pageUrl ? (
+                    <img
+                      key={pageUrl}
+                      src={pageUrl}
+                      alt={`${t("page")} ${pi + 1}`}
+                      decoding="async"
+                      fetchPriority={pi === firstPage ? "high" : "low"}
+                      style={fit === "manual" ? { width: `${Math.round(scale * 100)}%` } : undefined}
+                    />
+                  ) : (
+                    <div
+                      key={`loading-${pi}`}
+                      className="virtual-page-placeholder page-loading"
+                      aria-label={`${t("page")} ${pi + 1}`}
+                    />
+                  );
+                })
               ) : (
                 <div className="virtual-page-placeholder" aria-label={`${t("page")} ${firstPage + 1}`} />
               )}

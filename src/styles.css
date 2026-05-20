@@ -164,7 +164,7 @@ input:focus-visible {
   padding: 28px 10px 18px;
   border-right: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 70%, transparent);
   background: var(--glass-bg);
-  backdrop-filter: blur(24px) saturate(1.35);
+  backdrop-filter: blur(10px) saturate(1.1);
   -webkit-app-region: drag;
 }
 
@@ -1088,7 +1088,7 @@ input:focus-visible {
 .book-shelf.grid .book-actions .icon-button {
   background: rgb(255 255 255 / 76%);
   color: #20313a;
-  backdrop-filter: blur(14px);
+  backdrop-filter: blur(8px);
 }
 
 .compact-action {
@@ -1365,7 +1365,7 @@ input:focus-visible {
   background: var(--glass-bg);
   border-left: 1px solid var(--glass-line);
   box-shadow: -24px 0 80px rgb(37 55 69 / 14%);
-  backdrop-filter: blur(30px) saturate(1.42);
+  backdrop-filter: blur(12px) saturate(1.1);
   transform: translateX(106%);
   transition: transform var(--motion-slow) var(--ease-spring);
   z-index: 30;
@@ -1927,7 +1927,7 @@ input[type="range"]:disabled {
   border-radius: 28px;
   overflow: hidden;
   background: var(--glass-bg);
-  backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(12px) saturate(1.1);
   box-shadow: 0 18px 42px rgb(0 0 0 / 10%);
   transform: translateY(0);
   opacity: 1;
@@ -2022,37 +2022,38 @@ input[type="range"]:disabled {
 }
 
 .reader-workspace {
-  display: grid;
-  grid-template-columns: 0 minmax(0, 1fr);
+  position: relative;
+  display: flex;
   height: 100%;
   min-height: 0;
-  transition: grid-template-columns var(--motion-slow) var(--ease-shutter);
+  overflow: hidden;
 }
 
-.reader-workspace.toc-open {
-  grid-template-columns: 280px minmax(0, 1fr);
-}
-
+/* TOC panel slides in as an overlay — no layout shift, pure compositor */
 .toc-panel {
-  min-width: 0;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 280px;
+  z-index: 10;
   overflow: hidden;
   padding: 0;
   border-right: 0;
-  background: color-mix(in oklab, var(--md-sys-color-surface) 72%, transparent);
-  opacity: 0;
-  visibility: hidden;
+  background: color-mix(in oklab, var(--md-sys-color-surface) 88%, transparent);
+  backdrop-filter: blur(16px);
+  box-shadow: 4px 0 24px rgb(0 0 0 / 10%);
+  transform: translateX(-100%);
+  will-change: transform;
+  transition: transform var(--motion-slow) var(--ease-shutter);
   pointer-events: none;
-  transition:
-    opacity var(--motion-medium) var(--ease-soft),
-    visibility var(--motion-medium) var(--ease-soft);
 }
 
 .reader-workspace.toc-open .toc-panel {
   overflow: auto;
   padding: 92px 20px 24px;
   border-right: 1px solid var(--md-sys-color-outline-variant);
-  opacity: 1;
-  visibility: visible;
+  transform: translateX(0);
   pointer-events: auto;
   animation: panel-content-in 520ms var(--ease-drop) both;
 }
@@ -2240,7 +2241,7 @@ input[type="range"]:disabled {
   box-shadow:
     0 22px 52px rgb(0 0 0 / 22%),
     inset 0 1px 0 rgb(255 255 255 / 18%);
-  backdrop-filter: blur(26px) saturate(1.24);
+  backdrop-filter: blur(12px) saturate(1.1);
   animation: note-pop 260ms var(--ease-drop) both;
 }
 
@@ -2326,7 +2327,7 @@ input[type="range"]:disabled {
   background: color-mix(in oklab, var(--glass-bg) 96%, var(--md-sys-color-surface));
   border-right: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 72%, transparent);
   box-shadow: 0 22px 52px rgb(0 0 0 / 18%);
-  backdrop-filter: blur(26px) saturate(1.2);
+  backdrop-filter: blur(12px) saturate(1.1);
   animation: note-list-in 280ms var(--ease-drop) both;
 }
 
@@ -3122,6 +3123,17 @@ input[type="range"]:disabled {
   animation: placeholder-shimmer 2500ms var(--ease-shutter) infinite;
 }
 
+/* Image-loading state: no pseudo content, just the shimmer background */
+.virtual-page-placeholder.page-loading {
+  aspect-ratio: 2 / 3;
+  min-height: unset;
+  width: auto;
+}
+
+.virtual-page-placeholder.page-loading::before {
+  display: none;
+}
+
 .virtual-page-placeholder figcaption {
   position: relative;
   z-index: 1;
@@ -3353,8 +3365,8 @@ input[type="range"]:disabled {
   padding: 14px 16px 12px;
   border-radius: 14px;
   background: color-mix(in oklab, var(--reader-paper, #fff) 88%, transparent);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(12px) saturate(1.1);
+  -webkit-backdrop-filter: blur(12px) saturate(1.1);
   box-shadow: 0 14px 50px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.25);
   color: var(--reader-ink, inherit);
   font-size: 13px;
@@ -3462,7 +3474,7 @@ input[type="range"]:disabled {
   gap: 4px;
   padding: 6px 10px;
   background: var(--glass-bg);
-  backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(10px) saturate(1.1);
   border: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 60%, transparent);
   border-radius: 14px;
   box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
@@ -3687,7 +3699,7 @@ input[type="range"]:disabled {
   gap: 6px;
   padding: 10px 16px;
   background: var(--glass-bg);
-  backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(10px) saturate(1.1);
   border: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 60%, transparent);
   border-radius: 999px;
   box-shadow: 0 8px 32px rgb(0 0 0 / 22%);

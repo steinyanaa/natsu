@@ -2716,6 +2716,84 @@ input[type="range"]:disabled {
   margin: 0 auto;
 }
 
+/* ── EPUB 漫画模式 ── */
+
+/* scroll-snap 单页翻页（single / webtoon 布局） */
+.text-reader.manga-epub.manga-layout-single,
+.text-reader.manga-epub.manga-layout-webtoon {
+  scroll-snap-type: y mandatory;
+}
+
+.text-reader.manga-epub.manga-no-snap {
+  scroll-snap-type: none !important;
+}
+
+.text-reader.manga-epub.manga-no-snap .epub-fixed-chapter,
+.text-reader.manga-epub.manga-no-snap .epub-spread {
+  scroll-snap-align: unset !important;
+  scroll-snap-stop: unset !important;
+}
+
+.text-reader.manga-epub.manga-layout-single .epub-fixed-chapter,
+.text-reader.manga-epub.manga-layout-webtoon .epub-fixed-chapter {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  /* Override default bottom margin so consecutive pages abut cleanly. */
+  margin-bottom: 0;
+}
+
+/* webtoon 布局：全幅无缝 */
+.text-reader.manga-epub.manga-layout-webtoon .epub-fixed-chapter {
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 0 !important;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.text-reader.manga-epub.manga-layout-webtoon .text-chapter + .text-chapter {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.text-reader.manga-epub.manga-layout-webtoon .epub-chapter-body {
+  line-height: 0;
+}
+
+.text-reader.manga-epub.manga-layout-webtoon .epub-chapter-body > img {
+  display: block;
+}
+
+/* 双页对开布局 */
+.epub-spread {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: stretch;
+  gap: 4px;
+  height: calc(100vh - 190px);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.text-reader.manga-epub.manga-layout-double {
+  scroll-snap-type: y mandatory;
+}
+
+/* RTL：右侧为第一页 */
+.epub-spread.rtl {
+  flex-direction: row-reverse;
+}
+
+.epub-spread .epub-fixed-chapter {
+  height: 100% !important;
+  width: auto !important;
+  max-width: calc(50% - 2px) !important;
+  margin: 0 !important;
+  flex: 0 1 auto;
+}
+
 .text-reader.epub-text-reader .text-chapter.epub-vertical-chapter .epub-chapter-body,
 .text-reader.epub-text-reader .epub-chapter-body.vrtl {
   writing-mode: vertical-rl;
@@ -2890,12 +2968,66 @@ input[type="range"]:disabled {
 }
 
 .pdf-page,
-.comic-page-slot {
+.comic-page-slot,
+.comic-spread-slot {
   display: grid;
   gap: 8px;
   justify-items: center;
   margin: 0;
   width: 100%;
+}
+
+.comic-spread-slot.double {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.comic-pages.dir-rtl .comic-spread-slot.double {
+  flex-direction: row-reverse;
+}
+
+.comic-pages.layout-webtoon {
+  gap: 0;
+  padding: 0;
+}
+
+.comic-pages.layout-webtoon .comic-spread-slot img {
+  width: 100%;
+  max-width: none;
+  border-radius: 0;
+  box-shadow: none;
+  display: block;
+}
+
+.comic-pages.fit-width .comic-spread-slot img,
+.pdf-pages.fit-width .pdf-page canvas {
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+}
+
+.comic-pages.fit-height .comic-spread-slot img,
+.pdf-pages.fit-height .pdf-page canvas {
+  width: auto;
+  max-width: 100%;
+  max-height: calc(100vh - 120px);
+}
+
+.comic-pages.fit-page .comic-spread-slot img,
+.pdf-pages.fit-page .pdf-page canvas {
+  max-width: 100%;
+  max-height: calc(100vh - 120px);
+  width: auto;
+  height: auto;
+}
+
+.comic-pages.fit-original .comic-spread-slot img,
+.pdf-pages.fit-original .pdf-page canvas {
+  max-width: none;
+  width: auto;
 }
 
 .pdf-page canvas,
@@ -3172,6 +3304,66 @@ input[type="range"]:disabled {
   background: #000;
   pointer-events: none;
   z-index: 50;
+}
+
+/* ── 沉浸模式 ── */
+.reader-shell.immersive .reader-toolbar,
+.reader-shell.immersive .reader-status,
+.reader-shell.immersive .reader-chapter-eta,
+.reader-shell.immersive .reader-session-time {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+.reader-shell.immersive .toc-panel {
+  display: none;
+}
+
+/* ── 快捷键面板 ── */
+.keymap-hint {
+  position: fixed;
+  top: 80px;
+  right: 24px;
+  z-index: 80;
+  width: 280px;
+  padding: 14px 16px 12px;
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--reader-paper, #fff) 88%, transparent);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  box-shadow: 0 14px 50px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  color: var(--reader-ink, inherit);
+  font-size: 13px;
+}
+.keymap-hint-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+.keymap-hint-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.keymap-hint-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.keymap-hint-list kbd {
+  flex-shrink: 0;
+  min-width: 70px;
+  text-align: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--reader-ink, #000) 8%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 /* ── 排版增强 ── */

@@ -44,14 +44,14 @@ export async function readZipComic(blob: Blob): Promise<ComicPage[]> {
   return pages;
 }
 
-let _wasmCache: ArrayBuffer | null = null;
+let _wasmPromise: Promise<ArrayBuffer> | null = null;
 
 async function getUnrarWasm(): Promise<ArrayBuffer> {
-  if (!_wasmCache) {
-    const res = await fetch(unrarWasmUrl);
-    _wasmCache = await res.arrayBuffer();
+  if (!_wasmPromise) {
+    _wasmPromise = fetch(unrarWasmUrl).then((res) => res.arrayBuffer());
   }
-  return _wasmCache.slice(0);
+  // createExtractorFromData detaches the buffer, so each caller needs an owned copy.
+  return (await _wasmPromise).slice(0);
 }
 
 export async function readRarComic(buffer: ArrayBuffer): Promise<ComicPage[]> {

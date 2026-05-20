@@ -17,6 +17,9 @@ export type MotionMode = "full" | "gentle" | "reduced";
 export type ReaderMode = "scroll" | "paged";
 export type ReaderFontFamily = "serif-cn" | "sans" | "kai" | "jp-serif" | "serif-en" | "custom";
 export type ReaderImageMode = "manual" | "fit-screen";
+export type ComicFitMode = "width" | "height" | "page" | "original" | "manual";
+export type ComicLayout = "single" | "double" | "webtoon";
+export type ReadingDirection = "ltr" | "rtl";
 export type OnlineSourceKind = "gutenberg" | "url" | "json" | "html";
 
 export interface ThemeCustomColors {
@@ -86,6 +89,12 @@ export interface ReaderPreferences {
   pageMargin: "narrow" | "normal" | "wide";
   justify: boolean;
   hyphenate: boolean;
+  comicFit: ComicFitMode;
+  comicLayout: ComicLayout;
+  readingDirection: ReadingDirection;
+  comicCoverSolo: boolean;
+  mangaSnapToPage: boolean;
+  immersive: boolean;
   preferencesVersion: number;
 }
 
@@ -217,4 +226,6 @@ export interface ReaderApi {
   removeBook(id: string): Promise<BookRecord[]>;
   getPreferences(): Promise<ReaderPreferences>;
   savePreferences(preferences: Partial<ReaderPreferences>): Promise<ReaderPreferences>;
+  hasCover(bookId: string): Promise<boolean>;
+  saveCover(bookId: string, bytes: Uint8Array): Promise<boolean>;
 }

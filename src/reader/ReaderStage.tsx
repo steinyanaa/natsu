@@ -104,7 +104,7 @@ export function ReaderStage({
   if (book.format === "pdf") {
     return (
       <Suspense fallback={<LoadingState label={t("loading")} />}>
-        <PdfPane book={book} t={t} jumpRequest={jumpRequest} onProgress={onProgress} />
+        <PdfPane book={book} preferences={preferences} t={t} jumpRequest={jumpRequest} onProgress={onProgress} />
       </Suspense>
     );
   }
@@ -112,7 +112,7 @@ export function ReaderStage({
   if (isComic(book.format)) {
     return (
       <Suspense fallback={<LoadingState label={t("loading")} />}>
-        <ComicPane book={book} t={t} jumpRequest={jumpRequest} onProgress={onProgress} />
+        <ComicPane book={book} preferences={preferences} t={t} jumpRequest={jumpRequest} onProgress={onProgress} />
       </Suspense>
     );
   }

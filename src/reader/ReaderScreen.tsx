@@ -3,11 +3,13 @@ import { Suspense, lazy, useCallback, useEffect, useRef, useState, type MouseEve
 import { SegmentedControl } from "../components/SegmentedControl";
 import { createTranslator } from "../i18n";
 import { BookmarkManager } from "./BookmarkManager";
+import { KeymapHint } from "./KeymapHint";
 import { NotesPanel } from "./NotesPanel";
 import { ReaderStage } from "./ReaderStage";
 import { SearchPanel } from "./SearchPanel";
 import { TTSBar } from "./TTSBar";
 import { TocTree } from "./TocTree";
+import { useSwipeGesture } from "./useSwipeGesture";
 import type { AnchorJumpRequest, JumpRequest } from "./types";
 import { editableEventTarget, nowProgress } from "./utils";
 import { LoadingState } from "./ReaderState";
@@ -65,6 +67,8 @@ export function ReaderScreen({
   const [ttsOpen, setTtsOpen] = useState(false);
   const [ttsText, setTtsText] = useState("");
   const [sessionMinutes, setSessionMinutes] = useState(0);
+  const [keymapOpen, setKeymapOpen] = useState(false);
+  const shellRef = useRef<HTMLElement | null>(null);
   const sessionStartRef = useRef(Date.now());
   const saveTimer = useRef<number | undefined>(undefined);
   const chromeTimer = useRef<number | undefined>(undefined);
@@ -272,9 +276,13 @@ export function ReaderScreen({
       }
 
       const isHorizontalPaged = scroller.classList.contains("text-reader") && scroller.classList.contains("paged");
-      const distance = repeated ? 58 : 108;
+      const isMangaSnapDisabled = scroller.classList.contains("manga-no-snap");
+      const distance = isMangaSnapDisabled ? Math.max(320, scroller.clientHeight - 80) : repeated ? 58 : 108;
       const options: ScrollToOptions = {
-        behavior: repeated || preferences.reduceMotion || preferences.motion === "reduced" ? "auto" : "smooth"
+        behavior:
+          isMangaSnapDisabled || repeated || preferences.reduceMotion || preferences.motion === "reduced"
+            ? "auto"
+            : "smooth"
       };
 
       if (isHorizontalPaged) {
@@ -403,10 +411,38 @@ export function ReaderScreen({
       setTocOpen(false);
       setSettingsOpen(false);
       setSearchOpen(false);
+      setKeymapOpen(false);
+    }
+
+    if (event.key === "?" || (event.shiftKey && event.key === "/")) {
+      event.preventDefault();
+      setKeymapOpen((v) => !v);
+      revealChrome();
+      return;
+    }
+
+    if (event.key === "i" || event.key === "I") {
+      event.preventDefault();
+      onPreferencesChange({ immersive: !preferences.immersive });
+      return;
+    }
+
+    if (event.key === "[") {
+      event.preventDefault();
+      onPreferencesChange({ brightness: Math.max(0.4, +(preferences.brightness - 0.05).toFixed(2)) });
+      revealChrome();
+      return;
+    }
+
+    if (event.key === "]") {
+      event.preventDefault();
+      onPreferencesChange({ brightness: Math.min(1, +(preferences.brightness + 0.05).toFixed(2)) });
+      revealChrome();
+      return;
     }
 
     revealChrome();
-  }, [revealChrome, scrollReaderByKey]);
+  }, [onPreferencesChange, preferences.brightness, preferences.immersive, revealChrome, scrollReaderByKey]);
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
@@ -414,9 +450,17 @@ export function ReaderScreen({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
+  const swipeRtl = preferences.readingDirection === "rtl";
+  useSwipeGesture(shellRef, {
+    enabled: (preferences.tapToTurn ?? true) && !readerPanelOpen,
+    onSwipeLeft: () => scrollReaderByKey(swipeRtl ? -1 : 1, false),
+    onSwipeRight: () => scrollReaderByKey(swipeRtl ? 1 : -1, false)
+  });
+
   return (
     <main
-      className={`reader-shell ${controlsVisible || readerPanelOpen ? "controls-visible" : "controls-hidden"}${cursorHidden ? " cursor-hidden" : ""}`}
+      ref={shellRef}
+      className={`reader-shell ${controlsVisible || readerPanelOpen ? "controls-visible" : "controls-hidden"}${cursorHidden ? " cursor-hidden" : ""}${preferences.immersive ? " immersive" : ""}`}
       data-color-preset={preferences.readerColorPreset === "default" ? undefined : preferences.readerColorPreset}
       data-page-margin={preferences.pageMargin === "normal" ? undefined : preferences.pageMargin}
       onPointerMove={(event) => {
@@ -471,6 +515,14 @@ export function ReaderScreen({
         </button>
         <button
           className="icon-button pressable"
+          onClick={() => setKeymapOpen((v) => !v)}
+          title="快捷键 (?)"
+          aria-label="快捷键"
+        >
+          <span style={{ fontWeight: 900, fontSize: 14, lineHeight: 1 }}>?</span>
+        </button>
+        <button
+          className="icon-button pressable"
           onPointerEnter={() => void loadSettingsPanel()}
           onFocus={() => void loadSettingsPanel()}
           onClick={toggleSettings}
@@ -479,6 +531,7 @@ export function ReaderScreen({
           <SlidersHorizontal size={18} />
         </button>
       </header>
+      {keymapOpen && <KeymapHint onClose={() => setKeymapOpen(false)} />}
 
       <section className={`reader-workspace ${tocOpen ? "toc-open" : ""}${readerPanelOpen ? " reader-panel-open" : ""}`}>
         <aside className="toc-panel" aria-hidden={!tocOpen}>

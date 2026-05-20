@@ -40,5 +40,7 @@ contextBridge.exposeInMainWorld("readerApi", {
   removeBook: (id) => ipcRenderer.invoke("library:removeBook", id),
   getPreferences: () => ipcRenderer.invoke("preferences:get"),
   savePreferences: (preferences) =>
-    ipcRenderer.invoke("preferences:save", preferences)
+    ipcRenderer.invoke("preferences:save", preferences),
+  hasCover: (bookId) => ipcRenderer.invoke("cover:has", bookId),
+  saveCover: (bookId, bytes) => ipcRenderer.invoke("cover:save", bookId, bytes)
 });

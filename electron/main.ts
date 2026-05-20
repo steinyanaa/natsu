@@ -878,8 +878,34 @@ function contentTypeFor(format: BookFormat): string {
   return "application/octet-stream";
 }
 
+async function ensureCoverDir(): Promise<string> {
+  const dir = path.join(app.getPath("userData"), "covers");
+  await fs.mkdir(dir, { recursive: true });
+  return dir;
+}
+
+function coverPathFor(bookId: string): string {
+  const safe = bookId.replace(/[^a-zA-Z0-9_-]/g, "_");
+  return path.join(app.getPath("userData"), "covers", `${safe}.jpg`);
+}
+
 async function handleBookProtocol(request: GlobalRequest): Promise<Response> {
   const url = new URL(request.url);
+
+  if (url.hostname === "cover") {
+    const id = decodeURIComponent(url.pathname.slice(1));
+    const filePath = coverPathFor(id);
+    try {
+      await fs.access(filePath);
+      const response = await net.fetch(pathToFileURL(filePath).toString());
+      const headers = new Headers(response.headers);
+      headers.set("content-type", "image/jpeg");
+      headers.set("cache-control", "private, max-age=31536000, immutable");
+      return new Response(response.body, { status: response.status, headers });
+    } catch {
+      return new Response("Cover not found", { status: 404 });
+    }
+  }
 
   if (url.hostname !== "book") {
     return new Response("Unknown resource", { status: 404 });
@@ -2208,6 +2234,7 @@ function registerIpc(): void {
 
     if (book) {
       await fs.rm(book.filePath, { force: true });
+      await fs.rm(coverPathFor(book.id), { force: true });
     }
 
     store.set(
@@ -2216,6 +2243,25 @@ function registerIpc(): void {
     );
 
     return store.get("books", []).map(bookToClient);
+  });
+
+  ipcMain.handle("cover:has", async (_event, bookId: string) => {
+    if (typeof bookId !== "string" || !bookId) return false;
+    try {
+      await fs.access(coverPathFor(bookId));
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
+  ipcMain.handle("cover:save", async (_event, bookId: string, bytes: Uint8Array | ArrayBuffer) => {
+    if (typeof bookId !== "string" || !bookId) return false;
+    await ensureCoverDir();
+    const buf =
+      bytes instanceof ArrayBuffer ? Buffer.from(new Uint8Array(bytes)) : Buffer.from(bytes);
+    await fs.writeFile(coverPathFor(bookId), buf);
+    return true;
   });
 
   ipcMain.handle("preferences:get", () => {

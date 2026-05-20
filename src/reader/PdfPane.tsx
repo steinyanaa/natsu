@@ -1,7 +1,7 @@
 import { Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createTranslator } from "../i18n";
-import type { BookRecord, ReaderProgress } from "../types";
+import type { BookRecord, ComicFitMode, ReaderPreferences, ReaderProgress } from "../types";
 import type { JumpRequest } from "./types";
 import { nowProgress } from "./utils";
 import { ErrorState, LoadingState } from "./ReaderState";
@@ -21,18 +21,23 @@ interface PageScrollAnchor {
 
 export function PdfPane({
   book,
+  preferences,
   t,
   jumpRequest,
   onProgress
 }: {
   book: BookRecord;
+  preferences: ReaderPreferences;
   t: ReturnType<typeof createTranslator>;
   jumpRequest?: JumpRequest;
   onProgress: (progress: ReaderProgress) => void;
 }) {
   const [pdf, setPdf] = useState<any>();
   const [pageCount, setPageCount] = useState(0);
-  const [scale, setScale] = useState(1.05);
+  const [manualScale, setManualScale] = useState(1.05);
+  const [autoScale, setAutoScale] = useState(1.05);
+  const fit: ComicFitMode = preferences.comicFit ?? "width";
+  const scale = fit === "manual" ? manualScale : autoScale;
   const [error, setError] = useState("");
   const [viewport, setViewport] = useState({ top: 0, height: 900 });
   const scrollerRef = useRef<HTMLDivElement | null>(null);
@@ -87,6 +92,39 @@ export function PdfPane({
       : anchor.percent * (scroller.scrollHeight - scroller.clientHeight);
     return true;
   }, []);
+
+  useEffect(() => {
+    if (!pdf || fit === "manual" || fit === "original") {
+      if (fit === "original") setAutoScale(1);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const page = await pdf.getPage(1);
+        const vp = page.getViewport({ scale: 1 });
+        if (cancelled) return;
+        const scroller = scrollerRef.current;
+        const containerW = scroller?.clientWidth ?? viewport.height; // viewport.height isn't right; fall back
+        const containerH = scroller?.clientHeight ?? 900;
+        const padW = 36;
+        const padH = 28;
+        const availableW = Math.max(120, containerW - padW);
+        const availableH = Math.max(120, containerH - padH);
+        let next = autoScale;
+        if (fit === "width") next = availableW / vp.width;
+        else if (fit === "height") next = availableH / vp.height;
+        else if (fit === "page") next = Math.min(availableW / vp.width, availableH / vp.height);
+        next = Math.max(0.3, Math.min(3, next));
+        if (Math.abs(next - autoScale) > 0.01) setAutoScale(next);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [pdf, fit, viewport.height, viewport.top, autoScale]);
 
   useEffect(() => {
     let cancelled = false;
@@ -244,23 +282,27 @@ export function PdfPane({
   return (
     <div className="paged-reader">
       <div className="media-controls">
-        <button
-          className="icon-button pressable"
-          title={t("zoomOut")}
-          onClick={() => setScale((value) => Math.max(0.55, value - 0.1))}
-        >
-          <Minus size={18} />
-        </button>
-        <span>{Math.round(scale * 100)}%</span>
-        <button
-          className="icon-button pressable"
-          title={t("zoomIn")}
-          onClick={() => setScale((value) => Math.min(2.2, value + 0.1))}
-        >
-          <Plus size={18} />
-        </button>
+        {fit === "manual" && (
+          <>
+            <button
+              className="icon-button pressable"
+              title={t("zoomOut")}
+              onClick={() => setManualScale((value) => Math.max(0.55, value - 0.1))}
+            >
+              <Minus size={18} />
+            </button>
+            <span>{Math.round(scale * 100)}%</span>
+            <button
+              className="icon-button pressable"
+              title={t("zoomIn")}
+              onClick={() => setManualScale((value) => Math.min(2.2, value + 0.1))}
+            >
+              <Plus size={18} />
+            </button>
+          </>
+        )}
       </div>
-      <div ref={scrollerRef} className="pdf-pages" onScroll={scheduleProgressUpdate}>
+      <div ref={scrollerRef} className={`pdf-pages fit-${fit}`} onScroll={scheduleProgressUpdate}>
         {Array.from({ length: pageCount }, (_, index) =>
           index >= visibleStart && index <= visibleEnd ? (
             <PdfPage key={index + 1} pdf={pdf} pageNumber={index + 1} scale={scale} renderQueue={renderQueue} />

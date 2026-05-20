@@ -1,8 +1,8 @@
 import { Minus, Plus } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createTranslator } from "../i18n";
 import { readRarComic, readZipComic, type ComicPage } from "../readers/comic";
-import type { BookRecord, ReaderProgress } from "../types";
+import type { BookRecord, ComicFitMode, ReaderPreferences, ReaderProgress } from "../types";
 import { ErrorState, LoadingState } from "./ReaderState";
 import type { JumpRequest } from "./types";
 import { nowProgress } from "./utils";
@@ -15,17 +15,46 @@ interface PageScrollAnchor {
 
 export function ComicPane({
   book,
+  preferences,
   t,
   jumpRequest,
   onProgress
 }: {
   book: BookRecord;
+  preferences: ReaderPreferences;
   t: ReturnType<typeof createTranslator>;
   jumpRequest?: JumpRequest;
   onProgress: (progress: ReaderProgress) => void;
 }) {
   const [pages, setPages] = useState<ComicPage[]>([]);
-  const [scale, setScale] = useState(1);
+  const [manualScale, setManualScale] = useState(1);
+  const fit: ComicFitMode = preferences.comicFit ?? "width";
+  const layout = preferences.comicLayout ?? "single";
+  const rtl = preferences.readingDirection === "rtl";
+  const coverSolo = preferences.comicCoverSolo ?? true;
+  const scale = fit === "manual" ? manualScale : 1;
+  const spreads = useMemo<number[][]>(() => {
+    if (!pages.length) return [];
+    if (layout !== "double") {
+      return pages.map((_, i) => [i]);
+    }
+    const result: number[][] = [];
+    let i = 0;
+    if (coverSolo) {
+      result.push([0]);
+      i = 1;
+    }
+    while (i < pages.length) {
+      if (i + 1 < pages.length) {
+        result.push([i, i + 1]);
+        i += 2;
+      } else {
+        result.push([i]);
+        i += 1;
+      }
+    }
+    return result;
+  }, [pages, layout, coverSolo]);
   const [error, setError] = useState("");
   const [viewport, setViewport] = useState({ top: 0, height: 900 });
   const scrollerRef = useRef<HTMLDivElement | null>(null);
@@ -33,14 +62,19 @@ export function ComicPane({
   const stableScrollAnchorRef = useRef<PageScrollAnchor | undefined>(undefined);
   const resizeScrollAnchorRef = useRef<PageScrollAnchor | undefined>(undefined);
   const preloadedImagesRef = useRef<Map<string, { image: HTMLImageElement; index: number }>>(new Map());
-  const estimatedPageHeight = Math.round(1120 * scale + 28);
+  const estimatedSpreadHeight =
+    fit === "height"
+      ? Math.max(360, viewport.height - 20)
+      : layout === "webtoon"
+      ? Math.round(viewport.height * 0.9 + 12)
+      : Math.round(1120 * scale + 28);
   const renderWindow = 4;
   const preloadWindow = 6;
   const preloadRetainWindow = 18;
-  const visibleStart = Math.max(0, Math.floor(viewport.top / estimatedPageHeight) - renderWindow);
+  const visibleStart = Math.max(0, Math.floor(viewport.top / estimatedSpreadHeight) - renderWindow);
   const visibleEnd = Math.min(
-    pages.length - 1,
-    Math.ceil((viewport.top + viewport.height) / estimatedPageHeight) + renderWindow
+    Math.max(0, spreads.length - 1),
+    Math.ceil((viewport.top + viewport.height) / estimatedSpreadHeight) + renderWindow
   );
 
   const readScrollAnchor = useCallback((): PageScrollAnchor | undefined => {
@@ -52,7 +86,7 @@ export function ComicPane({
     const max = scroller.scrollHeight - scroller.clientHeight;
     const current = scroller.scrollTop;
     const scrollerRect = scroller.getBoundingClientRect();
-    const visiblePage = [...scroller.querySelectorAll<HTMLElement>(".comic-page-slot")]
+    const visiblePage = [...scroller.querySelectorAll<HTMLElement>(".comic-spread-slot")]
       .map((page, index) => ({
         page,
         index,
@@ -75,7 +109,7 @@ export function ComicPane({
 
     const page =
       anchor.pageIndex !== undefined
-        ? scroller.querySelectorAll<HTMLElement>(".comic-page-slot")[anchor.pageIndex]
+        ? scroller.querySelectorAll<HTMLElement>(".comic-spread-slot")[anchor.pageIndex]
         : undefined;
     scroller.scrollTop = page
       ? page.offsetTop + (anchor.pageOffset ?? 0)
@@ -135,10 +169,11 @@ export function ComicPane({
       return;
     }
 
-    const currentIndex = Math.min(
-      pages.length - 1,
-      Math.max(0, Math.floor((viewport.top + viewport.height * 0.35) / estimatedPageHeight))
+    const currentSpread = Math.min(
+      Math.max(0, spreads.length - 1),
+      Math.max(0, Math.floor((viewport.top + viewport.height * 0.35) / estimatedSpreadHeight))
     );
+    const currentIndex = spreads[currentSpread]?.[0] ?? 0;
     const preloadCandidates: number[] = [];
     const queued = new Set<number>();
     const queuePreload = (index: number) => {
@@ -150,13 +185,15 @@ export function ComicPane({
       preloadCandidates.push(index);
     };
 
-    for (let index = visibleStart; index <= visibleEnd; index += 1) {
-      queuePreload(index);
+    for (let s = visibleStart; s <= visibleEnd; s += 1) {
+      for (const pi of spreads[s] ?? []) queuePreload(pi);
     }
 
     for (let distance = 1; distance <= preloadWindow; distance += 1) {
-      queuePreload(currentIndex + distance);
-      queuePreload(currentIndex - distance);
+      const ahead = spreads[currentSpread + distance];
+      const back = spreads[currentSpread - distance];
+      if (ahead) for (const pi of ahead) queuePreload(pi);
+      if (back) for (const pi of back) queuePreload(pi);
     }
 
     for (const index of preloadCandidates) {
@@ -199,7 +236,7 @@ export function ComicPane({
         preloadedImagesRef.current.delete(url);
       }
     }
-  }, [clearPreloadedImages, estimatedPageHeight, pages, viewport.height, viewport.top, visibleEnd, visibleStart]);
+  }, [clearPreloadedImages, estimatedSpreadHeight, pages, spreads, viewport.height, viewport.top, visibleEnd, visibleStart]);
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -321,40 +358,55 @@ export function ComicPane({
   return (
     <div className="paged-reader">
       <div className="media-controls">
-        <button
-          className="icon-button pressable"
-          title={t("zoomOut")}
-          onClick={() => setScale((value) => Math.max(0.45, value - 0.1))}
-        >
-          <Minus size={18} />
-        </button>
-        <span>{Math.round(scale * 100)}%</span>
-        <button
-          className="icon-button pressable"
-          title={t("zoomIn")}
-          onClick={() => setScale((value) => Math.min(1.8, value + 0.1))}
-        >
-          <Plus size={18} />
-        </button>
+        {fit === "manual" && (
+          <>
+            <button
+              className="icon-button pressable"
+              title={t("zoomOut")}
+              onClick={() => setManualScale((value) => Math.max(0.45, value - 0.1))}
+            >
+              <Minus size={18} />
+            </button>
+            <span>{Math.round(scale * 100)}%</span>
+            <button
+              className="icon-button pressable"
+              title={t("zoomIn")}
+              onClick={() => setManualScale((value) => Math.min(1.8, value + 0.1))}
+            >
+              <Plus size={18} />
+            </button>
+          </>
+        )}
       </div>
-      <div ref={scrollerRef} className="comic-pages" onScroll={scheduleProgressUpdate}>
-        {pages.map((page, index) => (
-          <figure
-            key={page.url}
-            className="comic-page-slot"
-            style={{ minHeight: index >= visibleStart && index <= visibleEnd ? undefined : estimatedPageHeight }}
-          >
-            {index >= visibleStart && index <= visibleEnd ? (
-              <img
-                src={page.url}
-                alt={`${t("page")} ${index + 1}`}
-                style={{ width: `${Math.round(scale * 100)}%` }}
-              />
-            ) : (
-              <div className="virtual-page-placeholder" aria-label={`${t("page")} ${index + 1}`} />
-            )}
-          </figure>
-        ))}
+      <div
+        ref={scrollerRef}
+        className={`comic-pages fit-${fit} layout-${layout}${rtl ? " dir-rtl" : ""}`}
+        onScroll={scheduleProgressUpdate}
+      >
+        {spreads.map((spread, sIndex) => {
+          const visible = sIndex >= visibleStart && sIndex <= visibleEnd;
+          const firstPage = spread[0];
+          return (
+            <figure
+              key={`spread-${firstPage}`}
+              className={`comic-spread-slot${spread.length > 1 ? " double" : ""}`}
+              style={{ minHeight: visible ? undefined : estimatedSpreadHeight }}
+            >
+              {visible ? (
+                spread.map((pi) => (
+                  <img
+                    key={pages[pi].url}
+                    src={pages[pi].url}
+                    alt={`${t("page")} ${pi + 1}`}
+                    style={fit === "manual" ? { width: `${Math.round(scale * 100)}%` } : undefined}
+                  />
+                ))
+              ) : (
+                <div className="virtual-page-placeholder" aria-label={`${t("page")} ${firstPage + 1}`} />
+              )}
+            </figure>
+          );
+        })}
       </div>
     </div>
   );

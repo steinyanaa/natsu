@@ -506,6 +506,58 @@ export function SettingsPanel({
         checked={preferences.autoAlign}
         onChange={(autoAlign) => onChange({ autoAlign })}
       />
+
+      <SettingGroup label="漫画 / PDF 适配">
+        <SegmentedControl
+          value={preferences.comicFit}
+          options={[
+            ["width", "宽"],
+            ["height", "高"],
+            ["page", "页"],
+            ["original", "原"],
+            ["manual", "手动"]
+          ]}
+          onChange={(comicFit) => onChange({ comicFit: comicFit as ReaderPreferences["comicFit"] })}
+        />
+      </SettingGroup>
+      <SettingGroup label="漫画布局">
+        <SegmentedControl
+          value={preferences.comicLayout}
+          options={[
+            ["single", "单页"],
+            ["double", "双页"],
+            ["webtoon", "条漫"]
+          ]}
+          onChange={(comicLayout) => onChange({ comicLayout: comicLayout as ReaderPreferences["comicLayout"] })}
+        />
+        <ToggleSetting
+          label="按键翻页后自动对齐到下一页"
+          checked={preferences.mangaSnapToPage}
+          onChange={(mangaSnapToPage) => onChange({ mangaSnapToPage })}
+        />
+      </SettingGroup>
+      <SettingGroup label="阅读方向">
+        <SegmentedControl
+          value={preferences.readingDirection}
+          options={[
+            ["ltr", "从左到右"],
+            ["rtl", "从右到左（日漫）"]
+          ]}
+          onChange={(readingDirection) =>
+            onChange({ readingDirection: readingDirection as ReaderPreferences["readingDirection"] })
+          }
+        />
+      </SettingGroup>
+      <ToggleSetting
+        label="首页单独占位（双页对齐封面）"
+        checked={preferences.comicCoverSolo}
+        onChange={(comicCoverSolo) => onChange({ comicCoverSolo })}
+      />
+      <ToggleSetting
+        label="沉浸模式（隐藏所有界面）"
+        checked={preferences.immersive}
+        onChange={(immersive) => onChange({ immersive })}
+      />
       </aside>
     </>
   );

@@ -1,4 +1,4 @@
-﻿import type * as React from "react";
+import type * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createTranslator } from "../i18n";
 import { parseEpubDocument } from "../readers/epub";
@@ -188,6 +188,41 @@ export function TextPane({
 
   const chapters = document?.chapters ?? [];
 
+  const isMangaEpub = useMemo(() => {
+    if (!isEpub || !chapters.length) return false;
+    const fixedCount = chapters.filter((c) => c.layout === "fixed" || c.layout === "vertical").length;
+    return fixedCount / chapters.length >= 0.7;
+  }, [isEpub, chapters]);
+
+  const mangaLayout = isMangaEpub ? (preferences.comicLayout ?? "single") : "single";
+  const mangaRtl = isMangaEpub && preferences.readingDirection === "rtl";
+  const mangaCoverSolo = isMangaEpub && (preferences.comicCoverSolo ?? true);
+  const effectiveReaderMode = isMangaEpub ? "scroll" : preferences.readerMode;
+
+  const chapterSpreads = useMemo<number[][]>(() => {
+    if (mangaLayout !== "double") {
+      return chapters.map((_, i) => [i]);
+    }
+    const result: number[][] = [];
+    let i = 0;
+    if (mangaCoverSolo) {
+      result.push([0]);
+      i = 1;
+    }
+    while (i < chapters.length) {
+      const ch = chapters[i];
+      const next = chapters[i + 1];
+      if (ch?.layout === "fixed" && next?.layout === "fixed") {
+        result.push([i, i + 1]);
+        i += 2;
+      } else {
+        result.push([i]);
+        i += 1;
+      }
+    }
+    return result;
+  }, [mangaLayout, mangaCoverSolo, chapters]);
+
   const chapterCharOffsets = useMemo(() => {
     let offset = 0;
     return chapters.map((ch) => {
@@ -260,17 +295,17 @@ export function TextPane({
     }
 
     const max =
-      preferences.readerMode === "paged"
+      effectiveReaderMode === "paged"
         ? scroller.scrollWidth - scroller.clientWidth
         : scroller.scrollHeight - scroller.clientHeight;
-    const current = preferences.readerMode === "paged" ? scroller.scrollLeft : scroller.scrollTop;
+    const current = effectiveReaderMode === "paged" ? scroller.scrollLeft : scroller.scrollTop;
     const chapterElements = [...scroller.querySelectorAll<HTMLElement>(".text-chapter")];
     const scrollerRect = scroller.getBoundingClientRect();
     const currentChapter = chapterElements
       .map((chapter) => {
         const rect = chapter.getBoundingClientRect();
         const offset =
-          preferences.readerMode === "paged"
+          effectiveReaderMode === "paged"
             ? Math.abs(rect.left - scrollerRect.left)
             : Math.abs(rect.top - scrollerRect.top);
         return { chapter, offset };
@@ -278,7 +313,7 @@ export function TextPane({
       .sort((a, b) => a.offset - b.offset)[0]?.chapter;
 
     const chapterOffset = currentChapter
-      ? preferences.readerMode === "paged"
+      ? effectiveReaderMode === "paged"
         ? Math.max(0, current - currentChapter.offsetLeft)
         : Math.max(0, current - currentChapter.offsetTop)
       : undefined;
@@ -288,7 +323,7 @@ export function TextPane({
       chapterOffset,
       percent: max <= 0 ? 0 : current / max
     };
-  }, [preferences.readerMode]);
+  }, [effectiveReaderMode]);
 
   const restoreScrollAnchor = useCallback(
     (anchor?: TextScrollAnchor) => {
@@ -307,7 +342,7 @@ export function TextPane({
           setActiveChapterIndex(nextChapterIndex);
         }
 
-        if (preferences.readerMode === "paged") {
+        if (effectiveReaderMode === "paged") {
           scroller.scrollLeft = targetChapter.offsetLeft + (anchor.chapterOffset ?? 0);
         } else {
           scroller.scrollTop = targetChapter.offsetTop + (anchor.chapterOffset ?? 0);
@@ -315,14 +350,14 @@ export function TextPane({
         return true;
       }
 
-      if (preferences.readerMode === "paged") {
+      if (effectiveReaderMode === "paged") {
         scroller.scrollLeft = anchor.percent * (scroller.scrollWidth - scroller.clientWidth);
       } else {
         scroller.scrollTop = anchor.percent * (scroller.scrollHeight - scroller.clientHeight);
       }
       return true;
     },
-    [chapterIndexById, preferences.readerMode]
+    [chapterIndexById, effectiveReaderMode]
   );
 
   useEffect(() => {
@@ -427,7 +462,7 @@ export function TextPane({
         return;
       }
 
-      if (preferences.readerMode === "paged") {
+      if (effectiveReaderMode === "paged") {
         scroller.scrollLeft = jumpRequest.progress.percent * (scroller.scrollWidth - scroller.clientWidth);
       } else {
         scroller.scrollTop = jumpRequest.progress.percent * (scroller.scrollHeight - scroller.clientHeight);
@@ -435,7 +470,7 @@ export function TextPane({
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [document, jumpRequest, preferences.readerMode]);
+  }, [document, jumpRequest, effectiveReaderMode]);
 
   const updateProgress = useCallback(() => {
     const scroller = scrollerRef.current;
@@ -448,10 +483,10 @@ export function TextPane({
     }
 
     const max =
-      preferences.readerMode === "paged"
+      effectiveReaderMode === "paged"
         ? scroller.scrollWidth - scroller.clientWidth
         : scroller.scrollHeight - scroller.clientHeight;
-    const current = preferences.readerMode === "paged" ? scroller.scrollLeft : scroller.scrollTop;
+    const current = effectiveReaderMode === "paged" ? scroller.scrollLeft : scroller.scrollTop;
     const anchor = readScrollAnchor();
     stableScrollAnchorRef.current = anchor;
     const currentChapterId = anchor?.chapterId;
@@ -485,7 +520,7 @@ export function TextPane({
         : 0;
       onChapterInfo(chapterCharCount, chapterInternalPercent);
     }
-  }, [activeChapterIndex, chapterCharOffsets, chapters, chapterIndexById, isEpub, onChapterInfo, onProgress, preferences.readerMode, readScrollAnchor, totalChars]);
+  }, [activeChapterIndex, chapterCharOffsets, chapters, chapterIndexById, isEpub, onChapterInfo, onProgress, effectiveReaderMode, readScrollAnchor, totalChars]);
 
   useEffect(() => {
     if (!document || !isEpub) {
@@ -866,7 +901,7 @@ export function TextPane({
       const targetRect = target.getBoundingClientRect();
       suspendedProgressUntilRef.current = performance.now() + 180;
 
-      if (preferences.readerMode === "paged") {
+      if (effectiveReaderMode === "paged") {
         const nextLeft = scroller.scrollLeft + (targetRect.left - scrollerRect.left) - 28;
         scroller.scrollTo({
           left: Math.max(0, nextLeft),
@@ -888,7 +923,7 @@ export function TextPane({
       chapterIndexById,
       isEpub,
       preferences.motion,
-      preferences.readerMode,
+      effectiveReaderMode,
       preferences.reduceMotion,
       scheduleScrollSettle
     ]
@@ -905,7 +940,7 @@ export function TextPane({
       const behavior: ScrollBehavior = preferences.motion === "reduced" || preferences.reduceMotion ? "auto" : "smooth";
       suspendedProgressUntilRef.current = performance.now() + (behavior === "smooth" ? 480 : 120);
 
-      if (preferences.readerMode === "paged") {
+      if (effectiveReaderMode === "paged") {
         scroller.scrollBy({ left: direction * Math.max(320, scroller.clientWidth * 0.86), behavior });
       } else {
         scroller.scrollBy({ top: direction * Math.max(320, scroller.clientHeight * 0.82), behavior });
@@ -913,7 +948,7 @@ export function TextPane({
 
       scheduleScrollSettle(behavior === "smooth" ? 420 : 0);
     },
-    [preferences.motion, preferences.readerMode, preferences.reduceMotion, scheduleScrollSettle]
+    [preferences.motion, effectiveReaderMode, preferences.reduceMotion, scheduleScrollSettle]
   );
 
   useEffect(() => {
@@ -1231,10 +1266,11 @@ export function TextPane({
       ? `${embeddedFonts.map((f) => `"${f}"`).join(", ")}, ${readerFontStack(preferences)}`
       : readerFontStack(preferences);
 
+
   return (
     <div
       ref={scrollerRef}
-      className={`text-reader ${preferences.readerMode} ${isEpub ? "epub-text-reader" : ""} ${preferences.autoAlign ? "auto-align" : "justify-align"} ${preferences.imageMode === "fit-screen" ? "fit-screen-images" : "manual-images"} ${pinnedNotes.length ? "notes-open" : ""} ${preferences.justify ? "justify" : ""} ${preferences.justify && preferences.hyphenate ? "hyphenate" : ""}`}
+      className={`text-reader ${effectiveReaderMode} ${isEpub ? "epub-text-reader" : ""} ${preferences.autoAlign ? "auto-align" : "justify-align"} ${preferences.imageMode === "fit-screen" ? "fit-screen-images" : "manual-images"} ${pinnedNotes.length ? "notes-open" : ""} ${preferences.justify ? "justify" : ""} ${preferences.justify && preferences.hyphenate ? "hyphenate" : ""}${isMangaEpub ? ` manga-epub manga-layout-${mangaLayout}` : ""}${isMangaEpub && !preferences.mangaSnapToPage ? " manga-no-snap" : ""}${mangaRtl ? " manga-rtl" : ""}`}
       onScroll={scheduleProgressUpdate}
       style={
         {
@@ -1254,58 +1290,80 @@ export function TextPane({
       >
         {!isEpub ? <h1>{document.title}</h1> : null}
         {!isEpub && document.author ? <p className="reader-author">{document.author}</p> : null}
-        {document.chapters.map((chapter, index) => {
-          const shouldRenderChapter =
+        {chapterSpreads.map((spreadIndices) => {
+          const spreadShouldRender =
             !isEpub ||
-            Math.abs(index - activeChapterIndex) <= lazyRadius ||
-            index === noteTargetChapterIndex ||
-            pinnedNoteChapterIndices.has(index);
-          const placeholderHeight =
-            chapterHeights[chapter.id] ??
-            estimateChapterHeight({
-              chapter,
-              preferences,
-              viewportHeight: scrollerRef.current?.clientHeight || window.innerHeight || 900
-            });
+            spreadIndices.some(
+              (index) =>
+                Math.abs(index - activeChapterIndex) <= lazyRadius ||
+                index === noteTargetChapterIndex ||
+                pinnedNoteChapterIndices.has(index)
+            );
+          const renderChapter = (index: number) => {
+            const chapter = document.chapters[index];
+            const shouldRenderChapter =
+              spreadShouldRender ||
+              Math.abs(index - activeChapterIndex) <= lazyRadius ||
+              index === noteTargetChapterIndex ||
+              pinnedNoteChapterIndices.has(index);
+            const placeholderHeight =
+              chapterHeights[chapter.id] ??
+              estimateChapterHeight({
+                chapter,
+                preferences,
+                viewportHeight: scrollerRef.current?.clientHeight || window.innerHeight || 900
+              });
 
-          return (
-            <section
-              key={chapter.id}
-              id={chapter.id}
-              data-rendered={shouldRenderChapter ? "true" : "false"}
-              className={`text-chapter ${isEpub && !shouldRenderChapter ? "lazy-chapter-placeholder" : ""} ${isEpub && chapter.layout === "fixed" ? "epub-fixed-chapter" : ""} ${isEpub && chapter.layout === "vertical" ? "epub-vertical-chapter" : ""}`}
-            style={
-              isEpub && chapter.viewport
-                ? ({
-                    "--epub-page-width": chapter.viewport.width,
-                    "--epub-page-height": chapter.viewport.height,
-                    "--lazy-chapter-height": `${placeholderHeight}px`
-                  } as React.CSSProperties)
-                : isEpub
-                  ? ({ "--lazy-chapter-height": `${placeholderHeight}px` } as React.CSSProperties)
-                : undefined
-            }
-          >
-            {!shouldRenderChapter ? (
-              <div className="chapter-lazy-shell" aria-label={chapter.title} />
-            ) : (
-              <>
-                {!isEpub && document.chapters.length > 1 ? <h2>{chapter.title}</h2> : null}
-                {isEpub && chapter.frameHtml ? (
-                  <iframe
-                    className="epub-fixed-frame"
-                    title={chapter.title}
-                    srcDoc={chapter.frameHtml}
-                    sandbox="allow-same-origin"
-                    onLoad={handleFixedFrameLoad}
-                  />
+            return (
+              <section
+                key={chapter.id}
+                id={chapter.id}
+                data-rendered={shouldRenderChapter ? "true" : "false"}
+                className={`text-chapter ${isEpub && !shouldRenderChapter ? "lazy-chapter-placeholder" : ""} ${isEpub && chapter.layout === "fixed" ? "epub-fixed-chapter" : ""} ${isEpub && chapter.layout === "vertical" ? "epub-vertical-chapter" : ""}`}
+                style={
+                  isEpub && chapter.viewport
+                    ? ({
+                        "--epub-page-width": chapter.viewport.width,
+                        "--epub-page-height": chapter.viewport.height,
+                        "--lazy-chapter-height": `${placeholderHeight}px`
+                      } as React.CSSProperties)
+                    : isEpub
+                      ? ({ "--lazy-chapter-height": `${placeholderHeight}px` } as React.CSSProperties)
+                      : undefined
+                }
+              >
+                {!shouldRenderChapter ? (
+                  <div className="chapter-lazy-shell" aria-label={chapter.title} />
                 ) : (
-                  <div dangerouslySetInnerHTML={{ __html: chapter.html }} />
+                  <>
+                    {!isEpub && document.chapters.length > 1 ? <h2>{chapter.title}</h2> : null}
+                    {isEpub && chapter.frameHtml ? (
+                      <iframe
+                        className="epub-fixed-frame"
+                        title={chapter.title}
+                        srcDoc={chapter.frameHtml}
+                        sandbox="allow-same-origin"
+                        onLoad={handleFixedFrameLoad}
+                      />
+                    ) : (
+                      <div dangerouslySetInnerHTML={{ __html: chapter.html }} />
+                    )}
+                  </>
                 )}
-              </>
-            )}
-          </section>
-          );
+              </section>
+            );
+          };
+
+          if (spreadIndices.length === 2) {
+            const [a, b] = spreadIndices;
+            return (
+              <div key={`spread-${a}`} className={`epub-spread${mangaRtl ? " rtl" : ""}`}>
+                {renderChapter(a)}
+                {renderChapter(b)}
+              </div>
+            );
+          }
+          return renderChapter(spreadIndices[0]);
         })}
       </article>
       {noteOverlay ? (
@@ -1389,4 +1447,3 @@ export function TextPane({
     </div>
   );
 }
-

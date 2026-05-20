@@ -63,7 +63,13 @@ const fallbackPreferences: ReaderPreferences = {
   pageMargin: "normal",
   justify: false,
   hyphenate: false,
-  preferencesVersion: 3,
+  comicFit: "width",
+  comicLayout: "single",
+  readingDirection: "ltr",
+  comicCoverSolo: true,
+  mangaSnapToPage: true,
+  immersive: false,
+  preferencesVersion: 5,
   onlineSources: [
     {
       id: "gutenberg",
@@ -214,40 +220,78 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false;
-    const epubBooks = books.filter((book) => book.format === "epub").slice(0, 80);
+    const epubBooks = books.filter((book) => book.format === "epub").slice(0, 200);
+    const MAX_CONCURRENT = 4;
+    const queue: BookRecord[] = [];
 
     for (const book of epubBooks) {
       if (epubCoverRef.current.has(book.id) || loadingCoversRef.current.has(book.id)) {
         continue;
       }
-
-      loadingCoversRef.current.add(book.id);
-
-      void (async () => {
-        try {
-          const buffer = await fetch(book.fileUrl).then((response) => response.arrayBuffer());
-          const coverUrl = await extractEpubCover(new Blob([buffer], { type: "application/epub+zip" }));
-
-          if (cancelled || !coverUrl) {
-            if (coverUrl) {
-              URL.revokeObjectURL(coverUrl);
-            }
-            return;
-          }
-
-          epubCoverRef.current.set(book.id, coverUrl);
-          setEpubCovers(new Map(epubCoverRef.current));
-        } catch {
-          // Synthetic covers remain the fallback for EPUBs without readable art.
-        } finally {
-          loadingCoversRef.current.delete(book.id);
-        }
-      })();
+      queue.push(book);
     }
+
+    const runOne = async (book: BookRecord) => {
+      loadingCoversRef.current.add(book.id);
+      try {
+        const cached = await window.readerApi.hasCover(book.id);
+        if (cancelled) return;
+
+        if (cached) {
+          const url = `manga-reader://cover/${encodeURIComponent(book.id)}?v=${book.hash || book.id}`;
+          epubCoverRef.current.set(book.id, url);
+          setEpubCovers(new Map(epubCoverRef.current));
+          return;
+        }
+
+        const buffer = await fetch(book.fileUrl).then((response) => response.arrayBuffer());
+        if (cancelled) return;
+        const blobUrl = await extractEpubCover(new Blob([buffer], { type: "application/epub+zip" }));
+        if (cancelled || !blobUrl) {
+          if (blobUrl) URL.revokeObjectURL(blobUrl);
+          return;
+        }
+
+        try {
+          const blob = await fetch(blobUrl).then((res) => res.blob());
+          const bytes = new Uint8Array(await blob.arrayBuffer());
+          await window.readerApi.saveCover(book.id, bytes);
+        } catch {
+          // Fall back to in-memory blob URL if disk write fails.
+          epubCoverRef.current.set(book.id, blobUrl);
+          setEpubCovers(new Map(epubCoverRef.current));
+          return;
+        } finally {
+          URL.revokeObjectURL(blobUrl);
+        }
+
+        if (cancelled) return;
+        const url = `manga-reader://cover/${encodeURIComponent(book.id)}?v=${book.hash || book.id}`;
+        epubCoverRef.current.set(book.id, url);
+        setEpubCovers(new Map(epubCoverRef.current));
+      } catch {
+        // Synthetic covers remain the fallback for EPUBs without readable art.
+      } finally {
+        loadingCoversRef.current.delete(book.id);
+      }
+    };
+
+    const workers: Promise<void>[] = [];
+    let cursor = 0;
+    const next = async (): Promise<void> => {
+      while (!cancelled && cursor < queue.length) {
+        const book = queue[cursor++];
+        await runOne(book);
+      }
+    };
+    for (let i = 0; i < Math.min(MAX_CONCURRENT, queue.length); i += 1) {
+      workers.push(next());
+    }
+    void Promise.all(workers);
 
     for (const [bookId, coverUrl] of epubCoverRef.current) {
       if (!books.some((book) => book.id === bookId)) {
-        URL.revokeObjectURL(coverUrl);
+        if (coverUrl.startsWith("blob:")) URL.revokeObjectURL(coverUrl);
         epubCoverRef.current.delete(bookId);
       }
     }
@@ -261,7 +305,9 @@ export function App() {
 
   useEffect(() => {
     return () => {
-      epubCoverRef.current.forEach((coverUrl) => URL.revokeObjectURL(coverUrl));
+      epubCoverRef.current.forEach((coverUrl) => {
+        if (coverUrl.startsWith("blob:")) URL.revokeObjectURL(coverUrl);
+      });
       epubCoverRef.current.clear();
     };
   }, []);

@@ -1,6 +1,6 @@
 {
   "name": "natsu",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "A Material 3 desktop reader for manga and light novels.",
   "main": "dist-electron/main.js",
   "scripts": {

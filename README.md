@@ -21,18 +21,19 @@
 
 ## Latest release / 最新版本
 
-**v1.0.1** improves EPUB manga reading, especially scanned fixed-layout EPUBs:
+**v1.1.0** adds library management, reading goals, a command palette, and more:
 
-- Double-page EPUB manga spreads are now equal-height and render both sides together.
-- Added a setting to disable keyboard snap-to-page alignment for manga EPUBs.
-- Manga EPUBs always render in scroll mode even when global reading mode is set to paged.
-- Webtoon layout removes chapter gaps and image baseline whitespace.
+- **Collections / 收藏夹** — create named shelves and filter books instantly from the side rail.
+- **Batch delete / 批量删除** — `Ctrl+Click` to multi-select books, then delete them all at once.
+- **Reading goal & streak / 阅读目标** — daily target with a circular progress ring and consecutive-day streak counter.
+- **Command palette / 命令面板** — press `Ctrl+K` to fuzzy-search and open any book without leaving the reader.
+- **Chapter position / 章节进度** — the reader toolbar now shows `current / total` chapter count.
 
-See [CHANGELOG.md](CHANGELOG.md) and the [EPUB manga guide](docs/EPUB_MANGA_READING.md) for details.
+See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
 ## Download / 下载
 
-Go to [Releases](https://github.com/steinyanaa/natsu/releases) and download the latest `Natsu-x.x.x.exe` portable executable. No installation is required.
+Go to [Releases](https://github.com/steinyanaa/natsu/releases) and download the latest `Natsu-x.x.x.exe` portable executable. No installation is required — double-click and read.
 
 前往 [Releases](https://github.com/steinyanaa/natsu/releases) 下载最新的 `Natsu-x.x.x.exe` 便携版可执行文件，无需安装，双击即用。
 
@@ -46,29 +47,48 @@ Go to [Releases](https://github.com/steinyanaa/natsu/releases) and download the 
 
 | Format | Description |
 | --- | --- |
-| EPUB | Reflow text and fixed-layout pages / 回流文本与固定版式 |
+| EPUB | Reflow text and fixed-layout manga pages / 回流文本与固定版式漫画 |
 | MOBI / AZW3 | Kindle-style e-books / Kindle 电子书格式 |
 | TXT | Plain text novels / 纯文本小说 |
 | PDF | Virtual page rendering / 虚拟页渲染 |
 | CBZ / CBR / ZIP / RAR | Manga archives / 漫画压缩包 |
 
+### Library management / 书架管理
+
+- **Drag-and-drop import** — drop files onto the library window to import them instantly.
+- **Collections** — create named collections from the side rail; click to filter the shelf to that collection; tag books into multiple collections.
+- **Batch operations** — `Ctrl+Click` to multi-select tiles; floating bar for bulk delete.
+- **Shelf sort** — sort by recent activity, title, author, reading progress, or file size.
+- **Metadata editing** — edit the title and author of any imported book via the pencil icon.
+- **Delete confirmation** — a dialog prevents accidental deletion of bookmarks and progress.
+- **Data backup** — export all bookmarks, highlights, and reading sessions as JSON; import back on any machine.
+
 ### Reading experience / 阅读体验
 
 - Apple Books-style reader shell with frosted-glass toolbar.
 - Tap-zone navigation: left/right sides turn pages, center toggles controls.
-- Keyboard shortcuts for page turning, search, brightness, immersive mode, and help.
+- Keyboard shortcuts for page turning, search, brightness, immersive mode, and help (`?`).
 - Full-book search, bookmarks, persistent highlights, annotations, and notes panel.
 - TTS read-aloud bar with speed and voice selection.
-- Reader color presets, brightness overlay, page margins, justified text, and reduced-motion support.
+- Page-turn animations: slide, fade, or none; respects system reduced-motion.
+- Reader color presets (default, paper, quiet, gray, night), brightness overlay, page margins, justified text.
+- **Command palette** (`Ctrl+K`) — fuzzy-search and open any book without leaving the reader.
+- **Chapter position indicator** — `current / total` chapter count in the toolbar.
+
+### Reading stats & goals / 阅读统计 & 目标
+
+- **Weekly stats** — bar chart of reading time per book for the past 7 days.
+- **Daily goal** — set a target minutes-per-day; a circular progress ring tracks today's progress.
+- **Streak counter** — consecutive days meeting the goal, shown with a 🔥 badge.
 
 ### Manga and EPUB manga / 漫画与 EPUB 漫画
 
 - Single-page, double-page, and webtoon layouts.
 - Reading direction switch for left-to-right and right-to-left manga.
 - Double-page cover solo option for correct spread pairing.
-- EPUB scanned manga detection inside `TextPane`.
+- Fixed double-page EPUB manga: paired pages share equal height, rendering together in one spread.
 - Optional snap-to-page behavior for keyboard page turning.
-- Webtoon mode can place adjacent images tightly with no chapter separator.
+- Webtoon mode removes chapter gaps and image baseline whitespace.
 
 ---
 
@@ -76,16 +96,39 @@ Go to [Releases](https://github.com/steinyanaa/natsu/releases) and download the 
 
 ### Import books / 导入书籍
 
-1. Click **Import**, or drag files onto the library.
+1. Click **Import** in the toolbar, or **drag files** onto the library window.
 2. Select EPUB / MOBI / AZW3 / TXT / PDF / CBZ / CBR / ZIP / RAR files.
 3. Open the book from the library grid.
+
+### Organize with collections / 收藏夹管理
+
+1. Click the **+** icon at the bottom of the side rail to create a collection.
+2. On any book tile, click the **Tag** icon to add it to one or more collections.
+3. Click a collection name in the side rail to filter the shelf to that collection.
+
+### Batch delete / 批量删除
+
+1. Hold `Ctrl` and click book tiles to select them (highlighted border + check badge).
+2. A floating bar appears — click **Delete selected** and confirm.
+
+### Reading goal / 阅读目标
+
+1. Open **Settings** and find **每日阅读目标**.
+2. Set your target minutes per day.
+3. Switch to the **Stats** tab to see today's progress ring and streak.
+
+### Command palette / 命令面板
+
+- Press `Ctrl+K` from anywhere in the app.
+- Type to fuzzy-search books; use `↑↓` to navigate, `Enter` to open, `Esc` to close.
 
 ### Reader controls / 阅读界面操作
 
 | Action | Shortcut / Area |
 | --- | --- |
 | Previous / next page | Arrow keys, PageUp/PageDown, or left/right tap zones |
-| Search | `Ctrl/Cmd + F` |
+| Search | `Ctrl + F` |
+| Quick book switch | `Ctrl + K` |
 | Close panels | `Esc` |
 | Toggle shortcut help | `?` |
 | Immersive mode | `I` |
@@ -99,9 +142,7 @@ Open **Settings → 漫画布局**:
 - **单页 / Single**: one page per snap point.
 - **双页 / Double**: spread view; cover can stay solo so later pages pair correctly.
 - **条漫 / Webtoon**: full-width continuous image flow.
-- **按键翻页后自动对齐到下一页**: turn this off if keyboard page turning feels dizzy; the reader will jump by about one viewport without scroll-snap rebound.
-
-Note: scanned manga EPUBs always use scroll rendering internally. If the global reader mode is set to **Paged**, ordinary text EPUBs still use paged mode, but manga EPUBs stay in scroll mode for stable layout.
+- **按键翻页后自动对齐到下一页**: turn this off if keyboard page turning feels jittery.
 
 ---
 

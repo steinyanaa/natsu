@@ -75,6 +75,7 @@ export function ReaderScreen({
   const cursorTimer = useRef<number | undefined>(undefined);
   const latestProgressRef = useRef(progress);
   const lastSavedPercentRef = useRef(book.progress?.percent ?? progress.percent);
+  const lastRevealRef = useRef<number>(0);
   const readerPanelOpen = tocOpen || settingsOpen;
 
   const toggleSettings = useCallback(() => {
@@ -477,7 +478,11 @@ export function ReaderScreen({
       data-page-margin={preferences.pageMargin === "normal" ? undefined : preferences.pageMargin}
       onPointerMove={(event) => {
         if (event.clientY <= 104) {
-          revealChrome();
+          const now = Date.now();
+          if (now - lastRevealRef.current >= 200) {
+            lastRevealRef.current = now;
+            revealChrome();
+          }
         }
       }}
       onClick={handleStageClick}

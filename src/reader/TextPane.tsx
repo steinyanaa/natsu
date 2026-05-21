@@ -760,6 +760,14 @@ export function TextPane({
     };
   }, []);
 
+  // Passive scroll listener — avoids blocking browser scroll
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", scheduleProgressUpdate, { passive: true });
+    return () => el.removeEventListener("scroll", scheduleProgressUpdate);
+  }, [scheduleProgressUpdate]);
+
   useEffect(() => {
     if (!document) {
       return;
@@ -1290,7 +1298,6 @@ export function TextPane({
     <div
       ref={scrollerRef}
       className={`text-reader ${effectiveReaderMode} ${isEpub ? "epub-text-reader" : ""} ${preferences.autoAlign ? "auto-align" : "justify-align"} ${preferences.imageMode === "fit-screen" ? "fit-screen-images" : "manual-images"} ${pinnedNotes.length ? "notes-open" : ""} ${preferences.justify ? "justify" : ""} ${preferences.justify && preferences.hyphenate ? "hyphenate" : ""}${isMangaEpub ? ` manga-epub manga-layout-${mangaLayout}` : ""}${isMangaEpub && !preferences.mangaSnapToPage ? " manga-no-snap" : ""}${mangaRtl ? " manga-rtl" : ""}`}
-      onScroll={scheduleProgressUpdate}
       style={
         {
           "--reader-font-size": `${preferences.fontSize}px`,

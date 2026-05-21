@@ -12,6 +12,45 @@ interface SearchResult {
   matchLength: number;
 }
 
+function createSearchWorker(): Worker {
+  const code = `
+    self.onmessage = function(e) {
+      const { query, chapters, id } = e.data;
+      const normalized = query.normalize("NFKC").toLowerCase();
+      const found = [];
+      for (let ci = 0; ci < chapters.length; ci++) {
+        const chapter = chapters[ci];
+        const text = (chapter.plainText || "").normalize("NFKC");
+        let pos = 0;
+        let count = 0;
+        while (count < 3) {
+          const idx = text.toLowerCase().indexOf(normalized, pos);
+          if (idx < 0) break;
+          const start = Math.max(0, idx - 60);
+          const end = Math.min(text.length, idx + normalized.length + 60);
+          found.push({
+            chapterId: chapter.id,
+            chapterTitle: chapter.title || ("第 " + (ci + 1) + " 章"),
+            chapterIndex: ci,
+            snippet: text.slice(start, end),
+            matchOffset: idx - start,
+            matchLength: normalized.length,
+          });
+          pos = idx + normalized.length;
+          count++;
+        }
+        if (found.length >= 60) break;
+      }
+      self.postMessage({ id, results: found });
+    };
+  `;
+  const blob = new Blob([code], { type: "application/javascript" });
+  const url = URL.createObjectURL(blob);
+  const worker = new Worker(url);
+  URL.revokeObjectURL(url);
+  return worker;
+}
+
 export function SearchPanel({
   chapters,
   open,
@@ -28,6 +67,8 @@ export function SearchPanel({
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const searchTimerRef = useRef<number | undefined>(undefined);
+  const workerRef = useRef<Worker | null>(null);
+  const searchIdRef = useRef(0);
 
   useEffect(() => {
     if (open) {
@@ -38,43 +79,48 @@ export function SearchPanel({
     }
   }, [open]);
 
+  useEffect(() => {
+    return () => {
+      workerRef.current?.terminate();
+      workerRef.current = null;
+    };
+  }, []);
+
   const runSearch = useCallback((q: string) => {
     if (q.trim().length < 1) {
       setResults([]);
       return;
     }
-    const normalized = q.normalize("NFKC").toLowerCase();
-    const found: SearchResult[] = [];
-    for (const [index, chapter] of chapters.entries()) {
-      const text = (chapter.plainText ?? "").normalize("NFKC");
-      let pos = 0;
-      let count = 0;
-      while (count < 3) { // 每章最多3条
-        const idx = text.toLowerCase().indexOf(normalized, pos);
-        if (idx < 0) break;
-        const start = Math.max(0, idx - 60);
-        const end = Math.min(text.length, idx + normalized.length + 60);
-        found.push({
-          chapterId: chapter.id,
-          chapterTitle: chapter.title || `第 ${index + 1} 章`,
-          chapterIndex: index,
-          snippet: text.slice(start, end),
-          matchOffset: idx - start,
-          matchLength: normalized.length,
-        });
-        pos = idx + normalized.length;
-        count++;
-      }
-      if (found.length >= 60) break; // 最多60条
+
+    // Create worker on first use
+    if (!workerRef.current) {
+      workerRef.current = createSearchWorker();
     }
-    setResults(found);
-    setActiveIndex(0);
+
+    const id = ++searchIdRef.current;
+    const worker = workerRef.current;
+
+    // Prepare lightweight data to send (only id, title, plainText)
+    const chaptersData = chapters.map((ch) => ({
+      id: ch.id,
+      title: ch.title,
+      plainText: ch.plainText ?? "",
+    }));
+
+    worker.onmessage = (e: MessageEvent<{ id: number; results: SearchResult[] }>) => {
+      // Ignore stale results from previous searches
+      if (e.data.id !== id) return;
+      setResults(e.data.results);
+      setActiveIndex(0);
+    };
+
+    worker.postMessage({ query: q, chapters: chaptersData, id });
   }, [chapters]);
 
   const search = useCallback((q: string) => {
     setQuery(q);
     window.clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = window.setTimeout(() => runSearch(q), 180);
+    searchTimerRef.current = window.setTimeout(() => runSearch(q), 350);
   }, [runSearch]);
 
   const jump = (result: SearchResult) => {

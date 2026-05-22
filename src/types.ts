@@ -62,6 +62,15 @@ export interface Highlight {
   createdAt: string;
 }
 
+export interface WellnessPreferences {
+  pomodoroEnabled: boolean;
+  pomodoroMinutes: number;         // default 25
+  eveningModeEnabled: boolean;
+  eveningModeStart: string;        // "20:00"
+  eveningModeEnd: string;          // "06:00"
+  showDailySummary: boolean;
+}
+
 export interface ReaderPreferences {
   theme: ThemeName;
   themeMode: ThemeMode;
@@ -99,6 +108,7 @@ export interface ReaderPreferences {
   preferencesVersion: number;
   dailyGoalMinutes: number;
   dictionaryEnabled: boolean;
+  wellness: WellnessPreferences;
 }
 
 export interface OnlineSource {

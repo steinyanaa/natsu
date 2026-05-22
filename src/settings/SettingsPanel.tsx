@@ -11,8 +11,18 @@ import type {
   OnlineSourceTestReport,
   ReaderFontFamily,
   ReaderPreferences,
-  ThemeCustomColors
+  ThemeCustomColors,
+  WellnessPreferences
 } from "../types";
+
+const defaultWellness: WellnessPreferences = {
+  pomodoroEnabled: true,
+  pomodoroMinutes: 25,
+  eveningModeEnabled: true,
+  eveningModeStart: "20:00",
+  eveningModeEnd: "06:00",
+  showDailySummary: true,
+};
 
 const fontFamilyOptions: Array<{ id: ReaderFontFamily; label: TranslationKey }> = [
   { id: "serif-cn", label: "fontSerifCn" },
@@ -593,6 +603,40 @@ export function SettingsPanel({
             <span className="setting-unit">{t("minutesPerDay")}</span>
           </div>
         </div>
+      </SettingGroup>
+
+      <SettingSection label="阅读节律" />
+
+      {/* 阅读节律 */}
+      <SettingGroup label="阅读节律">
+        <ToggleSetting
+          label="番茄提醒"
+          checked={preferences.wellness?.pomodoroEnabled ?? true}
+          onChange={(v) => onChange({ wellness: { ...(preferences.wellness ?? defaultWellness), pomodoroEnabled: v } })}
+        />
+        {preferences.wellness?.pomodoroEnabled && (
+          <label className="setting-row">
+            <span>提醒间隔（分钟）</span>
+            <input
+              type="number"
+              min={5}
+              max={120}
+              value={preferences.wellness?.pomodoroMinutes ?? 25}
+              onChange={(e) => onChange({ wellness: { ...(preferences.wellness ?? defaultWellness), pomodoroMinutes: +e.target.value } })}
+              className="setting-number-input"
+            />
+          </label>
+        )}
+        <ToggleSetting
+          label="夜间护眼"
+          checked={preferences.wellness?.eveningModeEnabled ?? true}
+          onChange={(v) => onChange({ wellness: { ...(preferences.wellness ?? defaultWellness), eveningModeEnabled: v } })}
+        />
+        <ToggleSetting
+          label="每日结算卡"
+          checked={preferences.wellness?.showDailySummary ?? true}
+          onChange={(v) => onChange({ wellness: { ...(preferences.wellness ?? defaultWellness), showDailySummary: v } })}
+        />
       </SettingGroup>
 
       <SettingSection label={t("dataManagement")} />

@@ -79,6 +79,14 @@ const fallbackPreferences: ReaderPreferences = {
   preferencesVersion: 5,
   dailyGoalMinutes: 30,
   dictionaryEnabled: true,
+  wellness: {
+    pomodoroEnabled: true,
+    pomodoroMinutes: 25,
+    eveningModeEnabled: true,
+    eveningModeStart: "20:00",
+    eveningModeEnd: "06:00",
+    showDailySummary: true,
+  },
   onlineSources: [
     {
       id: "gutenberg",
@@ -175,6 +183,29 @@ function useApplyPreferences(preferences: ReaderPreferences) {
   }, [preferences]);
 }
 
+function useEveningMode(preferences: ReaderPreferences) {
+  useEffect(() => {
+    const check = () => {
+      if (!preferences.wellness?.eveningModeEnabled) {
+        document.documentElement.removeAttribute("data-evening");
+        return;
+      }
+      const now = new Date();
+      const hhmm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      const start = preferences.wellness.eveningModeStart ?? "20:00";
+      const end   = preferences.wellness.eveningModeEnd   ?? "06:00";
+      // Crosses midnight if start > end
+      const isEvening = start > end
+        ? (hhmm >= start || hhmm < end)
+        : (hhmm >= start && hhmm < end);
+      document.documentElement.dataset.evening = isEvening ? "true" : "false";
+    };
+    check();
+    const id = setInterval(check, 60_000);
+    return () => clearInterval(id);
+  }, [preferences.wellness]);
+}
+
 export function App() {
   const [books, setBooks] = useState<BookRecord[]>([]);
   const [preferences, setPreferences] = useState<ReaderPreferences>(fallbackPreferences);
@@ -209,6 +240,7 @@ export function App() {
   const loadingCoversRef = useRef(new Set<string>());
 
   useApplyPreferences(preferences);
+  useEveningMode(preferences);
 
   const t = useMemo(() => createTranslator(preferences.language), [preferences.language]);
 

@@ -14,7 +14,9 @@ import { useSwipeGesture } from "./useSwipeGesture";
 import type { AnchorJumpRequest, JumpRequest } from "./types";
 import { editableEventTarget, nowProgress } from "./utils";
 import { LoadingState } from "./ReaderState";
-import type { BookRecord, Bookmark as BookmarkRecord, Highlight, ParsedTextDocument, ReaderPreferences, ReaderProgress, TocItem } from "../types";
+import type { BookRecord, Bookmark as BookmarkRecord, GoalStats, Highlight, ParsedTextDocument, ReaderPreferences, ReaderProgress, TocItem } from "../types";
+import { useReadingSession } from "../wellness/useReadingSession";
+import { DailySummaryCard } from "../wellness/DailySummaryCard";
 
 const CHARS_PER_MINUTE = 300;
 
@@ -69,6 +71,8 @@ export function ReaderScreen({
   const [ttsText, setTtsText] = useState("");
   const [sessionMinutes, setSessionMinutes] = useState(0);
   const [keymapOpen, setKeymapOpen] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
+  const [goalStats, setGoalStats] = useState<GoalStats | null>(null);
   const shellRef = useRef<HTMLElement | null>(null);
   const sessionStartRef = useRef(Date.now());
   const saveTimer = useRef<number | undefined>(undefined);
@@ -78,6 +82,29 @@ export function ReaderScreen({
   const lastSavedPercentRef = useRef(book.progress?.percent ?? progress.percent);
   const lastRevealRef = useRef<number>(0);
   const readerPanelOpen = tocOpen || settingsOpen;
+
+  const { pomodoroAlert, dismissPomodoroAlert } = useReadingSession(preferences.wellness);
+
+  useEffect(() => {
+    void window.readerApi.getGoalStats().then(setGoalStats);
+  }, []);
+
+  const handleBack = useCallback(() => {
+    const elapsedMins = (Date.now() - sessionStartRef.current) / 60_000;
+    const today = new Date().toDateString();
+    const lastShown = localStorage.getItem("lastSummaryDate");
+
+    if (
+      (preferences.wellness?.showDailySummary ?? true) &&
+      elapsedMins >= 5 &&
+      lastShown !== today
+    ) {
+      localStorage.setItem("lastSummaryDate", today);
+      setShowSummary(true);
+      return;
+    }
+    onBack();
+  }, [onBack, preferences.wellness]);
 
   const toggleSettings = useCallback(() => {
     if (settingsOpen) {
@@ -499,7 +526,7 @@ export function ReaderScreen({
         />
       )}
       <header className="reader-toolbar">
-        <button className="soft-button pressable" onClick={onBack}>
+        <button className="soft-button pressable" onClick={handleBack}>
           <ArrowLeft size={18} />
           <span>{t("back")}</span>
         </button>
@@ -659,6 +686,22 @@ export function ReaderScreen({
           />
         </Suspense>
       ) : null}
+
+      {pomodoroAlert && (
+        <div className="pomodoro-alert">
+          <span>已阅读 {preferences.wellness?.pomodoroMinutes ?? 25} 分钟，去休息一下吧 ☕</span>
+          <button className="icon-button pressable" onClick={dismissPomodoroAlert} aria-label="关闭">×</button>
+        </div>
+      )}
+
+      {showSummary && (
+        <DailySummaryCard
+          book={book}
+          sessionMinutes={sessionMinutes}
+          goalStats={goalStats}
+          onClose={() => { setShowSummary(false); onBack(); }}
+        />
+      )}
     </main>
   );
 }

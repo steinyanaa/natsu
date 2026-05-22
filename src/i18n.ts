@@ -129,7 +129,17 @@ export type TranslationKey =
   | "todayProgress"
   | "goalReached"
   | "chapterOf"
-  | "dropCap";
+  | "dropCap"
+  | "presetSources"
+  | "exportNotes"
+  | "exportMarkdown"
+  | "exportAnki"
+  | "exportSuccess"
+  | "refetchCover"
+  | "weeklySpeed"
+  | "charsPerMin"
+  | "readingTrend"
+  | "heatmapTitle";
 
 const zh: Record<TranslationKey, string> = {
   appName: "Natsu",
@@ -260,7 +270,17 @@ const zh: Record<TranslationKey, string> = {
   todayProgress: "今日进度",
   goalReached: "达成目标 🎉",
   chapterOf: "章节",
-  dropCap: "首字下沉"
+  dropCap: "首字下沉",
+  presetSources: "预设书源",
+  exportNotes: "导出笔记",
+  exportMarkdown: "Markdown 笔记",
+  exportAnki: "Anki 闪卡 (TSV)",
+  exportSuccess: "已导出",
+  refetchCover: "重新抓取封面",
+  weeklySpeed: "本周均速",
+  charsPerMin: "字/分钟",
+  readingTrend: "近 30 天",
+  heatmapTitle: "阅读热力",
 };
 
 const ja: Record<TranslationKey, string> = {
@@ -392,7 +412,17 @@ const ja: Record<TranslationKey, string> = {
   todayProgress: "今日の進捗",
   goalReached: "目標達成 🎉",
   chapterOf: "章",
-  dropCap: "ドロップキャップ"
+  dropCap: "ドロップキャップ",
+  presetSources: "プリセット書源",
+  exportNotes: "ノートエクスポート",
+  exportMarkdown: "Markdown",
+  exportAnki: "Anki フラッシュカード (TSV)",
+  exportSuccess: "エクスポート完了",
+  refetchCover: "表紙を再取得",
+  weeklySpeed: "今週の平均速度",
+  charsPerMin: "文字/分",
+  readingTrend: "過去30日",
+  heatmapTitle: "読書ヒートマップ",
 };
 
 const en: Record<TranslationKey, string> = {
@@ -524,7 +554,17 @@ const en: Record<TranslationKey, string> = {
   todayProgress: "Today",
   goalReached: "Goal reached 🎉",
   chapterOf: "Chapter",
-  dropCap: "Drop Cap"
+  dropCap: "Drop Cap",
+  presetSources: "Preset Sources",
+  exportNotes: "Export Notes",
+  exportMarkdown: "Markdown Notes",
+  exportAnki: "Anki Flashcards (TSV)",
+  exportSuccess: "Exported",
+  refetchCover: "Re-fetch Cover",
+  weeklySpeed: "Weekly Avg Speed",
+  charsPerMin: "chars/min",
+  readingTrend: "Last 30 Days",
+  heatmapTitle: "Reading Heat Map",
 };
 
 const dictionaries = {

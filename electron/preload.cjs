@@ -55,5 +55,8 @@ contextBridge.exposeInMainWorld("readerApi", {
   savePreferences: (preferences) =>
     ipcRenderer.invoke("preferences:save", preferences),
   hasCover: (bookId) => ipcRenderer.invoke("cover:has", bookId),
-  saveCover: (bookId, bytes) => ipcRenderer.invoke("cover:save", bookId, bytes)
+  saveCover: (bookId, bytes) => ipcRenderer.invoke("cover:save", bookId, bytes),
+  saveFile: (content, suggestedName) => ipcRenderer.invoke("system:saveFile", content, suggestedName),
+  fetchCoverForBook: (bookId) => ipcRenderer.invoke("cover:fetchForBook", bookId),
+  getSessionsByDate: () => ipcRenderer.invoke("library:getSessionsByDate"),
 });

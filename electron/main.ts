@@ -105,7 +105,7 @@ interface OnlineSource {
   id: string;
   name: string;
   enabled: boolean;
-  kind: "gutenberg" | "url" | "json" | "html";
+  kind: "gutenberg" | "url" | "json" | "html" | "rss";
   value: string;
 }
 
@@ -346,7 +346,8 @@ function normalizeOnlineSources(value: unknown, legacyValue?: unknown): OnlineSo
 
       const item = entry as Partial<OnlineSource>;
       const kind =
-        item.kind === "gutenberg" || item.kind === "json" || item.kind === "html" ? item.kind : "url";
+        item.kind === "gutenberg" || item.kind === "json" || item.kind === "html" || item.kind === "rss"
+          ? item.kind : "url";
       const id = typeof item.id === "string" && item.id.trim() ? item.id.trim() : `source-${sources.length + 1}`;
       const name =
         typeof item.name === "string" && item.name.trim()
@@ -1867,6 +1868,68 @@ async function searchCustomBooks(query: string, sourceUrl: string, sourceName = 
     .slice(0, 40);
 }
 
+async function searchRssFeed(query: string, feedUrl: string, sourceName: string): Promise<OnlineBookResult[]> {
+  const resolvedUrl = feedUrl.replace(/\{q\}/g, encodeURIComponent(query));
+  try {
+    const response = await withTimeout(net.fetch(resolvedUrl, {
+      headers: { "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml" }
+    }), 15000, null);
+    if (!response || !response.ok) return [];
+    const xml = await response.text();
+    const doc = parse(xml);
+    const lowerQuery = query.toLowerCase();
+
+    const items = doc.querySelectorAll("item, entry");
+    const results: OnlineBookResult[] = [];
+
+    for (const item of items) {
+      const title = item.querySelector("title")?.text?.trim() ?? "";
+      const author = item.querySelector("author name, dc\\:creator, author")?.text?.trim() ?? "";
+      const link = item.querySelector("enclosure")?.getAttribute("url")
+        ?? item.querySelector("link[rel='enclosure']")?.getAttribute("href")
+        ?? item.querySelector("link")?.getAttribute("href")
+        ?? item.querySelector("link")?.text?.trim()
+        ?? "";
+
+      if (!feedUrl.includes("{q}")) {
+        const haystack = `${title} ${author}`.toLowerCase();
+        if (!haystack.includes(lowerQuery)) continue;
+      }
+
+      if (!link) continue;
+
+      const enclosureType = item.querySelector("enclosure")?.getAttribute("type") ?? "";
+      const format: BookFormat | undefined =
+        link.endsWith(".epub") || enclosureType.includes("epub") ? "epub"
+        : link.endsWith(".pdf") || enclosureType.includes("pdf") ? "pdf"
+        : link.endsWith(".txt") || enclosureType.includes("text/plain") ? "txt"
+        : undefined;
+
+      if (!format) continue;
+
+      const coverUrl = item.querySelector("image url, media\\:thumbnail, itunes\\:image")?.text?.trim()
+        ?? item.querySelector("media\\:thumbnail")?.getAttribute("url")
+        ?? undefined;
+
+      results.push({
+        id: `rss-${Buffer.from(link).toString("base64").slice(0, 16)}`,
+        source: sourceName,
+        title: title || "Untitled",
+        author: author || undefined,
+        language: undefined,
+        subjects: [],
+        coverUrl: coverUrl || undefined,
+        downloadUrl: link,
+        format,
+        sizeLabel: undefined
+      });
+    }
+    return results.slice(0, 40);
+  } catch {
+    return [];
+  }
+}
+
 async function searchSource(query: string, source: OnlineSource): Promise<OnlineBookResult[]> {
   if (!source.enabled) {
     return [];
@@ -1909,6 +1972,10 @@ async function searchSource(query: string, source: OnlineSource): Promise<Online
     }
 
     return [];
+  }
+
+  if (source.kind === "rss") {
+    return searchRssFeed(query, source.value, source.name);
   }
 
   return searchCustomBooks(query, source.value, source.name);
@@ -2156,6 +2223,18 @@ function registerIpc(): void {
     return openHttpExternal(url);
   });
 
+  ipcMain.handle("system:saveFile", async (_event, content: string, suggestedName: string) => {
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow!, {
+      defaultPath: suggestedName,
+      filters: suggestedName.endsWith(".tsv")
+        ? [{ name: "TSV", extensions: ["tsv"] }]
+        : [{ name: "Markdown", extensions: ["md"] }]
+    });
+    if (canceled || !filePath) return false;
+    await fs.writeFile(filePath, content, "utf-8");
+    return true;
+  });
+
   ipcMain.handle("library:openBook", (_event, id: string) => {
     const book = updateBook(id, (current) => ({
       ...current,
@@ -2280,6 +2359,45 @@ function registerIpc(): void {
       bytes instanceof ArrayBuffer ? Buffer.from(new Uint8Array(bytes)) : Buffer.from(bytes);
     await fs.writeFile(coverPathFor(bookId), buf);
     return true;
+  });
+
+  ipcMain.handle("cover:fetchForBook", async (_event, bookId: string) => {
+    if (typeof bookId !== "string" || !bookId) return false;
+    const books = store.get("books", []);
+    const book = books.find((b) => b.id === bookId);
+    if (!book) return false;
+
+    // Already has a cover on disk — skip
+    try { await fs.access(coverPathFor(bookId)); return true; } catch { /* proceed */ }
+
+    let imageUrl: string | undefined;
+
+    // Strategy: Google Books by title+author
+    try {
+      const q = encodeURIComponent(`intitle:${book.title}${book.author ? `+inauthor:${book.author}` : ""}`);
+      const resp = await withTimeout(net.fetch(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=1`), 8000, null);
+      if (resp?.ok) {
+        const data = await resp.json() as { items?: Array<{ volumeInfo?: { imageLinks?: { thumbnail?: string } } }> };
+        const thumb = data?.items?.[0]?.volumeInfo?.imageLinks?.thumbnail;
+        if (thumb) {
+          imageUrl = thumb.replace("http://", "https://").replace("&zoom=1", "&zoom=3");
+        }
+      }
+    } catch { /* ignore */ }
+
+    if (!imageUrl) return false;
+
+    try {
+      const imgResp = await withTimeout(net.fetch(imageUrl), 8000, null);
+      if (!imgResp?.ok) return false;
+      const buf = Buffer.from(await imgResp.arrayBuffer());
+      if (buf.length < 2000) return false;
+      await ensureCoverDir();
+      await fs.writeFile(coverPathFor(bookId), buf);
+      return true;
+    } catch {
+      return false;
+    }
   });
 
   ipcMain.handle("preferences:get", () => {
@@ -2448,6 +2566,21 @@ function registerIpc(): void {
       streak,
       goalReachedToday: todayMinutes >= dailyGoalMinutes
     };
+  });
+
+  ipcMain.handle("library:getSessionsByDate", () => {
+    const books = store.get("books", []);
+    const dayMap = new Map<string, number>();
+    for (const book of books) {
+      for (const session of book.readingSessions ?? []) {
+        const day = session.start.slice(0, 10);
+        const mins = (new Date(session.end).getTime() - new Date(session.start).getTime()) / 60000;
+        dayMap.set(day, (dayMap.get(day) ?? 0) + mins);
+      }
+    }
+    return [...dayMap.entries()]
+      .map(([date, minutes]) => ({ date, minutes: Math.round(minutes) }))
+      .sort((a, b) => a.date.localeCompare(b.date));
   });
 
   // 从 JSON 文件导入数据（按 hash 合并）

@@ -20,7 +20,7 @@ export type ReaderImageMode = "manual" | "fit-screen";
 export type ComicFitMode = "width" | "height" | "page" | "original" | "manual";
 export type ComicLayout = "single" | "double" | "webtoon";
 export type ReadingDirection = "ltr" | "rtl";
-export type OnlineSourceKind = "gutenberg" | "url" | "json" | "html";
+export type OnlineSourceKind = "gutenberg" | "url" | "json" | "html" | "rss";
 
 export interface ThemeCustomColors {
   primary: string;
@@ -232,6 +232,20 @@ export interface OnlineBookResult {
   downloads?: number;
 }
 
+export interface BookSourcePreset {
+  id: string;
+  name: string;
+  description: string;
+  kind: OnlineSourceKind;
+  value: string;
+  requiresUserUrl: boolean;
+}
+
+export interface DailyReadingStat {
+  date: string;   // "YYYY-MM-DD"
+  minutes: number;
+}
+
 export interface ReaderApi {
   importBooks(): Promise<BookRecord[]>;
   searchOnlineBooks(query: string): Promise<OnlineBookResult[]>;
@@ -270,4 +284,7 @@ export interface ReaderApi {
   savePreferences(preferences: Partial<ReaderPreferences>): Promise<ReaderPreferences>;
   hasCover(bookId: string): Promise<boolean>;
   saveCover(bookId: string, bytes: Uint8Array): Promise<boolean>;
+  saveFile(content: string, suggestedName: string): Promise<boolean>;
+  fetchCoverForBook(bookId: string): Promise<boolean>;
+  getSessionsByDate(): Promise<DailyReadingStat[]>;
 }

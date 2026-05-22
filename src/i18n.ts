@@ -62,6 +62,7 @@ export type TranslationKey =
   | "modeLight"
   | "modeDark"
   | "fontSerifCn"
+  | "fontAnthropicSans"
   | "fontSans"
   | "fontKai"
   | "fontJpSerif"
@@ -191,6 +192,7 @@ const zh: Record<TranslationKey, string> = {
   modeLight: "亮色",
   modeDark: "暗色",
   fontSerifCn: "文学宋体",
+  fontAnthropicSans: "Anthropic Sans",
   fontSans: "系统黑体",
   fontKai: "楷体",
   fontJpSerif: "日文明朝",
@@ -321,6 +323,7 @@ const ja: Record<TranslationKey, string> = {
   modeLight: "ライト",
   modeDark: "ダーク",
   fontSerifCn: "中文セリフ",
+  fontAnthropicSans: "Anthropic Sans",
   fontSans: "システムゴシック",
   fontKai: "楷書",
   fontJpSerif: "明朝",
@@ -451,6 +454,7 @@ const en: Record<TranslationKey, string> = {
   modeLight: "Light",
   modeDark: "Dark",
   fontSerifCn: "Literary serif",
+  fontAnthropicSans: "Anthropic Sans",
   fontSans: "System sans",
   fontKai: "Kai style",
   fontJpSerif: "JP Mincho",

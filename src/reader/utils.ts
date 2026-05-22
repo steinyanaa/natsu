@@ -2,6 +2,7 @@ import type { ReaderFontFamily, ReaderPreferences, ReaderProgress } from "../typ
 
 const fontStacks: Record<ReaderFontFamily, string> = {
   "serif-cn": '"Noto Serif SC", "Source Han Serif SC", "SimSun", "Songti SC", Georgia, serif',
+  "anthropic-sans": '"Anthropic Sans", "Inter", "Segoe UI", "Noto Sans SC", sans-serif',
   sans: '"Segoe UI", "Microsoft YaHei UI", "Noto Sans SC", "Hiragino Sans", Arial, sans-serif',
   kai: '"KaiTi", "STKaiti", "Kaiti SC", "DFKai-SB", "Noto Serif SC", serif',
   "jp-serif":

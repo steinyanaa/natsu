@@ -3,6 +3,7 @@ import "@material/web/iconbutton/icon-button.js";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+import "./styles/fonts.css";
 import "./styles.css";
 
 createRoot(document.getElementById("root") as HTMLElement).render(

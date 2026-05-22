@@ -16,6 +16,7 @@ import type {
 
 const fontFamilyOptions: Array<{ id: ReaderFontFamily; label: TranslationKey }> = [
   { id: "serif-cn", label: "fontSerifCn" },
+  { id: "anthropic-sans", label: "fontAnthropicSans" },
   { id: "sans", label: "fontSans" },
   { id: "kai", label: "fontKai" },
   { id: "jp-serif", label: "fontJpSerif" },

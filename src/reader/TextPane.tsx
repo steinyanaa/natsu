@@ -158,6 +158,11 @@ export function TextPane({
 }) {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const restoredRef = useRef(false);
+  // Always-current refs for prop callbacks — prevents stale closure in handleDocumentLoaded
+  const onTocRef = useRef(onToc);
+  const onChaptersRef = useRef(onChapters);
+  onTocRef.current = onToc;
+  onChaptersRef.current = onChapters;
   const suspendedProgressUntilRef = useRef(0);
   const progressRafRef = useRef<number | undefined>(undefined);
   const stableScrollAnchorRef = useRef<TextScrollAnchor | undefined>(undefined);
@@ -362,8 +367,8 @@ export function TextPane({
 
   const handleDocumentLoaded = useCallback((parsed: ParsedTextDocument) => {
     restoredRef.current = false;
-    onToc(parsed.toc);
-    onChapters?.(parsed.chapters);
+    onTocRef.current(parsed.toc);
+    onChaptersRef.current?.(parsed.chapters);
     setActiveChapterIndex(0);
     setChapterHeights({});
     setNoteOverlay(undefined);

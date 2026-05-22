@@ -1,4 +1,4 @@
-import type * as React from "react";
+import { useMemo } from "react";
 import type { DailyReadingStat } from "../types";
 
 interface Props {
@@ -35,64 +35,62 @@ function toDateStr(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+type Cell = {
+  col: number;
+  row: number;
+  date: string;
+  minutes: number;
+};
+
 export function HeatmapCalendar({ data }: Props) {
-  // Build lookup map
-  const lookup = new Map<string, number>();
-  for (const stat of data) {
-    lookup.set(stat.date, stat.minutes);
-  }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  // Build cells: 364 days, dayIndex 0 = today, 363 = oldest
-  type Cell = {
-    col: number;
-    row: number;
-    date: string;
-    minutes: number;
-  };
-
-  const cells: Cell[] = [];
-  // Track month label per column: store the month of the first day in each col
-  const colMonth: (number | null)[] = new Array(COLS).fill(null);
-
-  for (let dayIndex = 0; dayIndex < 364; dayIndex++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - dayIndex);
-
-    const row = d.getDay(); // 0=Sun
-    const col = COLS - 1 - Math.floor(dayIndex / 7);
-    const dateStr = toDateStr(d);
-    const minutes = lookup.get(dateStr) ?? 0;
-
-    cells.push({ col, row, date: dateStr, minutes });
-
-    // Track the month of the Sunday (row=0) in each column, or first cell
-    if (colMonth[col] === null) {
-      colMonth[col] = d.getMonth();
+  const { cells, monthLabels } = useMemo(() => {
+    const lookup = new Map<string, number>();
+    for (const stat of data) {
+      lookup.set(stat.date, stat.minutes);
     }
-  }
 
-  // Determine which columns should display a month label
-  // Show label where the month differs from the previous column
-  const monthLabels: { col: number; label: string }[] = [];
-  for (let c = 1; c < COLS; c++) {
-    if (colMonth[c] !== null && colMonth[c - 1] !== null && colMonth[c] !== colMonth[c - 1]) {
-      monthLabels.push({ col: c, label: MONTH_ABBR[colMonth[c] as number] });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const builtCells: Cell[] = [];
+    const colMonth: (number | null)[] = new Array(COLS).fill(null);
+
+    for (let dayIndex = 0; dayIndex < 364; dayIndex++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - dayIndex);
+
+      const row = d.getDay(); // 0=Sun
+      const col = COLS - 1 - Math.floor(dayIndex / 7);
+      const dateStr = toDateStr(d);
+      const minutes = lookup.get(dateStr) ?? 0;
+
+      builtCells.push({ col, row, date: dateStr, minutes });
+
+      if (colMonth[col] === null) {
+        colMonth[col] = d.getMonth();
+      }
     }
-  }
-  // Also add label for col 0
-  if (colMonth[0] !== null) {
-    monthLabels.unshift({ col: 0, label: MONTH_ABBR[colMonth[0] as number] });
-  }
+
+    const builtLabels: { col: number; label: string }[] = [];
+    for (let c = 1; c < COLS; c++) {
+      if (colMonth[c] !== null && colMonth[c - 1] !== null && colMonth[c] !== colMonth[c - 1]) {
+        builtLabels.push({ col: c, label: MONTH_ABBR[colMonth[c] as number] });
+      }
+    }
+    if (colMonth[0] !== null) {
+      builtLabels.unshift({ col: 0, label: MONTH_ABBR[colMonth[0] as number] });
+    }
+
+    return { cells: builtCells, monthLabels: builtLabels };
+  }, [data]);
 
   return (
     <svg
       width={SVG_WIDTH}
       height={SVG_HEIGHT}
-      style={{ display: "block" }}
+      role="img"
       aria-label="Reading heatmap calendar"
+      style={{ display: "block" }}
     >
       {/* Month labels */}
       {monthLabels.map(({ col, label }) => (

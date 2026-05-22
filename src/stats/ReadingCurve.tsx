@@ -1,4 +1,4 @@
-import type * as React from "react";
+import { useMemo } from "react";
 import type { DailyReadingStat } from "../types";
 
 interface Props {
@@ -10,7 +10,7 @@ const VIEW_HEIGHT = 120;
 const PAD_LEFT = 4;
 const PAD_RIGHT = 4;
 const PAD_TOP = 10;
-const PAD_BOTTOM = 20; // room for x-axis labels
+const PAD_BOTTOM = 20;
 
 function toDateStr(d: Date): string {
   const y = d.getFullYear();
@@ -19,54 +19,59 @@ function toDateStr(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+function xFor(i: number, n: number, chartWidth: number): number {
+  return PAD_LEFT + (i / (n - 1)) * chartWidth;
+}
+
+function yFor(minutes: number, maxVal: number, chartHeight: number): number {
+  return PAD_TOP + chartHeight - (minutes / maxVal) * chartHeight;
+}
+
+const LABEL_INDICES = [0, 5, 10, 15, 20, 25, 29];
+
 export function ReadingCurve({ data }: Props) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const { points, polygonPoints, days, chartDims } = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  // Build lookup
-  const lookup = new Map<string, number>();
-  for (const stat of data) {
-    lookup.set(stat.date, stat.minutes);
-  }
+    const lookup = new Map<string, number>();
+    for (const stat of data) {
+      lookup.set(stat.date, stat.minutes);
+    }
 
-  // Last 30 days: index 0 = 29 days ago, index 29 = today
-  const days: { date: string; minutes: number }[] = [];
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const dateStr = toDateStr(d);
-    days.push({ date: dateStr, minutes: lookup.get(dateStr) ?? 0 });
-  }
+    const builtDays: { date: string; minutes: number }[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const dateStr = toDateStr(d);
+      builtDays.push({ date: dateStr, minutes: lookup.get(dateStr) ?? 0 });
+    }
 
-  const rawMax = Math.max(...days.map((d) => d.minutes));
-  const maxVal = Math.max(rawMax, 30); // minimum scale of 30
+    const rawMax = Math.max(...builtDays.map((d) => d.minutes));
+    const maxVal = Math.max(rawMax, 30);
+    const chartWidth = VIEW_WIDTH - PAD_LEFT - PAD_RIGHT;
+    const chartHeight = VIEW_HEIGHT - PAD_TOP - PAD_BOTTOM;
+    const n = builtDays.length;
 
-  const chartWidth = VIEW_WIDTH - PAD_LEFT - PAD_RIGHT;
-  const chartHeight = VIEW_HEIGHT - PAD_TOP - PAD_BOTTOM;
-  const n = days.length; // 30
+    const builtPoints = builtDays
+      .map((d, i) => `${xFor(i, n, chartWidth)},${yFor(d.minutes, maxVal, chartHeight)}`)
+      .join(" ");
 
-  function xFor(i: number): number {
-    return PAD_LEFT + (i / (n - 1)) * chartWidth;
-  }
+    const baselineY = PAD_TOP + chartHeight;
+    const firstX = xFor(0, n, chartWidth);
+    const lastX = xFor(n - 1, n, chartWidth);
+    const builtPolygon =
+      `${firstX},${baselineY} ` +
+      builtDays.map((d, i) => `${xFor(i, n, chartWidth)},${yFor(d.minutes, maxVal, chartHeight)}`).join(" ") +
+      ` ${lastX},${baselineY}`;
 
-  function yFor(minutes: number): number {
-    return PAD_TOP + chartHeight - (minutes / maxVal) * chartHeight;
-  }
-
-  // Build polyline points
-  const points = days.map((d, i) => `${xFor(i)},${yFor(d.minutes)}`).join(" ");
-
-  // Build filled polygon: same points + close to baseline
-  const baselineY = PAD_TOP + chartHeight;
-  const firstX = xFor(0);
-  const lastX = xFor(n - 1);
-  const polygonPoints =
-    `${firstX},${baselineY} ` +
-    days.map((d, i) => `${xFor(i)},${yFor(d.minutes)}`).join(" ") +
-    ` ${lastX},${baselineY}`;
-
-  // X-axis labels every 5 days: indices 0, 5, 10, 15, 20, 25
-  const labelIndices = [0, 5, 10, 15, 20, 25, 29];
+    return {
+      points: builtPoints,
+      polygonPoints: builtPolygon,
+      days: builtDays,
+      chartDims: { chartWidth, chartHeight, n, maxVal },
+    };
+  }, [data]);
 
   return (
     <svg
@@ -74,8 +79,9 @@ export function ReadingCurve({ data }: Props) {
       height={VIEW_HEIGHT}
       viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
       preserveAspectRatio="none"
-      style={{ display: "block" }}
+      role="img"
       aria-label="Reading trend last 30 days"
+      style={{ display: "block" }}
     >
       {/* Filled area */}
       <polygon
@@ -95,9 +101,9 @@ export function ReadingCurve({ data }: Props) {
       />
 
       {/* X-axis labels */}
-      {labelIndices.map((i) => {
-        const x = xFor(i);
-        const label = days[i].date.slice(5); // MM-DD
+      {LABEL_INDICES.map((i) => {
+        const x = xFor(i, chartDims.n, chartDims.chartWidth);
+        const label = days[i].date.slice(5);
         return (
           <text
             key={i}

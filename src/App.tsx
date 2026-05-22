@@ -1296,8 +1296,10 @@ function StatsView({
   const [dailyStats, setDailyStats] = useState<DailyReadingStat[]>([]);
 
   useEffect(() => {
-    void window.readerApi.getGoalStats().then(setGoalStats);
-    void window.readerApi.getSessionsByDate().then(setDailyStats);
+    let mounted = true;
+    void window.readerApi.getGoalStats().then((v) => { if (mounted) setGoalStats(v); });
+    void window.readerApi.getSessionsByDate().then((v) => { if (mounted) setDailyStats(v); });
+    return () => { mounted = false; };
   }, [books]);
 
   const stats = useMemo(() => {

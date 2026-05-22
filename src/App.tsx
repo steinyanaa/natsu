@@ -41,6 +41,7 @@ import { applyReaderTheme } from "./themeEngine";
 import type { BookFormat, BookRecord, Collection, DailyReadingStat, GoalStats, OnlineBookResult, OnlineSource, ReaderPreferences, ReaderProgress } from "./types";
 import { HeatmapCalendar } from "./stats/HeatmapCalendar";
 import { ReadingCurve } from "./stats/ReadingCurve";
+import { getSessionAvgCpm } from "./stats/speedTracker";
 
 const fallbackPreferences: ReaderPreferences = {
   theme: "ramune",
@@ -1294,6 +1295,7 @@ function StatsView({
 }) {
   const [goalStats, setGoalStats] = useState<GoalStats | null>(null);
   const [dailyStats, setDailyStats] = useState<DailyReadingStat[]>([]);
+  const [sessionCpm, setSessionCpm] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -1301,6 +1303,12 @@ function StatsView({
     void window.readerApi.getSessionsByDate().then((v) => { if (mounted) setDailyStats(v); });
     return () => { mounted = false; };
   }, [books]);
+
+  useEffect(() => {
+    setSessionCpm(getSessionAvgCpm());
+    const id = setInterval(() => setSessionCpm(getSessionAvgCpm()), 5000);
+    return () => clearInterval(id);
+  }, []);
 
   const stats = useMemo(() => {
     const now = Date.now();
@@ -1374,6 +1382,10 @@ function StatsView({
         <div className="stat-card">
           <span className="stat-value">{streak}</span>
           <span className="stat-label">{t("streak")}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value">{sessionCpm > 0 ? sessionCpm : "—"}</span>
+          <span className="stat-label">{t("weeklySpeed")}</span>
         </div>
       </div>
       {stats.topBooks.length > 0 ? (

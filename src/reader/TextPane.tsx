@@ -13,6 +13,7 @@ import { DictionaryPopover } from "./DictionaryPopover";
 import { applyHighlightToDOM, selectionToHighlightData } from "./highlightUtils";
 import type { AnchorJumpRequest, JumpRequest } from "./types";
 import { editableEventTarget, nowProgress, readerFontStack } from "./utils";
+import { recordPageTurn } from "../stats/speedTracker";
 
 interface TextScrollAnchor {
   chapterId?: string;
@@ -172,6 +173,7 @@ export function TextPane({
   const preloadedImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const hoverNoteTimerRef = useRef<number | undefined>(undefined);
   const animatedChaptersRef = useRef<Set<string>>(new Set());
+  const lastPageTurnRef = useRef<number>(performance.now());
   const isEpub = parser === "epub";
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [chapterHeights, setChapterHeights] = useState<Record<string, number>>({});
@@ -946,6 +948,12 @@ export function TextPane({
 
   const nudgePage = useCallback(
     (direction: 1 | -1) => {
+      const now = performance.now();
+      const elapsed = now - lastPageTurnRef.current;
+      lastPageTurnRef.current = now;
+      const chapterCharCount = chapters[activeChapterIndex]?.plainText?.length ?? 0;
+      recordPageTurn(chapterCharCount, elapsed);
+
       const scroller = scrollerRef.current;
 
       if (!scroller) {
@@ -994,7 +1002,7 @@ export function TextPane({
 
       scheduleScrollSettle(behavior === "smooth" ? 420 : 0);
     },
-    [preferences.motion, preferences.pageTurnStyle, effectiveReaderMode, preferences.reduceMotion, scheduleScrollSettle]
+    [preferences.motion, preferences.pageTurnStyle, effectiveReaderMode, preferences.reduceMotion, scheduleScrollSettle, chapters, activeChapterIndex]
   );
 
   useEffect(() => {

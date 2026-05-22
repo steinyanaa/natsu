@@ -15,7 +15,7 @@ import type * as React from "react";
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createTranslator } from "./i18n";
 import { extractEpubCover } from "./readers/epub";
-import { preloadReaderPaneForFormat } from "./reader/preloadPanes";
+
 import { OpenBookTransition } from "./reader/OpenBookTransition";
 import { SegmentedControl } from "./components/SegmentedControl";
 import { ViewMorph } from "./components/ViewMorph";
@@ -466,39 +466,6 @@ export function App() {
       setBatchConfirm(false);
     });
   }, [batchRemoveBooksHook, selectedIds]);
-
-  const searchOnlineBooks = useCallback(async () => {
-    const searchText = (onlineQuery || query).trim();
-    const activeSources = enabledOnlineSources(preferences);
-
-    if (!searchText) {
-      return;
-    }
-
-    if (!activeSources.length) {
-      setOnlineOpen(true);
-      setOnlineResults([]);
-      setOnlineError("Enable at least one online source in Settings.");
-      return;
-    }
-
-    setOnlineOpen(true);
-    setOnlineLoading(true);
-    setOnlineError("");
-
-    try {
-      const results = await window.readerApi.searchOnlineBooks(searchText);
-      setOnlineResults(results);
-      if (!results.length) {
-        setOnlineError("没有找到可导入的在线结果");
-      }
-    } catch {
-      setOnlineResults([]);
-      setOnlineError("在线书源暂时无法访问");
-    } finally {
-      setOnlineLoading(false);
-    }
-  }, [onlineQuery, query]);
 
   const importOnlineResult = useCallback(
     async (result: OnlineBookResult) => {

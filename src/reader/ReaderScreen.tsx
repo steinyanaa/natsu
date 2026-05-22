@@ -5,6 +5,7 @@ import { createTranslator } from "../i18n";
 import { BookmarkManager } from "./BookmarkManager";
 import { KeymapHint } from "./KeymapHint";
 import { NotesPanel } from "./NotesPanel";
+import { ReaderScrubber } from "./ReaderScrubber";
 import { ReaderStage } from "./ReaderStage";
 import { SearchPanel } from "./SearchPanel";
 import { TTSBar } from "./TTSBar";
@@ -169,6 +170,10 @@ export function ReaderScreen({
   const jumpToToc = useCallback((targetId: string) => {
     setAnchorJumpRequest({ targetId, token: Date.now() });
     setTocOpen(false);
+  }, []);
+
+  const handleScrubberSeek = useCallback((chapterId: string) => {
+    setAnchorJumpRequest({ targetId: chapterId, token: Date.now() });
   }, []);
 
   const renameBookmark = useCallback(
@@ -614,6 +619,16 @@ export function ReaderScreen({
           onHighlightRemove={removeHighlights}
         />
       </section>
+
+      {chapters.length > 1 && progress.kind !== "page" && (
+        <ReaderScrubber
+          progress={progress}
+          chapters={chapters}
+          toc={toc}
+          onSeekChapter={handleScrubberSeek}
+          reduceMotion={preferences.reduceMotion || preferences.motion === "reduced"}
+        />
+      )}
 
       {toast ? <div className="reader-toast">{toast}</div> : null}
 

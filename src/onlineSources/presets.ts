@@ -30,7 +30,7 @@ export const BOOK_SOURCE_PRESETS: BookSourcePreset[] = [
     id: "zlibrary",
     name: "zlibrary（镜像）",
     description: "需要填入你当前可用的镜像地址",
-    kind: "url",
+    kind: "html",
     value: "",
     requiresUserUrl: true
   }

@@ -39,12 +39,38 @@ export function PresetsRow({
 
   const confirmUrl = (preset: BookSourcePreset) => {
     if (!urlDraft.trim()) return;
+    const baseUrl = urlDraft.trim().replace(/\/$/, "");
+
+    let kind = preset.kind;
+    let value: string;
+
+    if (preset.id === "zlibrary") {
+      // Build an HTML scraper config from the user's mirror base URL.
+      // Z-library search lives at /s/{query}; detail pages carry the download button.
+      kind = "html";
+      value = JSON.stringify({
+        adapter: "html",
+        searchUrl: `${baseUrl}/s/{query}`,
+        baseUrl,
+        itemSelector: "tr.resItemBox, .book-item, .z-bookcard",
+        titleSelector: ".color1, h3 a, .book-title a",
+        authorSelector: ".authors, .book-item__authors",
+        detailLinkSelector: "a[href*='/book/']",
+        downloadSelector: "a.dlButton, a.addDownloadedBook, a[href*='/dl/'], .btn-primary.dlButton",
+        downloadAttr: "href",
+        maxDetailPages: 5,
+        sourceName: preset.name
+      });
+    } else {
+      value = baseUrl;
+    }
+
     onAdd({
       id: defaultId(),
       name: preset.name,
       enabled: true,
-      kind: preset.kind,
-      value: urlDraft.trim()
+      kind,
+      value
     });
     setPromptId(null);
     setUrlDraft("");

@@ -185,13 +185,45 @@ export function TextPane({
   const fixedFrameClickHandlerRef = useRef<
     ((nativeEvent: MouseEvent, frame: HTMLIFrameElement, frameDocument: Document) => void) | undefined
   >(undefined);
+
+  // Declared before first use of epubDoc to avoid TypeScript TDZ error.
+  // All dependencies are refs or stable state setters declared above.
+  const handleDocumentLoaded = useCallback((parsed: ParsedTextDocument) => {
+    restoredRef.current = false;
+    onTocRef.current(parsed.toc);
+    onChaptersRef.current?.(parsed.chapters);
+    setActiveChapterIndex(0);
+    setChapterHeights({});
+    setNoteOverlay(undefined);
+    setNoteTargetChapterIndex(undefined);
+    setPinnedNotes([]);
+    stableScrollAnchorRef.current = undefined;
+    resizeScrollAnchorRef.current = undefined;
+    pendingAnchorRetryRef.current = undefined;
+    anchorNavigationTokenRef.current += 1;
+    scrollActionTokenRef.current += 1;
+    if (scrollSettleTimerRef.current !== undefined) {
+      window.clearTimeout(scrollSettleTimerRef.current);
+      scrollSettleTimerRef.current = undefined;
+    }
+    preloadedImageUrlsRef.current.clear();
+    for (const image of preloadedImagesRef.current.values()) {
+      image.src = "";
+    }
+    preloadedImagesRef.current.clear();
+    animatedChaptersRef.current.clear();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // empty — all deps are refs (stable) or stable setters
+
+  const { document: epubDoc, error } = useEpubChapter(book, parser, t, handleDocumentLoaded, () => {});
+
   const chapterIndexById = useMemo(() => {
     const map = new Map<string, number>();
-    document?.chapters.forEach((chapter, index) => map.set(chapter.id, index));
+    epubDoc?.chapters.forEach((chapter, index) => map.set(chapter.id, index));
     return map;
-  }, [document]);
+  }, [epubDoc]);
 
-  const chapters = document?.chapters ?? [];
+  const chapters = epubDoc?.chapters ?? [];
 
   const isMangaEpub = useMemo(() => {
     if (!isEpub || !chapters.length) return false;
@@ -365,38 +397,9 @@ export function TextPane({
     [chapterIndexById, effectiveReaderMode]
   );
 
-  const handleDocumentLoaded = useCallback((parsed: ParsedTextDocument) => {
-    restoredRef.current = false;
-    onTocRef.current(parsed.toc);
-    onChaptersRef.current?.(parsed.chapters);
-    setActiveChapterIndex(0);
-    setChapterHeights({});
-    setNoteOverlay(undefined);
-    setNoteTargetChapterIndex(undefined);
-    setPinnedNotes([]);
-    stableScrollAnchorRef.current = undefined;
-    resizeScrollAnchorRef.current = undefined;
-    pendingAnchorRetryRef.current = undefined;
-    anchorNavigationTokenRef.current += 1;
-    scrollActionTokenRef.current += 1;
-    if (scrollSettleTimerRef.current !== undefined) {
-      window.clearTimeout(scrollSettleTimerRef.current);
-      scrollSettleTimerRef.current = undefined;
-    }
-    preloadedImageUrlsRef.current.clear();
-    for (const image of preloadedImagesRef.current.values()) {
-      image.src = "";
-    }
-    preloadedImagesRef.current.clear();
-    animatedChaptersRef.current.clear();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // empty — all deps are refs (stable) or stable setters
-
-  const { document, error } = useEpubChapter(book, parser, t, handleDocumentLoaded, () => {});
-
   useEffect(() => {
     const scroller = scrollerRef.current;
-    if (!document || !scroller || restoredRef.current) {
+    if (!epubDoc || !scroller || restoredRef.current) {
       return;
     }
 
@@ -418,13 +421,13 @@ export function TextPane({
     book.progress?.chapterId,
     book.progress?.chapterOffset,
     book.progress?.percent,
-    document,
+    epubDoc,
     restoreScrollAnchor
   ]);
 
   useEffect(() => {
     const scroller = scrollerRef.current;
-    if (!document || !scroller || !jumpRequest) {
+    if (!epubDoc || !scroller || !jumpRequest) {
       return;
     }
 
@@ -442,7 +445,7 @@ export function TextPane({
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [document, jumpRequest, effectiveReaderMode]);
+  }, [epubDoc, jumpRequest, effectiveReaderMode]);
 
   const updateProgress = useCallback(() => {
     const scroller = scrollerRef.current;
@@ -495,7 +498,7 @@ export function TextPane({
   }, [activeChapterIndex, chapterCharOffsets, chapters, chapterIndexById, isEpub, onChapterInfo, onProgress, effectiveReaderMode, readScrollAnchor, totalChars]);
 
   useEffect(() => {
-    if (!document || !isEpub) {
+    if (!epubDoc || !isEpub) {
       return;
     }
 
@@ -513,10 +516,10 @@ export function TextPane({
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [activeChapterIndex, document, isEpub, preferences.columnWidth, preferences.fontSize, preferences.imageScale, preferences.lineHeight]);
+  }, [activeChapterIndex, epubDoc, isEpub, preferences.columnWidth, preferences.fontSize, preferences.imageScale, preferences.lineHeight]);
 
   useEffect(() => {
-    if (!document || !isEpub) {
+    if (!epubDoc || !isEpub) {
       return;
     }
 
@@ -541,7 +544,7 @@ export function TextPane({
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [activeChapterIndex, document, isEpub]);
+  }, [activeChapterIndex, epubDoc, isEpub]);
 
   useEffect(() => {
     if (!noteOverlay || noteOverlay.html) {
@@ -560,7 +563,7 @@ export function TextPane({
   }, [activeChapterIndex, findMountedNoteTarget, noteOverlay, noteTargetChapterIndex]);
 
   useEffect(() => {
-    if (!document || !pinnedNotes.some((note) => !note.html)) {
+    if (!epubDoc || !pinnedNotes.some((note) => !note.html)) {
       return;
     }
 
@@ -583,7 +586,7 @@ export function TextPane({
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [activeChapterIndex, document, findMountedNoteTarget, pinnedNotes]);
+  }, [activeChapterIndex, epubDoc, findMountedNoteTarget, pinnedNotes]);
 
   useEffect(() => {
     if (!noteOverlay) {
@@ -621,15 +624,15 @@ export function TextPane({
   }, [noteOverlay]);
 
   useEffect(() => {
-    if (!document || !isEpub) {
+    if (!epubDoc || !isEpub) {
       return;
     }
 
     const preloadRadius = lazyRadius + 2;
     const start = Math.max(0, activeChapterIndex - preloadRadius);
-    const end = Math.min(document.chapters.length - 1, activeChapterIndex + preloadRadius);
+    const end = Math.min(epubDoc.chapters.length - 1, activeChapterIndex + preloadRadius);
     const urls = new Set(
-      document.chapters
+      epubDoc.chapters
       .slice(start, end + 1)
         .flatMap((chapter) => imageUrlsFromHtml(`${chapter.html}${chapter.frameHtml ?? ""}`))
     );
@@ -657,7 +660,7 @@ export function TextPane({
         preloadedImageUrlsRef.current.delete(url);
       }
     }
-  }, [activeChapterIndex, document, isEpub, lazyRadius]);
+  }, [activeChapterIndex, epubDoc, isEpub, lazyRadius]);
 
   // 将已存高亮应用到渲染后的 DOM
   useEffect(() => {
@@ -706,7 +709,7 @@ export function TextPane({
   }, [scheduleProgressUpdate]);
 
   useEffect(() => {
-    if (!document) {
+    if (!epubDoc) {
       return;
     }
 
@@ -749,7 +752,7 @@ export function TextPane({
     book.progress?.chapterId,
     book.progress?.chapterOffset,
     book.progress?.percent,
-    document,
+    epubDoc,
     readScrollAnchor,
     restoreScrollAnchor,
     updateProgress
@@ -889,7 +892,7 @@ export function TextPane({
   );
 
   useEffect(() => {
-    if (!document || !anchorJumpRequest) {
+    if (!epubDoc || !anchorJumpRequest) {
       return;
     }
 
@@ -898,10 +901,10 @@ export function TextPane({
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [anchorJumpRequest, document, scrollToTarget]);
+  }, [anchorJumpRequest, epubDoc, scrollToTarget]);
 
   useEffect(() => {
-    if (!document) {
+    if (!epubDoc) {
       return;
     }
 
@@ -924,7 +927,7 @@ export function TextPane({
     window.addEventListener("keydown", handleKeyDown);
 
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [document, nudgePage]);
+  }, [epubDoc, nudgePage]);
 
   const pinNote = useCallback(
     (targetId: string, rawLabel: string, refId?: string) => {
@@ -1192,11 +1195,11 @@ export function TextPane({
     return <ErrorState title={error} />;
   }
 
-  if (!document) {
+  if (!epubDoc) {
     return <LoadingState label={t("loading")} />;
   }
 
-  const activeChapter = document.chapters[activeChapterIndex];
+  const activeChapter = epubDoc.chapters[activeChapterIndex];
   const embeddedFonts = isEpub ? (activeChapter?.embeddedFonts ?? []) : [];
   const fontFamily =
     embeddedFonts.length && preferences.fontFamily !== "custom"
@@ -1224,8 +1227,8 @@ export function TextPane({
         onMouseOver={isEpub ? handleNoteMouseOver : undefined}
         onMouseOut={isEpub ? handleNoteMouseOut : undefined}
       >
-        {!isEpub ? <h1>{document.title}</h1> : null}
-        {!isEpub && document.author ? <p className="reader-author">{document.author}</p> : null}
+        {!isEpub ? <h1>{epubDoc.title}</h1> : null}
+        {!isEpub && epubDoc.author ? <p className="reader-author">{epubDoc.author}</p> : null}
         {chapterSpreads.map((spreadIndices) => {
           const spreadShouldRender =
             !isEpub ||
@@ -1236,7 +1239,7 @@ export function TextPane({
                 pinnedNoteChapterIndices.has(index)
             );
           const renderChapter = (index: number) => {
-            const chapter = document.chapters[index];
+            const chapter = epubDoc.chapters[index];
             const shouldRenderChapter =
               spreadShouldRender ||
               Math.abs(index - activeChapterIndex) <= lazyRadius ||
@@ -1272,7 +1275,7 @@ export function TextPane({
                   <div className="chapter-lazy-shell" aria-label={chapter.title} />
                 ) : (
                   <>
-                    {!isEpub && document.chapters.length > 1 ? <h2>{chapter.title}</h2> : null}
+                    {!isEpub && epubDoc.chapters.length > 1 ? <h2>{chapter.title}</h2> : null}
                     {isEpub && chapter.frameHtml ? (
                       <iframe
                         className="epub-fixed-frame"

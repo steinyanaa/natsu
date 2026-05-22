@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.3.1 - 2026-05-22
+
+### Bug fixes
+
+- **zlibrary preset source now works** — adding a mirror URL (e.g. `https://zh.z-library.sk/`) previously returned "No importable results" because the source was stored as `kind: "url"` and routed to a plain OPDS fetch. It now correctly builds a `kind: "html"` scraper config with `searchUrl: <mirror>/s/{query}` and appropriate CSS selectors, so searches actually query the mirror's search endpoint.
+- **TypeScript TDZ fix** — moved `handleDocumentLoaded` / `useEpubChapter` declarations before their first use in `TextPane.tsx`, resolving a `TS2448` block-scoped-variable-used-before-declaration error.
+
+---
+
 ## v1.3.0 - 2026-05-22
 
 ### New features

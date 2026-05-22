@@ -716,10 +716,15 @@ export function ReaderScreen({
             const content = format === "markdown"
               ? exportMarkdown(book)
               : exportAnkiTsv(book);
+            const safeTitle = book.title.replace(/[\\/:*?"<>|]/g, "_");
             const fileName = format === "markdown"
-              ? `${book.title}-notes.md`
-              : `${book.title}-anki.tsv`;
-            await window.readerApi.saveFile(content, fileName);
+              ? `${safeTitle}-notes.md`
+              : `${safeTitle}-anki.tsv`;
+            try {
+              await window.readerApi.saveFile(content, fileName);
+            } catch {
+              // save dialog cancelled or write error — just close the sheet
+            }
             setExportOpen(false);
           }}
           onClose={() => setExportOpen(false)}

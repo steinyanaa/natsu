@@ -23,12 +23,15 @@ export function exportMarkdown(book: BookRecord): string {
   const sections: string[] = [header];
   for (const [chapterId, items] of grouped) {
     sections.push(`\n## ${chapterId}\n`);
-    for (const h of items) {
+    for (let i = 0; i < items.length; i++) {
+      const h = items[i];
       sections.push(`> ${h.selectedText}\n`);
       if (h.note) {
         sections.push(`\n*${h.note}*\n`);
       }
-      sections.push("\n---\n");
+      if (i < items.length - 1) {
+        sections.push("\n---\n");
+      }
     }
   }
 

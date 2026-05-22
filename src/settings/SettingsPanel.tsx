@@ -3,6 +3,7 @@ import type * as React from "react";
 import { useState } from "react";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { createTranslator, type TranslationKey } from "../i18n";
+import { PresetsRow } from "../onlineSources/PresetsRow";
 import { readerFontStack } from "../reader/utils";
 import { themeOptions } from "../themes";
 import type {
@@ -409,6 +410,15 @@ export function SettingsPanel({
       />
 
       <SettingSection label="网络" />
+
+      <PresetsRow
+        currentSources={preferences.onlineSources}
+        onAdd={(source) => {
+          onChange({
+            onlineSources: [...preferences.onlineSources, source]
+          });
+        }}
+      />
 
       <OnlineSourceManager
         sources={preferences.onlineSources}
@@ -822,6 +832,13 @@ function OnlineSourceManager({
                   onClick={() => onDraftKindChange("html")}
                 >
                   HTML
+                </button>
+                <button
+                  className={draftKind === "rss" ? "active" : ""}
+                  type="button"
+                  onClick={() => onDraftKindChange("rss")}
+                >
+                  RSS · Atom
                 </button>
               </div>
             </div>

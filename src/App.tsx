@@ -11,8 +11,10 @@
   FolderPlus,
   Globe2,
   Grid3X3,
+  ImageIcon,
   Library,
   List,
+  Loader2,
   PanelLeft,
   Pencil,
   Plus,
@@ -236,6 +238,7 @@ export function App() {
   const [onlineError, setOnlineError] = useState("");
   const [onlineImportingId, setOnlineImportingId] = useState("");
   const [epubCovers, setEpubCovers] = useState<Map<string, string>>(new Map());
+  const [fetchingCoverIds, setFetchingCoverIds] = useState<Set<string>>(new Set());
   const epubCoverRef = useRef(new Map<string, string>());
   const loadingCoversRef = useRef(new Set<string>());
 
@@ -247,6 +250,26 @@ export function App() {
   const refreshBooks = useCallback(async () => {
     const records = await window.readerApi.listBooks();
     setBooks(records);
+  }, []);
+
+  const refetchCover = useCallback(async (book: BookRecord) => {
+    setFetchingCoverIds((prev) => new Set([...prev, book.id]));
+    try {
+      // Delete cached cover so it re-loads after fetch
+      epubCoverRef.current.delete(book.id);
+      const ok = await window.readerApi.fetchCoverForBook(book.id);
+      if (ok) {
+        const url = `manga-reader://cover/${encodeURIComponent(book.id)}?v=${Date.now()}`;
+        epubCoverRef.current.set(book.id, url);
+        setEpubCovers(new Map(epubCoverRef.current));
+      }
+    } finally {
+      setFetchingCoverIds((prev) => {
+        const next = new Set(prev);
+        next.delete(book.id);
+        return next;
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -327,7 +350,15 @@ export function App() {
         epubCoverRef.current.set(book.id, url);
         setEpubCovers(new Map(epubCoverRef.current));
       } catch {
-        // Synthetic covers remain the fallback for EPUBs without readable art.
+        // EPUB had no embedded art — try fetching from Google Books silently
+        try {
+          const ok = await window.readerApi.fetchCoverForBook(book.id);
+          if (ok) {
+            const url = `manga-reader://cover/${encodeURIComponent(book.id)}?v=${Date.now()}`;
+            epubCoverRef.current.set(book.id, url);
+            setEpubCovers(new Map(epubCoverRef.current));
+          }
+        } catch { /* silence */ }
       } finally {
         loadingCoversRef.current.delete(book.id);
       }
@@ -885,6 +916,8 @@ export function App() {
               }
             }}
             onToggleCollection={toggleBookInCollection}
+            onRefetchCover={refetchCover}
+            fetchingCoverIds={fetchingCoverIds}
           />
         ) : (
           <EmptyShelf t={t} onImport={importBooks} recent={section === "recent"} />
@@ -1018,7 +1051,9 @@ function BookShelf({
   onRemove,
   onEdit,
   onSelect,
-  onToggleCollection
+  onToggleCollection,
+  onRefetchCover,
+  fetchingCoverIds
 }: {
   books: BookRecord[];
   view: ShelfView;
@@ -1031,6 +1066,8 @@ function BookShelf({
   onEdit: (book: BookRecord) => void;
   onSelect: (id: string, ctrl: boolean) => void;
   onToggleCollection: (collectionId: string, bookId: string, add: boolean) => void;
+  onRefetchCover: (book: BookRecord) => void;
+  fetchingCoverIds: Set<string>;
 }) {
   const [tagMenuBook, setTagMenuBook] = useState<BookRecord | null>(null);
 
@@ -1065,6 +1102,16 @@ function BookShelf({
                 </button>
                 <button className="icon-button pressable" title={t("editMetadata")} onClick={() => onEdit(book)}>
                   <Pencil size={17} />
+                </button>
+                <button
+                  className="icon-button pressable"
+                  title="重新抓取封面"
+                  disabled={fetchingCoverIds.has(book.id)}
+                  onClick={() => onRefetchCover(book)}
+                >
+                  {fetchingCoverIds.has(book.id)
+                    ? <Loader2 size={17} className="spin" />
+                    : <ImageIcon size={17} />}
                 </button>
                 {collections.length > 0 && (
                   <div className="tag-menu-anchor">

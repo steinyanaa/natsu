@@ -1,9 +1,6 @@
 import type * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createTranslator } from "../i18n";
-import { parseEpubDocument } from "../readers/epub";
-import { parseMobiDocument } from "../readers/mobi";
-import { parseTxtDocument } from "../readers/text";
 import type { BookRecord, Highlight, ParsedTextDocument, ReaderPreferences, ReaderProgress, TocItem } from "../types";
 import { resolveExistingTargetId, targetIdFromHashHref } from "./navigation";
 import { PageCurl } from "./PageCurl";
@@ -13,7 +10,9 @@ import { DictionaryPopover } from "./DictionaryPopover";
 import { applyHighlightToDOM, selectionToHighlightData } from "./highlightUtils";
 import type { AnchorJumpRequest, JumpRequest } from "./types";
 import { editableEventTarget, nowProgress, readerFontStack } from "./utils";
-import { recordPageTurn } from "../stats/speedTracker";
+import { useDictionary } from "./useDictionary";
+import { usePageTurn } from "./usePageTurn";
+import { useEpubChapter } from "./useEpubChapter";
 
 interface TextScrollAnchor {
   chapterId?: string;
@@ -157,8 +156,6 @@ export function TextPane({
   onHighlightSave?: (highlight: Highlight) => void;
   onHighlightRemove?: (highlightIds: string[]) => void;
 }) {
-  const [document, setDocument] = useState<ParsedTextDocument | undefined>();
-  const [error, setError] = useState("");
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const restoredRef = useRef(false);
   const suspendedProgressUntilRef = useRef(0);
@@ -173,17 +170,13 @@ export function TextPane({
   const preloadedImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const hoverNoteTimerRef = useRef<number | undefined>(undefined);
   const animatedChaptersRef = useRef<Set<string>>(new Set());
-  const lastPageTurnRef = useRef<number>(performance.now());
   const isEpub = parser === "epub";
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [chapterHeights, setChapterHeights] = useState<Record<string, number>>({});
   const [noteOverlay, setNoteOverlay] = useState<NoteOverlay | undefined>();
   const [noteTargetChapterIndex, setNoteTargetChapterIndex] = useState<number | undefined>();
   const [pinnedNotes, setPinnedNotes] = useState<PinnedNote[]>([]);
-  const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number; chapterId: string } | undefined>();
-  const [selectionText, setSelectionText] = useState("");
-  const [dictWord, setDictWord] = useState<{ word: string; x: number; y: number } | undefined>();
-  const [curlDir, setCurlDir] = useState<1 | -1 | null>(null);
+  const { selectionMenu, setSelectionMenu, selectionText, setSelectionText, dictWord, setDictWord } = useDictionary(scrollerRef, book.highlights ?? [], preferences.dictionaryEnabled ?? true);
   const fixedFrameClickHandlerRef = useRef<
     ((nativeEvent: MouseEvent, frame: HTMLIFrameElement, frameDocument: Document) => void) | undefined
   >(undefined);
@@ -367,67 +360,34 @@ export function TextPane({
     [chapterIndexById, effectiveReaderMode]
   );
 
-  useEffect(() => {
-    let cancelled = false;
-    let ownedUrls: string[] = [];
-
-    async function load() {
-      setDocument(undefined);
-      setError("");
-      restoredRef.current = false;
-
-      try {
-        const buffer = await fetch(book.fileUrl).then((response) => response.arrayBuffer());
-        const parsed =
-          parser === "txt"
-            ? parseTxtDocument(buffer, book.title)
-            : parser === "mobi"
-              ? await parseMobiDocument(buffer, book.title)
-              : await parseEpubDocument(new Blob([buffer]), book.title);
-        ownedUrls = parsed.objectUrls ?? [];
-
-        if (cancelled) {
-          ownedUrls.forEach((url) => URL.revokeObjectURL(url));
-          return;
-        }
-
-        setDocument(parsed);
-        onToc(parsed.toc);
-        onChapters?.(parsed.chapters);
-        setActiveChapterIndex(0);
-        setChapterHeights({});
-        setNoteOverlay(undefined);
-        setNoteTargetChapterIndex(undefined);
-        setPinnedNotes([]);
-        stableScrollAnchorRef.current = undefined;
-        resizeScrollAnchorRef.current = undefined;
-        pendingAnchorRetryRef.current = undefined;
-        anchorNavigationTokenRef.current += 1;
-        scrollActionTokenRef.current += 1;
-        if (scrollSettleTimerRef.current !== undefined) {
-          window.clearTimeout(scrollSettleTimerRef.current);
-          scrollSettleTimerRef.current = undefined;
-        }
-        preloadedImageUrlsRef.current.clear();
-        for (const image of preloadedImagesRef.current.values()) {
-          image.src = "";
-        }
-        preloadedImagesRef.current.clear();
-        animatedChaptersRef.current.clear();
-      } catch {
-        if (!cancelled) {
-          setError(t("unsupported"));
-        }
-      }
+  const handleDocumentLoaded = useCallback((parsed: ParsedTextDocument) => {
+    restoredRef.current = false;
+    onToc(parsed.toc);
+    onChapters?.(parsed.chapters);
+    setActiveChapterIndex(0);
+    setChapterHeights({});
+    setNoteOverlay(undefined);
+    setNoteTargetChapterIndex(undefined);
+    setPinnedNotes([]);
+    stableScrollAnchorRef.current = undefined;
+    resizeScrollAnchorRef.current = undefined;
+    pendingAnchorRetryRef.current = undefined;
+    anchorNavigationTokenRef.current += 1;
+    scrollActionTokenRef.current += 1;
+    if (scrollSettleTimerRef.current !== undefined) {
+      window.clearTimeout(scrollSettleTimerRef.current);
+      scrollSettleTimerRef.current = undefined;
     }
+    preloadedImageUrlsRef.current.clear();
+    for (const image of preloadedImagesRef.current.values()) {
+      image.src = "";
+    }
+    preloadedImagesRef.current.clear();
+    animatedChaptersRef.current.clear();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // empty — all deps are refs (stable) or stable setters
 
-    void load();
-
-    return () => {
-      cancelled = true;
-      ownedUrls.forEach((url) => URL.revokeObjectURL(url));
-    };
-  }, [book.fileUrl, book.title, onToc, onChapters, parser, t]);
+  const { document, error } = useEpubChapter(book, parser, t, handleDocumentLoaded, () => {});
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -636,43 +596,6 @@ export function TextPane({
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [noteOverlay]);
 
-  // 选词菜单：监听 selectionchange（rAF 节流避免高频重渲染）
-  useEffect(() => {
-    let rafId: number | undefined;
-    const handleSelectionChange = () => {
-      if (rafId !== undefined) return;
-      rafId = window.requestAnimationFrame(() => {
-        rafId = undefined;
-        const sel = window.getSelection();
-        if (!sel || sel.isCollapsed || !sel.toString().trim()) {
-          setSelectionMenu(undefined);
-          setSelectionText("");
-          return;
-        }
-        const range = sel.getRangeAt(0);
-        const chapterEl = range.commonAncestorContainer instanceof HTMLElement
-          ? range.commonAncestorContainer.closest<HTMLElement>(".text-chapter")
-          : range.commonAncestorContainer.parentElement?.closest<HTMLElement>(".text-chapter");
-        if (!chapterEl) {
-          setSelectionMenu(undefined);
-          return;
-        }
-        const rect = range.getBoundingClientRect();
-        setSelectionText(sel.toString());
-        setSelectionMenu({
-          x: Math.max(8, Math.min(rect.left + rect.width / 2 - 80, window.innerWidth - 200)),
-          y: Math.max(8, rect.top - 56),
-          chapterId: chapterEl.id,
-        });
-      });
-    };
-    window.document.addEventListener("selectionchange", handleSelectionChange);
-    return () => {
-      window.document.removeEventListener("selectionchange", handleSelectionChange);
-      if (rafId !== undefined) window.cancelAnimationFrame(rafId);
-    };
-  }, []);
-
   useEffect(() => {
     if (!noteOverlay) {
       return;
@@ -848,6 +771,20 @@ export function TextPane({
     [updateProgress]
   );
 
+  const suspendProgress = useCallback((until: number) => {
+    suspendedProgressUntilRef.current = until;
+  }, []);
+
+  const { curlDir, setCurlDir, nudgePage } = usePageTurn(
+    scrollerRef,
+    preferences,
+    effectiveReaderMode,
+    scheduleScrollSettle,
+    suspendProgress,
+    chapters,
+    activeChapterIndex
+  );
+
   const scrollToTarget = useCallback(
     (targetId: string, navigationToken = ++anchorNavigationTokenRef.current) => {
       const scroller = scrollerRef.current;
@@ -944,65 +881,6 @@ export function TextPane({
       preferences.reduceMotion,
       scheduleScrollSettle
     ]
-  );
-
-  const nudgePage = useCallback(
-    (direction: 1 | -1) => {
-      const scroller = scrollerRef.current;
-
-      if (!scroller) {
-        return;
-      }
-
-      const now = performance.now();
-      const elapsed = now - lastPageTurnRef.current;
-      lastPageTurnRef.current = now;
-      const chapterCharCount = chapters[activeChapterIndex]?.plainText?.length ?? 0;
-      recordPageTurn(chapterCharCount, elapsed);
-
-      const isReduced = preferences.motion === "reduced" || preferences.reduceMotion;
-      const pageTurnStyle = preferences.pageTurnStyle ?? "slide";
-
-      if (effectiveReaderMode === "paged" && !isReduced && pageTurnStyle === "curl") {
-        // Show curl overlay, then scroll
-        setCurlDir(direction);
-        const target = scroller.scrollLeft + direction * Math.max(320, scroller.clientWidth * 0.86);
-        setTimeout(() => {
-          scroller.scrollLeft = target;
-        }, 180); // scroll halfway through curl for realism
-        suspendedProgressUntilRef.current = performance.now() + 650;
-        scheduleScrollSettle(650);
-        return;
-      }
-
-      if (effectiveReaderMode === "paged" && !isReduced && pageTurnStyle === "fade") {
-        // fade：短暂淡出，滚动后淡入
-        scroller.classList.add("page-turn-fade-out");
-        const target = scroller.scrollLeft + direction * Math.max(320, scroller.clientWidth * 0.86);
-        setTimeout(() => {
-          scroller.scrollLeft = target;
-          scroller.classList.remove("page-turn-fade-out");
-          scroller.classList.add("page-turn-fade-in");
-          setTimeout(() => scroller.classList.remove("page-turn-fade-in"), 200);
-        }, 130);
-        suspendedProgressUntilRef.current = performance.now() + 400;
-        scheduleScrollSettle(400);
-        return;
-      }
-
-      const behavior: ScrollBehavior =
-        isReduced || pageTurnStyle === "none" ? "auto" : "smooth";
-      suspendedProgressUntilRef.current = performance.now() + (behavior === "smooth" ? 480 : 120);
-
-      if (effectiveReaderMode === "paged") {
-        scroller.scrollBy({ left: direction * Math.max(320, scroller.clientWidth * 0.86), behavior });
-      } else {
-        scroller.scrollBy({ top: direction * Math.max(320, scroller.clientHeight * 0.82), behavior });
-      }
-
-      scheduleScrollSettle(behavior === "smooth" ? 420 : 0);
-    },
-    [preferences.motion, preferences.pageTurnStyle, effectiveReaderMode, preferences.reduceMotion, scheduleScrollSettle, chapters, activeChapterIndex]
   );
 
   useEffect(() => {

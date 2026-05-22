@@ -4654,3 +4654,67 @@ input[type="range"]:disabled {
 .reduce-motion .open-book-transition {
   display: none;
 }
+
+/* ── Dictionary Popover ─────────────────────────────────── */
+.dict-popover {
+  position: fixed;
+  z-index: 30;
+  min-width: 200px;
+  max-width: 320px;
+  padding: 12px 14px 10px;
+  border-radius: 14px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--glass-line);
+  box-shadow: 0 12px 36px rgb(0 0 0 / 16%);
+  animation: selection-menu-appear 160ms var(--ease-soft) both;
+}
+
+.dict-popover-word {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--reader-ink);
+  margin-bottom: 6px;
+}
+
+.dict-pinyin {
+  font-size: 11px;
+  color: var(--reader-accent);
+  margin-right: 8px;
+  font-style: italic;
+}
+
+.dict-defs {
+  font-size: 12px;
+  color: var(--reader-muted);
+}
+
+.dict-entry {
+  margin-bottom: 4px;
+}
+
+.dict-popover-empty,
+.dict-popover-loading {
+  font-size: 12px;
+  color: var(--reader-muted);
+  margin-bottom: 6px;
+}
+
+.dict-online-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 4px 8px;
+  border: 1px solid var(--glass-line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--reader-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.dict-online-btn:hover {
+  color: var(--reader-accent);
+  border-color: var(--reader-accent);
+}

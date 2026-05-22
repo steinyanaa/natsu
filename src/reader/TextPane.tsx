@@ -9,6 +9,7 @@ import { resolveExistingTargetId, targetIdFromHashHref } from "./navigation";
 import { PageCurl } from "./PageCurl";
 import { ErrorState, LoadingState } from "./ReaderState";
 import { SelectionMenu } from "./SelectionMenu";
+import { DictionaryPopover } from "./DictionaryPopover";
 import { applyHighlightToDOM, selectionToHighlightData } from "./highlightUtils";
 import type { AnchorJumpRequest, JumpRequest } from "./types";
 import { editableEventTarget, nowProgress, readerFontStack } from "./utils";
@@ -178,6 +179,8 @@ export function TextPane({
   const [noteTargetChapterIndex, setNoteTargetChapterIndex] = useState<number | undefined>();
   const [pinnedNotes, setPinnedNotes] = useState<PinnedNote[]>([]);
   const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number; chapterId: string } | undefined>();
+  const [selectionText, setSelectionText] = useState("");
+  const [dictWord, setDictWord] = useState<{ word: string; x: number; y: number } | undefined>();
   const [curlDir, setCurlDir] = useState<1 | -1 | null>(null);
   const fixedFrameClickHandlerRef = useRef<
     ((nativeEvent: MouseEvent, frame: HTMLIFrameElement, frameDocument: Document) => void) | undefined
@@ -641,6 +644,7 @@ export function TextPane({
         const sel = window.getSelection();
         if (!sel || sel.isCollapsed || !sel.toString().trim()) {
           setSelectionMenu(undefined);
+          setSelectionText("");
           return;
         }
         const range = sel.getRangeAt(0);
@@ -652,6 +656,7 @@ export function TextPane({
           return;
         }
         const rect = range.getBoundingClientRect();
+        setSelectionText(sel.toString());
         setSelectionMenu({
           x: Math.max(8, Math.min(rect.left + rect.width / 2 - 80, window.innerWidth - 200)),
           y: Math.max(8, rect.top - 56),
@@ -1448,9 +1453,22 @@ export function TextPane({
         <SelectionMenu
           x={selectionMenu.x}
           y={selectionMenu.y}
+          selectedText={selectionText}
           onHighlight={handleHighlight}
           onCopy={handleCopy}
           onNote={handleNoteRequest}
+          onLookup={(word) => {
+            setDictWord({ word, x: selectionMenu.x, y: selectionMenu.y - 160 });
+            setSelectionMenu(undefined);
+          }}
+        />
+      )}
+      {dictWord && (
+        <DictionaryPopover
+          word={dictWord.word}
+          x={dictWord.x}
+          y={dictWord.y}
+          onClose={() => setDictWord(undefined)}
         />
       )}
       {pinnedNotes.length ? (

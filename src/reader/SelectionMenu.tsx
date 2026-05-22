@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { Copy, MessageSquarePlus } from "lucide-react";
+import { BookOpen, Copy, MessageSquarePlus } from "lucide-react";
 
 const HIGHLIGHT_COLORS = [
   { id: "yellow" as const, bg: "#FFEB3B", label: "黄色" },
@@ -14,12 +14,16 @@ export function SelectionMenu({
   onHighlight,
   onCopy,
   onNote,
+  onLookup,
+  selectedText,
 }: {
   x: number;
   y: number;
   onHighlight: (color: "yellow" | "green" | "blue" | "pink") => void;
   onCopy: () => void;
   onNote: () => void;
+  onLookup?: (word: string) => void;
+  selectedText?: string;
 }) {
   return (
     <div
@@ -46,6 +50,14 @@ export function SelectionMenu({
       <button className="selection-menu-btn" onClick={onNote} title="批注">
         <MessageSquarePlus size={14} />
       </button>
+      {onLookup && selectedText && (
+        <>
+          <div className="selection-menu-divider" />
+          <button className="selection-menu-btn" onClick={() => onLookup(selectedText)} title="查词">
+            <BookOpen size={14} />
+          </button>
+        </>
+      )}
     </div>
   );
 }

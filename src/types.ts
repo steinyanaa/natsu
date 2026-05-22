@@ -98,6 +98,7 @@ export interface ReaderPreferences {
   immersive: boolean;
   preferencesVersion: number;
   dailyGoalMinutes: number;
+  dictionaryEnabled: boolean;
 }
 
 export interface OnlineSource {

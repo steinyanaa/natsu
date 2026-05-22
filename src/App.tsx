@@ -78,6 +78,7 @@ const fallbackPreferences: ReaderPreferences = {
   immersive: false,
   preferencesVersion: 5,
   dailyGoalMinutes: 30,
+  dictionaryEnabled: true,
   onlineSources: [
     {
       id: "gutenberg",

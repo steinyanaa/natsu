@@ -2224,6 +2224,7 @@ function registerIpc(): void {
   });
 
   ipcMain.handle("system:saveFile", async (_event, content: string, suggestedName: string) => {
+    if (typeof content !== "string" || typeof suggestedName !== "string") return false;
     const { canceled, filePath } = await dialog.showSaveDialog(mainWindow!, {
       defaultPath: suggestedName,
       filters: suggestedName.endsWith(".tsv")
@@ -2231,8 +2232,12 @@ function registerIpc(): void {
         : [{ name: "Markdown", extensions: ["md"] }]
     });
     if (canceled || !filePath) return false;
-    await fs.writeFile(filePath, content, "utf-8");
-    return true;
+    try {
+      await fs.writeFile(filePath, content, "utf-8");
+      return true;
+    } catch {
+      return false;
+    }
   });
 
   ipcMain.handle("library:openBook", (_event, id: string) => {
@@ -2575,6 +2580,7 @@ function registerIpc(): void {
       for (const session of book.readingSessions ?? []) {
         const day = session.start.slice(0, 10);
         const mins = (new Date(session.end).getTime() - new Date(session.start).getTime()) / 60000;
+        if (isNaN(mins) || mins < 0) continue;
         dayMap.set(day, (dayMap.get(day) ?? 0) + mins);
       }
     }

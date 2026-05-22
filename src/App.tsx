@@ -38,7 +38,9 @@ import { SegmentedControl } from "./components/SegmentedControl";
 import { ViewMorph } from "./components/ViewMorph";
 import { LoadingStrip } from "./reader/ReaderState";
 import { applyReaderTheme } from "./themeEngine";
-import type { BookFormat, BookRecord, Collection, GoalStats, OnlineBookResult, OnlineSource, ReaderPreferences, ReaderProgress } from "./types";
+import type { BookFormat, BookRecord, Collection, DailyReadingStat, GoalStats, OnlineBookResult, OnlineSource, ReaderPreferences, ReaderProgress } from "./types";
+import { HeatmapCalendar } from "./stats/HeatmapCalendar";
+import { ReadingCurve } from "./stats/ReadingCurve";
 
 const fallbackPreferences: ReaderPreferences = {
   theme: "ramune",
@@ -1291,9 +1293,11 @@ function StatsView({
   preferences: ReaderPreferences;
 }) {
   const [goalStats, setGoalStats] = useState<GoalStats | null>(null);
+  const [dailyStats, setDailyStats] = useState<DailyReadingStat[]>([]);
 
   useEffect(() => {
     void window.readerApi.getGoalStats().then(setGoalStats);
+    void window.readerApi.getSessionsByDate().then(setDailyStats);
   }, [books]);
 
   const stats = useMemo(() => {
@@ -1389,6 +1393,16 @@ function StatsView({
       ) : (
         <p className="stats-empty">{t("noStats")}</p>
       )}
+      <div className="stats-heatmap">
+        <p className="stats-section-label">{t("heatmapTitle")}</p>
+        <div style={{ overflowX: "auto" }}>
+          <HeatmapCalendar data={dailyStats} />
+        </div>
+      </div>
+      <div className="stats-curve">
+        <p className="stats-section-label">{t("readingTrend")}</p>
+        <ReadingCurve data={dailyStats} />
+      </div>
     </section>
   );
 }

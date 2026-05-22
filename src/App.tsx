@@ -1066,7 +1066,7 @@ function BookShelf({
   onEdit: (book: BookRecord) => void;
   onSelect: (id: string, ctrl: boolean) => void;
   onToggleCollection: (collectionId: string, bookId: string, add: boolean) => void;
-  onRefetchCover: (book: BookRecord) => void;
+  onRefetchCover: (book: BookRecord) => Promise<void>;
   fetchingCoverIds: Set<string>;
 }) {
   const [tagMenuBook, setTagMenuBook] = useState<BookRecord | null>(null);

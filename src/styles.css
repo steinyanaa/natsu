@@ -2159,6 +2159,12 @@ input[type="range"]:disabled {
   transform: none;
 }
 
+.icon-button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .bookmark-row {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto auto;

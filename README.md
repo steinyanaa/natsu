@@ -21,13 +21,16 @@
 
 ## Latest release / 最新版本
 
-**v1.1.0** adds library management, reading goals, a command palette, and more:
+**v1.2.0** adds new visual features, a built-in dictionary, chapter scrubber, and reading wellness tools:
 
-- **Collections / 收藏夹** — create named shelves and filter books instantly from the side rail.
-- **Batch delete / 批量删除** — `Ctrl+Click` to multi-select books, then delete them all at once.
-- **Reading goal & streak / 阅读目标** — daily target with a circular progress ring and consecutive-day streak counter.
-- **Command palette / 命令面板** — press `Ctrl+K` to fuzzy-search and open any book without leaving the reader.
-- **Chapter position / 章节进度** — the reader toolbar now shows `current / total` chapter count.
+- **Anthropic Sans font / 字体** — new reading font (Inter Variable placeholder, OFL licensed), selectable in Settings → 字体.
+- **3D cover hover / 3D 书封** — book covers animate to a 3D perspective on hover; respects reduced-motion.
+- **Open-book transition / 打开书转场** — FLIP expand animation when opening a book from the shelf.
+- **Page curl (卷曲) / 翻页卷曲** — new Apple Books-style card-fold page-turn animation for paged EPUB mode.
+- **Drop-cap chapter openings / 首字下沉** — 3-line drop cap and decorated chapter title for EPUB chapters.
+- **Chapter scrubber / 章节 scrubber** — drag-to-seek progress bar at the bottom of the reader with chapter-dot markers.
+- **Built-in dictionary / 内置词典** — select any text and tap 🔍 to look up; CC-CEDICT (200 entries) bundled offline.
+- **Reading wellness / 阅读节律** — Pomodoro reminders, evening warm overlay, and a daily summary card.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
@@ -70,10 +73,28 @@ Go to [Releases](https://github.com/steinyanaa/natsu/releases) and download the 
 - Keyboard shortcuts for page turning, search, brightness, immersive mode, and help (`?`).
 - Full-book search, bookmarks, persistent highlights, annotations, and notes panel.
 - TTS read-aloud bar with speed and voice selection.
-- Page-turn animations: slide, fade, or none; respects system reduced-motion.
+- **Page-turn animations** — slide, fade, **卷曲 (page curl)**, or none; respects system reduced-motion.
+- **Anthropic Sans font option** — Inter Variable placeholder (OFL licensed), selectable in Settings → 字体.
+- **Apple Books-style 3D cover hover** — perspective + rotateY animation on the shelf; respects reduced-motion.
+- **Open-book FLIP transition** — GPU-composited clip-path expand animation when opening a book.
+- **Drop-cap chapter openings** — 3-line first-letter drop cap with centred, decorated chapter title for EPUB.
+- **Chapter scrubber** — interactive progress bar at the bottom of the reader; chapter-dot markers, hover titles, drag-to-seek, keyboard accessible (arrow keys ±1 chapter, Home/End).
 - Reader color presets (default, paper, quiet, gray, night), brightness overlay, page margins, justified text.
 - **Command palette** (`Ctrl+K`) — fuzzy-search and open any book without leaving the reader.
 - **Chapter position indicator** — `current / total` chapter count in the toolbar.
+
+### Built-in dictionary / 内置词典
+
+- Select any text in the reader and tap the 🔍 button to look up the word.
+- Offline-first: 200-entry CC-CEDICT Chinese dictionary bundled at `public/dictionaries/`; falls back to an online search for unknown words.
+- CC-BY-SA 3.0 attribution included.
+
+### Reading wellness / 阅读节律
+
+- **Pomodoro reminder** — notifies you to take a break after your configured interval (default 25 min).
+- **Evening warm overlay** — a faint warm tint reduces blue-light exposure after 20:00; configurable in Settings.
+- **Daily summary card** — closing the reader after ≥ 5 minutes shows reading time, book progress, and streak.
+- All features toggleable in **Settings → 阅读节律**.
 
 ### Reading stats & goals / 阅读统计 & 目标
 

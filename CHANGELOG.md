@@ -1,5 +1,52 @@
 # Changelog
 
+## v1.2.0 - 2026-05-22
+
+### New features
+
+**Anthropic Sans font / Anthropic Sans 字体**
+- New reading font option: Anthropic Sans (placeholder: Inter Variable, OFL licensed).
+- Selectable in Settings → 字体. Latin/punctuation characters use the humanist sans-serif design; CJK characters continue using system fallbacks.
+
+**3D book cover / 3D 书封**
+- Book covers on the shelf now animate to a subtle 3D perspective on hover (perspective + rotateY + ground shadow).
+- Respects the "减少动效" setting — reduced-motion users get a simple lift+shadow instead.
+
+**Drop-cap chapter opening / 首字下沉**
+- EPUB chapters now display an Apple Books-style drop cap (3-line first letter) and a centred chapter title with hairline decorators.
+- Toggle off in Settings → 首字下沉.
+
+**Chapter scrubber / 章节 scrubber**
+- A new interactive progress scrubber appears at the bottom of the reader window.
+- Small dots mark each chapter; hover shows the chapter title; drag to scrub and jump.
+- Keyboard accessible (arrow keys ±1 chapter, Home/End).
+
+**Page curl animation / 翻页卷曲**
+- New "卷曲" page-turn style for text/EPUB paged mode, simulating an Apple Books card-fold.
+- Selectable in Settings alongside slide, fade, none. Respects reduced-motion.
+
+**Open-book transition / 打开书转场**
+- Clicking a book cover now plays a FLIP expand animation from the shelf position to full screen.
+- GPU-composited (clip-path) so it's smooth even on integrated graphics. Respects reduced-motion.
+
+**Built-in dictionary / 内置词典**
+- Select any text in the reader → tap the new 🔍 button to look up the word.
+- Offline-first: ships a 200-entry CC-CEDICT Chinese dictionary; falls back to an online search for unknown words.
+- CC-BY-SA 3.0 attribution included.
+
+**Reading wellness / 阅读节律**
+- **Pomodoro reminder**: notifies you to take a break after your configured interval (default 25 min).
+- **Evening warm overlay**: after 20:00 a faint warm tint reduces blue-light exposure. Configurable in Settings.
+- **Daily summary card**: closing the reader after ≥ 5 minutes shows your reading time, book progress, and streak.
+- All toggleable in Settings → 阅读节律.
+
+### Improvements
+
+- Page-turn style now has a dedicated settings control (slide / fade / 卷曲 / 无).
+- Dictionary data: CC-CEDICT mini subset (200 entries) bundled at `public/dictionaries/`.
+
+---
+
 ## v1.1.0 - 2026-05-20
 
 ### New features

@@ -4611,3 +4611,46 @@ input[type="range"]:disabled {
   40%  { opacity: 1; transform: translateX(10%);  }
   100% { opacity: 0; transform: translateX(100%); }
 }
+
+/* ── Open Book Transition ───────────────────────────────── */
+.open-book-transition {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  background: var(--reader-bg, #fff);
+  border-radius: 0;
+  /* Final state: full screen */
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  animation: open-book-expand 350ms cubic-bezier(.4, 0, .2, 1) forwards,
+             open-book-fade   100ms 350ms ease-out forwards;
+  transform-origin: var(--start-left) var(--start-top);
+}
+
+@keyframes open-book-expand {
+  from {
+    clip-path: inset(
+      var(--start-top)
+      calc(100vw - var(--start-left) - var(--start-width))
+      calc(100vh - var(--start-top) - var(--start-height))
+      var(--start-left)
+      round 12px
+    );
+    opacity: 0.9;
+  }
+  to {
+    clip-path: inset(0px 0px 0px 0px round 0px);
+    opacity: 1;
+  }
+}
+
+@keyframes open-book-fade {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.reduce-motion .open-book-transition {
+  display: none;
+}

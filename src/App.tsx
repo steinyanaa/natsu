@@ -31,6 +31,7 @@ import { createTranslator } from "./i18n";
 import { extractEpubCover } from "./readers/epub";
 import { readerFontStack } from "./reader/utils";
 import { preloadReaderPaneForFormat } from "./reader/preloadPanes";
+import { OpenBookTransition } from "./reader/OpenBookTransition";
 import { SegmentedControl } from "./components/SegmentedControl";
 import { ViewMorph } from "./components/ViewMorph";
 import { LoadingStrip } from "./reader/ReaderState";
@@ -177,6 +178,7 @@ export function App() {
   const [books, setBooks] = useState<BookRecord[]>([]);
   const [preferences, setPreferences] = useState<ReaderPreferences>(fallbackPreferences);
   const [activeBook, setActiveBook] = useState<BookRecord | undefined>();
+  const [openingCoverRect, setOpeningCoverRect] = useState<DOMRect | undefined>();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ShelfFilter>("all");
   const [view, setView] = useState<ShelfView>("grid");
@@ -472,14 +474,17 @@ export function App() {
     }
   }, [onlineQuery, preferences, query]);
 
-  const openBook = useCallback(async (book: BookRecord) => {
+  const openBook = useCallback(async (book: BookRecord, coverRect?: DOMRect) => {
     preloadReaderPaneForFormat(book.format);
+    if (coverRect && !preferences.reduceMotion && preferences.motion !== "reduced") {
+      setOpeningCoverRect(coverRect);
+    }
     const opened = await window.readerApi.openBook(book.id);
     if (opened) {
       setActiveBook(opened);
       setBooks((current) => current.map((item) => (item.id === opened.id ? opened : item)));
     }
-  }, []);
+  }, [preferences.reduceMotion, preferences.motion]);
 
   // 弹确认框
   const removeBook = useCallback((book: BookRecord) => {
@@ -629,22 +634,30 @@ export function App() {
 
   if (activeBook) {
     return (
-      <Suspense fallback={<LoadingStrip label={t("loading")} />}>
-        <ReaderScreen
-          book={activeBook}
-          preferences={preferences}
-          t={t}
-          onBack={() => {
-            setActiveBook(undefined);
-            void refreshBooks();
-          }}
-          onBookUpdated={(book) => {
-            setActiveBook(book);
-            setBooks((current) => current.map((item) => (item.id === book.id ? book : item)));
-          }}
-          onPreferencesChange={savePreferences}
-        />
-      </Suspense>
+      <>
+        <Suspense fallback={<LoadingStrip label={t("loading")} />}>
+          <ReaderScreen
+            book={activeBook}
+            preferences={preferences}
+            t={t}
+            onBack={() => {
+              setActiveBook(undefined);
+              void refreshBooks();
+            }}
+            onBookUpdated={(book) => {
+              setActiveBook(book);
+              setBooks((current) => current.map((item) => (item.id === book.id ? book : item)));
+            }}
+            onPreferencesChange={savePreferences}
+          />
+        </Suspense>
+        {openingCoverRect && (
+          <OpenBookTransition
+            rect={openingCoverRect}
+            onDone={() => setOpeningCoverRect(undefined)}
+          />
+        )}
+      </>
     );
   }
 
@@ -980,7 +993,7 @@ function BookShelf({
   t: ReturnType<typeof createTranslator>;
   selectedIds: Set<string>;
   collections: Collection[];
-  onOpen: (book: BookRecord) => void;
+  onOpen: (book: BookRecord, rect?: DOMRect) => void;
   onRemove: (book: BookRecord) => void;
   onEdit: (book: BookRecord) => void;
   onSelect: (id: string, ctrl: boolean) => void;
@@ -999,7 +1012,7 @@ function BookShelf({
             style={{ "--stagger": index } as React.CSSProperties}
             onClick={(e) => { if (e.ctrlKey || e.metaKey) { onSelect(book.id, true); e.preventDefault(); } }}
           >
-            <button className="cover-button" onClick={(e) => { if (!(e.ctrlKey || e.metaKey)) onOpen(book); }} title={book.title}>
+            <button className="cover-button" onClick={(e) => { if (!(e.ctrlKey || e.metaKey)) { const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect(); onOpen(book, rect); } }} title={book.title}>
               <BookCover book={book} coverUrl={coverUrls.get(book.id)} />
               {isSelected && <div className="tile-selected-badge" aria-label="已选中" />}
             </button>

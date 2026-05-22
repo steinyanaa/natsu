@@ -1345,7 +1345,7 @@ export function TextPane({
                 key={chapter.id}
                 id={chapter.id}
                 data-rendered={shouldRenderChapter ? "true" : "false"}
-                className={`text-chapter ${isEpub && !shouldRenderChapter ? "lazy-chapter-placeholder" : ""} ${isEpub && chapter.layout === "fixed" ? "epub-fixed-chapter" : ""} ${isEpub && chapter.layout === "vertical" ? "epub-vertical-chapter" : ""}`}
+                className={`text-chapter${preferences.dropCap && isEpub ? " drop-cap-active" : ""} ${isEpub && !shouldRenderChapter ? "lazy-chapter-placeholder" : ""} ${isEpub && chapter.layout === "fixed" ? "epub-fixed-chapter" : ""} ${isEpub && chapter.layout === "vertical" ? "epub-vertical-chapter" : ""}`}
                 style={
                   isEpub && chapter.viewport
                     ? ({

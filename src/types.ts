@@ -89,6 +89,7 @@ export interface ReaderPreferences {
   pageMargin: "narrow" | "normal" | "wide";
   justify: boolean;
   hyphenate: boolean;
+  dropCap: boolean;
   comicFit: ComicFitMode;
   comicLayout: ComicLayout;
   readingDirection: ReadingDirection;

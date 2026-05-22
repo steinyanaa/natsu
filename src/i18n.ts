@@ -128,7 +128,8 @@ export type TranslationKey =
   | "streakDays"
   | "todayProgress"
   | "goalReached"
-  | "chapterOf";
+  | "chapterOf"
+  | "dropCap";
 
 const zh: Record<TranslationKey, string> = {
   appName: "Natsu",
@@ -258,7 +259,8 @@ const zh: Record<TranslationKey, string> = {
   streakDays: "天",
   todayProgress: "今日进度",
   goalReached: "达成目标 🎉",
-  chapterOf: "章节"
+  chapterOf: "章节",
+  dropCap: "首字下沉"
 };
 
 const ja: Record<TranslationKey, string> = {
@@ -389,7 +391,8 @@ const ja: Record<TranslationKey, string> = {
   streakDays: "日",
   todayProgress: "今日の進捗",
   goalReached: "目標達成 🎉",
-  chapterOf: "章"
+  chapterOf: "章",
+  dropCap: "ドロップキャップ"
 };
 
 const en: Record<TranslationKey, string> = {
@@ -520,7 +523,8 @@ const en: Record<TranslationKey, string> = {
   streakDays: "days",
   todayProgress: "Today",
   goalReached: "Goal reached 🎉",
-  chapterOf: "Chapter"
+  chapterOf: "Chapter",
+  dropCap: "Drop Cap"
 };
 
 const dictionaries = {

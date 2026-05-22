@@ -68,6 +68,7 @@ const fallbackPreferences: ReaderPreferences = {
   pageMargin: "normal",
   justify: false,
   hyphenate: false,
+  dropCap: true,
   comicFit: "width",
   comicLayout: "single",
   readingDirection: "ltr",

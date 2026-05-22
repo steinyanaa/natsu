@@ -485,6 +485,11 @@ export function SettingsPanel({
           checked={preferences.hyphenate}
           onChange={(hyphenate) => onChange({ hyphenate })}
         />
+        <ToggleSetting
+          label="首字下沉"
+          checked={preferences.dropCap ?? true}
+          onChange={(dropCap) => onChange({ dropCap })}
+        />
       </SettingGroup>
 
       <RangeSetting

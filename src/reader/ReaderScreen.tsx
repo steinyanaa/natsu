@@ -17,6 +17,8 @@ import { LoadingState } from "./ReaderState";
 import type { BookRecord, Bookmark as BookmarkRecord, GoalStats, Highlight, ParsedTextDocument, ReaderPreferences, ReaderProgress, TocItem } from "../types";
 import { useReadingSession } from "../wellness/useReadingSession";
 import { DailySummaryCard } from "../wellness/DailySummaryCard";
+import { ExportSheet } from "../export/ExportSheet";
+import { exportMarkdown, exportAnkiTsv } from "../export/annotationExporter";
 
 const CHARS_PER_MINUTE = 300;
 
@@ -73,6 +75,7 @@ export function ReaderScreen({
   const [keymapOpen, setKeymapOpen] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [goalStats, setGoalStats] = useState<GoalStats | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
   const shellRef = useRef<HTMLElement | null>(null);
   const sessionStartRef = useRef(Date.now());
   const saveTimer = useRef<number | undefined>(undefined);
@@ -613,6 +616,9 @@ export function ReaderScreen({
           ) : panelTab === "notes" ? (
             <div className="toc-section">
               <h2>笔记</h2>
+              <button className="soft-button pressable" style={{ alignSelf: "flex-start", marginBottom: 8 }} onClick={() => setExportOpen(true)}>
+                导出笔记
+              </button>
               <NotesPanel
                 highlights={book.highlights ?? []}
                 onRemove={removeHighlights}
@@ -700,6 +706,23 @@ export function ReaderScreen({
           sessionMinutes={sessionMinutes}
           goalStats={goalStats}
           onClose={() => { setShowSummary(false); onBack(); }}
+        />
+      )}
+
+      {exportOpen && (
+        <ExportSheet
+          bookTitle={book.title}
+          onExport={async (format) => {
+            const content = format === "markdown"
+              ? exportMarkdown(book)
+              : exportAnkiTsv(book);
+            const fileName = format === "markdown"
+              ? `${book.title}-notes.md`
+              : `${book.title}-anki.tsv`;
+            await window.readerApi.saveFile(content, fileName);
+            setExportOpen(false);
+          }}
+          onClose={() => setExportOpen(false)}
         />
       )}
     </main>

@@ -948,17 +948,17 @@ export function TextPane({
 
   const nudgePage = useCallback(
     (direction: 1 | -1) => {
-      const now = performance.now();
-      const elapsed = now - lastPageTurnRef.current;
-      lastPageTurnRef.current = now;
-      const chapterCharCount = chapters[activeChapterIndex]?.plainText?.length ?? 0;
-      recordPageTurn(chapterCharCount, elapsed);
-
       const scroller = scrollerRef.current;
 
       if (!scroller) {
         return;
       }
+
+      const now = performance.now();
+      const elapsed = now - lastPageTurnRef.current;
+      lastPageTurnRef.current = now;
+      const chapterCharCount = chapters[activeChapterIndex]?.plainText?.length ?? 0;
+      recordPageTurn(chapterCharCount, elapsed);
 
       const isReduced = preferences.motion === "reduced" || preferences.reduceMotion;
       const pageTurnStyle = preferences.pageTurnStyle ?? "slide";

@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.3.0 - 2026-05-22
+
+### New features
+
+**Preset Chinese book sources / 预设中文书源**
+- New "预设书源" chip row in Settings → Online Sources.
+- One-click to add: 轻小说文库 (Wenku8), Standard Ebooks, or zlibrary mirror (user-supplied URL).
+- Active presets show a ✓ indicator; can still be deleted from the source list normally.
+
+**RSS / Atom feed sources / RSS 书源**
+- Online source type now supports RSS · Atom feeds (e.g. sites that publish epub links via feed).
+- New type selector in the source editor. Handles both RSS 2.0 (`<item>`) and Atom (`<entry>`).
+
+**Annotation export / 高亮笔记导出**
+- Export all highlights and notes for any book via the reader's 笔记 panel.
+- Two formats: **Markdown** (for notes apps) and **Anki TSV** (for flashcard import).
+- Filename characters are automatically sanitised; triggers the native OS save dialog.
+
+**Cover auto-fetch / 封面自动抓取**
+- Books that lack an embedded cover image now automatically attempt a Google Books lookup by title + author after import.
+- Manual "重新抓取封面" button on every shelf tile (shows spinner while fetching).
+
+**Reading statistics / 阅读统计强化**
+- **Heatmap calendar**: GitHub-style 52-week grid in the Stats panel, colour-coded by daily minutes.
+- **30-day trend curve**: SVG polyline showing the last 30 days of reading activity.
+- **Reading speed**: live chars-per-minute stat card updated every 5 seconds while viewing Stats.
+
+### Improvements
+
+- **Architecture cleanup**: `App.tsx` reduced from 1806 → 1075 lines; `TextPane.tsx` reduced from ~1521 → ~1406 lines via extracted hooks (`useLibrary`, `useReaderNavigation`, `useBookShelf`, `usePageTurn`, `useDictionary`, `useEpubChapter`). Large sub-components moved to `src/bookshelf/`, `src/stats/`, and `src/online/`.
+- `icon-button:disabled` now correctly shows `cursor: not-allowed`.
+- `saveFile` IPC handler validates input types and handles OS dialog cancellation gracefully.
+
+---
+
 ## v1.2.0 - 2026-05-22
 
 ### New features

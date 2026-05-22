@@ -21,16 +21,16 @@
 
 ## Latest release / 最新版本
 
-**v1.2.0** adds new visual features, a built-in dictionary, chapter scrubber, and reading wellness tools:
+**v1.3.0** adds online source presets, annotation export, cover auto-fetch, reading statistics, and a major architecture cleanup:
 
-- **Anthropic Sans font / 字体** — new reading font (Inter Variable placeholder, OFL licensed), selectable in Settings → 字体.
-- **3D cover hover / 3D 书封** — book covers animate to a 3D perspective on hover; respects reduced-motion.
-- **Open-book transition / 打开书转场** — FLIP expand animation when opening a book from the shelf.
-- **Page curl (卷曲) / 翻页卷曲** — new Apple Books-style card-fold page-turn animation for paged EPUB mode.
-- **Drop-cap chapter openings / 首字下沉** — 3-line drop cap and decorated chapter title for EPUB chapters.
-- **Chapter scrubber / 章节 scrubber** — drag-to-seek progress bar at the bottom of the reader with chapter-dot markers.
-- **Built-in dictionary / 内置词典** — select any text and tap 🔍 to look up; CC-CEDICT (200 entries) bundled offline.
-- **Reading wellness / 阅读节律** — Pomodoro reminders, evening warm overlay, and a daily summary card.
+- **Preset book sources / 预设书源** — one-click add Wenku8, Standard Ebooks, or a custom zlibrary mirror.
+- **RSS / Atom feed sources** — add any RSS feed as an online book source.
+- **Annotation export / 笔记导出** — export highlights and notes as Markdown or Anki TSV from the reader's 笔记 panel.
+- **Cover auto-fetch / 封面自动抓取** — automatically fetches covers from Google Books; manual refetch button on each shelf tile.
+- **Heatmap calendar / 热力图** — GitHub-style 52-week reading heatmap in the Stats panel.
+- **30-day trend curve / 趋势曲线** — SVG polyline showing recent reading activity.
+- **Reading speed / 阅读速度** — live chars-per-minute stat updated in the Stats panel.
+- **Architecture cleanup** — App.tsx reduced from 1806 → 1075 lines; TextPane.tsx broken into focused hooks.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full history.
 

@@ -373,6 +373,14 @@ export function SettingsPanel({
         />
       </SettingGroup>
 
+      <SettingGroup label="翻页动效">
+        <SegmentedControl
+          value={preferences.pageTurnStyle ?? "slide"}
+          options={[["slide", "滑动"], ["fade", "淡入"], ["curl", "卷曲"], ["none", "无"]]}
+          onChange={(v) => onChange({ pageTurnStyle: v as ReaderPreferences["pageTurnStyle"] })}
+        />
+      </SettingGroup>
+
       <TextSetting
         label="在线书源 JSON 端点"
         value=""

@@ -6,6 +6,7 @@ import { parseMobiDocument } from "../readers/mobi";
 import { parseTxtDocument } from "../readers/text";
 import type { BookRecord, Highlight, ParsedTextDocument, ReaderPreferences, ReaderProgress, TocItem } from "../types";
 import { resolveExistingTargetId, targetIdFromHashHref } from "./navigation";
+import { PageCurl } from "./PageCurl";
 import { ErrorState, LoadingState } from "./ReaderState";
 import { SelectionMenu } from "./SelectionMenu";
 import { applyHighlightToDOM, selectionToHighlightData } from "./highlightUtils";
@@ -177,6 +178,7 @@ export function TextPane({
   const [noteTargetChapterIndex, setNoteTargetChapterIndex] = useState<number | undefined>();
   const [pinnedNotes, setPinnedNotes] = useState<PinnedNote[]>([]);
   const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number; chapterId: string } | undefined>();
+  const [curlDir, setCurlDir] = useState<1 | -1 | null>(null);
   const fixedFrameClickHandlerRef = useRef<
     ((nativeEvent: MouseEvent, frame: HTMLIFrameElement, frameDocument: Document) => void) | undefined
   >(undefined);
@@ -948,6 +950,18 @@ export function TextPane({
       const isReduced = preferences.motion === "reduced" || preferences.reduceMotion;
       const pageTurnStyle = preferences.pageTurnStyle ?? "slide";
 
+      if (effectiveReaderMode === "paged" && !isReduced && pageTurnStyle === "curl") {
+        // Show curl overlay, then scroll
+        setCurlDir(direction);
+        const target = scroller.scrollLeft + direction * Math.max(320, scroller.clientWidth * 0.86);
+        setTimeout(() => {
+          scroller.scrollLeft = target;
+        }, 180); // scroll halfway through curl for realism
+        suspendedProgressUntilRef.current = performance.now() + 650;
+        scheduleScrollSettle(650);
+        return;
+      }
+
       if (effectiveReaderMode === "paged" && !isReduced && pageTurnStyle === "fade") {
         // fade：短暂淡出，滚动后淡入
         scroller.classList.add("page-turn-fade-out");
@@ -1392,6 +1406,12 @@ export function TextPane({
           return renderChapter(spreadIndices[0]);
         })}
       </article>
+      {curlDir !== null && (
+        <PageCurl
+          direction={curlDir}
+          onDone={() => setCurlDir(null)}
+        />
+      )}
       {noteOverlay ? (
         <aside
           aria-label="Footnote"

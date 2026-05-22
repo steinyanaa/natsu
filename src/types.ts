@@ -81,7 +81,7 @@ export interface ReaderPreferences {
   autoAlign: boolean;
   reduceMotion: boolean;
   onlineSources: OnlineSource[];
-  pageTurnStyle: "slide" | "fade" | "none";
+  pageTurnStyle: "slide" | "fade" | "none" | "curl";
   spread: "auto" | "single" | "double";
   tapToTurn: boolean;
   readerColorPreset: "default" | "paper" | "quiet" | "gray" | "night";

@@ -185,6 +185,13 @@ interface HtmlSourceConfig {
   timeout?: number;
 }
 
+interface ZLibStatus {
+  loggedIn: boolean;
+  email?: string;
+  remaining?: number;
+  dailyLimit?: number;
+}
+
 interface ReadingSession {
   bookId: string;
   start: string;
@@ -223,10 +230,18 @@ interface Collection {
   createdAt: string;
 }
 
+interface ZlibCache {
+  email?: string;
+  remaining?: number;
+  dailyLimit?: number;
+  cachedAt: number;
+}
+
 interface StoreShape {
   books: BookRecord[];
   preferences: ReaderPreferences;
   collections: Collection[];
+  zlibCache?: ZlibCache;
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1442,6 +1457,14 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: 
       clearTimeout(timer);
     }
   }
+}
+
+function zlibSession(): Electron.Session {
+  return session.fromPartition("persist:natsu-zlib");
+}
+
+function isZlibUrl(url: string): boolean {
+  return url.includes("z-library") || url.includes("zlibrary");
 }
 
 async function fetchRenderedHtml(url: string, config: HtmlSourceConfig): Promise<string> {
@@ -2690,6 +2713,26 @@ function registerIpc(): void {
       store.set("preferences", normalizePreferences(migratePreferences({ ...defaultPreferences(), ...userPrefs, ...parsed.preferences })));
     }
     return true;
+  });
+
+  ipcMain.handle("zlib:status", async (): Promise<ZLibStatus> => {
+    const sess = zlibSession();
+    const cookies = await sess.cookies.get({ domain: ".z-library.sk" });
+    const loggedIn = cookies.some((c) => c.name === "remix_userkey" || c.name === "remix_userid");
+    if (!loggedIn) {
+      return { loggedIn: false };
+    }
+    const cached = store.get("zlibCache");
+    const CACHE_TTL = 30 * 60 * 1000;
+    if (cached && Date.now() - cached.cachedAt < CACHE_TTL) {
+      return { loggedIn: true, email: cached.email, remaining: cached.remaining, dailyLimit: cached.dailyLimit };
+    }
+    return { loggedIn: true };
+  });
+
+  ipcMain.handle("zlib:logout", async (): Promise<void> => {
+    await zlibSession().clearStorageData();
+    store.delete("zlibCache" as never);
   });
 }
 

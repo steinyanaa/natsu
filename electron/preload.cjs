@@ -59,4 +59,8 @@ contextBridge.exposeInMainWorld("readerApi", {
   saveFile: (content, suggestedName) => ipcRenderer.invoke("system:saveFile", content, suggestedName),
   fetchCoverForBook: (bookId) => ipcRenderer.invoke("cover:fetchForBook", bookId),
   getSessionsByDate: () => ipcRenderer.invoke("library:getSessionsByDate"),
+  zlibStatus: () => ipcRenderer.invoke("zlib:status"),
+  zlibLogin: () => ipcRenderer.invoke("zlib:login"),
+  zlibLogout: () => ipcRenderer.invoke("zlib:logout"),
+  zlibFetchAccount: () => ipcRenderer.invoke("zlib:fetch-account"),
 });

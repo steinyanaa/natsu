@@ -4999,3 +4999,128 @@ input[type="range"]:disabled {
   animation: spin 0.8s linear infinite;
   display: inline-block;
 }
+
+/* ── Z-Library management panel ── */
+.zlib-manager-card {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 72%, transparent);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, color-mix(in oklab, var(--reader-accent) 8%, transparent), transparent 55%),
+    color-mix(in oklab, var(--md-sys-color-surface) 58%, transparent);
+  margin-top: 6px;
+}
+
+.zlib-status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.zlib-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.zlib-status-dot.on {
+  background: #4caf50;
+}
+
+.zlib-status-dot.off {
+  background: color-mix(in oklab, var(--reader-muted) 60%, transparent);
+}
+
+.zlib-status-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--reader-ink);
+}
+
+.zlib-status-email {
+  font-size: 12px;
+  color: var(--reader-muted);
+  margin-left: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zlib-quota-row {
+  display: grid;
+  gap: 5px;
+}
+
+.zlib-quota-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.zlib-quota-labels span:first-child {
+  color: var(--reader-muted);
+}
+
+.zlib-quota-labels span:last-child {
+  color: var(--reader-accent);
+  font-weight: 800;
+}
+
+.zlib-quota-bar-track {
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--md-sys-color-outline-variant) 50%, transparent);
+  overflow: hidden;
+}
+
+.zlib-quota-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--reader-accent);
+  transition: width 0.3s;
+}
+
+.zlib-divider {
+  height: 1px;
+  background: color-mix(in oklab, var(--md-sys-color-outline-variant) 50%, transparent);
+}
+
+.zlib-mirror-row {
+  display: grid;
+  gap: 5px;
+}
+
+.zlib-mirror-label {
+  font-size: 11px;
+  color: var(--reader-muted);
+}
+
+.zlib-mirror-input-row {
+  display: flex;
+  gap: 6px;
+}
+
+.zlib-refresh-btn {
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 999px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  background: transparent;
+  cursor: pointer;
+  color: var(--reader-muted);
+  font-family: inherit;
+}
+
+.zlib-refresh-btn:hover {
+  background: color-mix(in oklab, var(--md-sys-color-surface-container) 80%, transparent);
+}
+
+.zlib-login-hint {
+  font-size: 11px;
+  color: var(--reader-muted);
+  text-align: center;
+  margin: 0;
+}

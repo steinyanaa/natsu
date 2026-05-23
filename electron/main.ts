@@ -2291,8 +2291,12 @@ async function fetchZlibAccount(sess: Electron.Session): Promise<ZLibStatus> {
 
     // Check that profile page actually loaded (not redirected to /login)
     const currentUrl = win.webContents.getURL();
-    if (currentUrl.includes("/login")) {
-      return { loggedIn: true };
+    try {
+      if (new URL(currentUrl).pathname.includes("login")) {
+        return { loggedIn: true };
+      }
+    } catch {
+      // invalid URL, proceed with scraping
     }
 
     const result = await withTimeout(

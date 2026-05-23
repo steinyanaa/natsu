@@ -2259,6 +2259,80 @@ async function createWindow(): Promise<void> {
   }
 }
 
+async function fetchZlibAccount(sess: Electron.Session): Promise<ZLibStatus> {
+  const CACHE_TTL = 30 * 60 * 1000;
+  const cached = store.get("zlibCache");
+  if (cached && Date.now() - cached.cachedAt < CACHE_TTL) {
+    return { loggedIn: true, email: cached.email, remaining: cached.remaining, dailyLimit: cached.dailyLimit };
+  }
+
+  const win = new BrowserWindow({
+    show: false,
+    width: 1024,
+    height: 768,
+    webPreferences: {
+      contextIsolation: true,
+      javascript: true,
+      nodeIntegration: false,
+      sandbox: true,
+      session: sess
+    }
+  });
+
+  try {
+    await withTimeout(
+      win.loadURL("https://z-library.sk/profile", {
+        userAgent:
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      }).then(() => true).catch(() => false),
+      20000,
+      false
+    );
+
+    const result = await withTimeout(
+      win.webContents.executeJavaScript(`
+        (function() {
+          const emailSelectors = [
+            '.user-email', '[data-email]', '.profile-email',
+            '.account-email', '.user-info .email'
+          ];
+          let email = '';
+          for (const sel of emailSelectors) {
+            const el = document.querySelector(sel);
+            if (el) { email = (el.textContent || el.getAttribute('data-email') || '').trim(); break; }
+          }
+          if (!email) {
+            const all = document.querySelectorAll('*');
+            for (const el of all) {
+              const text = (el.childNodes[0]?.textContent || '').trim();
+              if (/^[\\w.+-]+@[\\w.-]+\\.[a-z]{2,}$/i.test(text)) { email = text; break; }
+            }
+          }
+          const bodyText = document.body.innerText || '';
+          const quotaMatch = bodyText.match(/(\\d+)\\s*\\/\\s*(\\d+)/);
+          const remaining = quotaMatch ? parseInt(quotaMatch[1], 10) : undefined;
+          const dailyLimit = quotaMatch ? parseInt(quotaMatch[2], 10) : undefined;
+          return { email: email || undefined, remaining, dailyLimit };
+        })()
+      `, true).catch(() => ({ email: undefined, remaining: undefined, dailyLimit: undefined })),
+      10000,
+      { email: undefined, remaining: undefined, dailyLimit: undefined }
+    ) as { email?: string; remaining?: number; dailyLimit?: number };
+
+    const cache: ZlibCache = {
+      email: result.email,
+      remaining: result.remaining,
+      dailyLimit: result.dailyLimit,
+      cachedAt: Date.now()
+    };
+    store.set("zlibCache", cache);
+
+    return { loggedIn: true, ...result };
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+  }
+}
+
 function registerIpc(): void {
   ipcMain.handle("library:listBooks", () => {
     return store.get("books", []).map(bookToClient);
@@ -2740,6 +2814,65 @@ function registerIpc(): void {
   ipcMain.handle("zlib:logout", async (): Promise<void> => {
     await zlibSession().clearStorageData();
     store.delete("zlibCache" as never);
+  });
+
+  ipcMain.handle("zlib:login", async (): Promise<ZLibStatus> => {
+    const sess = zlibSession();
+    const baseUrl = "https://z-library.sk";
+
+    return new Promise<ZLibStatus>((resolve) => {
+      const loginWin = new BrowserWindow({
+        show: true,
+        width: 800,
+        height: 620,
+        center: true,
+        title: "Z-Library 登录",
+        webPreferences: {
+          contextIsolation: true,
+          javascript: true,
+          nodeIntegration: false,
+          sandbox: true,
+          session: sess
+        }
+      });
+
+      let settled = false;
+      const finish = async (success: boolean) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        loginWin.webContents.off("did-navigate", onNavigate);
+        if (!loginWin.isDestroyed()) {
+          loginWin.off("closed", onClosed);
+          loginWin.destroy();
+        }
+        if (success) {
+          const status = await fetchZlibAccount(sess).catch(() => ({ loggedIn: true } as ZLibStatus));
+          resolve(status);
+        } else {
+          resolve({ loggedIn: false });
+        }
+      };
+
+      const onNavigate = (_event: Electron.Event, url: string) => {
+        if (!url.includes("/login")) {
+          void finish(true);
+        }
+      };
+
+      const onClosed = () => void finish(false);
+
+      const timer = setTimeout(() => void finish(false), 5 * 60 * 1000);
+
+      loginWin.webContents.on("did-navigate", onNavigate);
+      loginWin.on("closed", onClosed);
+      loginWin
+        .loadURL(`${baseUrl}/login`, {
+          userAgent:
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        })
+        .catch(() => void finish(false));
+    });
   });
 }
 

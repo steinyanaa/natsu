@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.4.0] - 2026-05-23
+
+### Added
+- **Z-Library 账户管理面板**：Settings > Online Sources 中，zlibrary 书源卡片新增"管理"按钮，点击展开专属管理面板。
+- **登录功能**：打开真实 Z-Library 登录页（可见 BrowserWindow），登录成功后自动关闭并同步账户信息。
+- **今日余量显示**：已登录用户在管理面板中可查看邮箱地址和今日下载余量进度条（免费账户 10 次/天；Premium 无限制）。
+- **镜像地址管理**：可在管理面板内直接修改并保存 Z-Library 镜像地址，无需手动编辑 JSON 配置。
+- **Session 持久化**：所有 Z-Library 请求（搜索 PoW、下载、登录）统一走 `persist:natsu-zlib` 命名分区，重启 App 后保持登录状态。
+
+---
+
 ## v1.3.3 - 2026-05-23
 
 ### Bug fixes

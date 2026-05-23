@@ -2864,8 +2864,13 @@ function registerIpc(): void {
       };
 
       const onNavigate = (_event: Electron.Event, url: string) => {
-        if (!url.includes("/login")) {
-          void finish(true);
+        try {
+          const urlObj = new URL(url);
+          if (!urlObj.pathname.includes("login")) {
+            void finish(true);
+          }
+        } catch {
+          // ignore invalid URLs during navigation
         }
       };
 

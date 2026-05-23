@@ -1,9 +1,10 @@
 import { ChevronRight, Plus, Trash2 } from "lucide-react";
-import type * as React from "react";
+import * as React from "react";
 import { useState } from "react";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { createTranslator, type TranslationKey } from "../i18n";
 import { PresetsRow } from "../onlineSources/PresetsRow";
+import { ZLibraryManager } from "../onlineSources/ZLibraryManager";
 import { readerFontStack } from "../reader/utils";
 import { themeOptions } from "../themes";
 import type {
@@ -730,6 +731,28 @@ function OnlineSourceManager({
   onTestQueryChange: (value: string) => void;
   onSourceTest: (source: OnlineSource) => void;
 }) {
+  const [managingZlibSourceId, setManagingZlibSourceId] = useState<string | null>(null);
+
+  const isZlibSource = (source: OnlineSource): boolean => {
+    if (source.kind !== "html") return false;
+    try {
+      const parsed = JSON.parse(source.value) as Record<string, unknown>;
+      const searchUrl = typeof parsed.searchUrl === "string" ? parsed.searchUrl : "";
+      return searchUrl.includes("z-library") || searchUrl.includes("zlibrary");
+    } catch {
+      return false;
+    }
+  };
+
+  const zlibBaseUrl = (source: OnlineSource): string => {
+    try {
+      const parsed = JSON.parse(source.value) as Record<string, unknown>;
+      return typeof parsed.baseUrl === "string" ? parsed.baseUrl : "https://z-library.sk";
+    } catch {
+      return "https://z-library.sk";
+    }
+  };
+
   return (
     <section className="setting-group">
       <h3>Online Sources</h3>
@@ -748,11 +771,23 @@ function OnlineSourceManager({
           )}
         </article>
         {sources.map((source) => (
-          <article key={source.id} className="online-source-card">
+          <React.Fragment key={source.id}>
+            <article className="online-source-card">
             <div className="online-source-card-head">
               <strong>{source.kind === "gutenberg" ? "Project Gutenberg" : source.name || "Custom Source"}</strong>
               <div className="online-source-card-actions">
                 <span className="online-source-kind">{source.kind}</span>
+                {isZlibSource(source) ? (
+                  <button
+                    className="soft-button pressable compact-action"
+                    type="button"
+                    onClick={() => setManagingZlibSourceId(
+                      managingZlibSourceId === source.id ? null : source.id
+                    )}
+                  >
+                    管理
+                  </button>
+                ) : null}
                 <button
                   className="soft-button pressable compact-action source-test-button"
                   type="button"
@@ -805,6 +840,24 @@ function OnlineSourceManager({
               <p className="source-card-note">Built-in public-domain test source.</p>
             )}
           </article>
+            {managingZlibSourceId === source.id && isZlibSource(source) ? (
+              <ZLibraryManager
+                sourceId={source.id}
+                baseUrl={zlibBaseUrl(source)}
+                onMirrorChange={(id, newUrl) => {
+                  try {
+                    const currentSource = sources.find((s) => s.id === id);
+                    const parsed = JSON.parse(currentSource?.value ?? "{}") as Record<string, unknown>;
+                    parsed.baseUrl = newUrl;
+                    parsed.searchUrl = `${newUrl}/s/{query}`;
+                    onSourceChange(id, { value: JSON.stringify(parsed) });
+                  } catch {
+                    /* ignore parse errors */
+                  }
+                }}
+              />
+            ) : null}
+          </React.Fragment>
         ))}
 
         <article className="online-source-card draft">

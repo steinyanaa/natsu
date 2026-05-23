@@ -21,16 +21,13 @@
 
 ## Latest release / 最新版本
 
-**v1.3.0** adds online source presets, annotation export, cover auto-fetch, reading statistics, and a major architecture cleanup:
+**v1.4.0** adds Z-Library account login and a dedicated management panel:
 
-- **Preset book sources / 预设书源** — one-click add Wenku8, Standard Ebooks, or a custom zlibrary mirror.
-- **RSS / Atom feed sources** — add any RSS feed as an online book source.
-- **Annotation export / 笔记导出** — export highlights and notes as Markdown or Anki TSV from the reader's 笔记 panel.
-- **Cover auto-fetch / 封面自动抓取** — automatically fetches covers from Google Books; manual refetch button on each shelf tile.
-- **Heatmap calendar / 热力图** — GitHub-style 52-week reading heatmap in the Stats panel.
-- **30-day trend curve / 趋势曲线** — SVG polyline showing recent reading activity.
-- **Reading speed / 阅读速度** — live chars-per-minute stat updated in the Stats panel.
-- **Architecture cleanup** — App.tsx reduced from 1806 → 1075 lines; TextPane.tsx broken into focused hooks.
+- **Z-Library 账户管理面板** — Settings > Online Sources 中，zlibrary 书源卡片新增"管理"按钮，点击展开专属管理面板。
+- **登录功能** — 打开真实 Z-Library 登录页（可见窗口），登录成功后自动关闭并同步账户信息。免费账户每日 10 次下载，Premium 无限制（游客 5 次/天）。
+- **今日余量显示** — 管理面板内显示邮箱地址与今日下载余量进度条。
+- **镜像地址管理** — 在管理面板内直接修改并保存 Z-Library 镜像地址，无需手动编辑 JSON 配置。
+- **Session 持久化** — 登录状态重启 App 后保持，PoW 挑战 cookies 与搜索/下载共享。
 
 See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
@@ -155,6 +152,17 @@ Go to [Releases](https://github.com/steinyanaa/natsu/releases) and download the 
 | Immersive mode | `I` |
 | Brightness down/up | `[` / `]` |
 | Open settings | Toolbar settings button |
+
+### Z-Library 账户登录 / Z-Library login
+
+1. 在 Settings → Online Sources 中，找到 zlibrary 书源卡片，点击**"管理"**按钮展开管理面板。
+2. 点击**"🔑 登录账户"**，将弹出 Z-Library 真实登录窗口。
+3. 在窗口内正常填写邮箱和密码并提交，登录成功后窗口自动关闭。
+4. 管理面板将显示你的邮箱和今日下载余量（免费账户 10 次/天；Premium 无限制）。
+5. 登录状态在重启 App 后保持，无需重复登录。
+6. 如需切换镜像地址，在管理面板底部的输入框修改后点击**"保存"**即可。
+
+> 游客每日可下载 5 次，登录免费账户可提升至 10 次。
 
 ### EPUB manga settings / EPUB 漫画设置
 

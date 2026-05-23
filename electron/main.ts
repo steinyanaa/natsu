@@ -2892,6 +2892,18 @@ function registerIpc(): void {
         .catch(() => void finish(false));
     });
   });
+
+  ipcMain.handle("zlib:fetch-account", async (): Promise<ZLibStatus> => {
+    const sess = zlibSession();
+    const cookies = await sess.cookies.get({ domain: ".z-library.sk" });
+    const loggedIn = cookies.some((c) => c.name === "remix_userkey" || c.name === "remix_userid");
+    if (!loggedIn) {
+      return { loggedIn: false };
+    }
+    // Force fresh fetch by clearing cache before calling
+    store.delete("zlibCache" as never);
+    return fetchZlibAccount(sess).catch(() => ({ loggedIn: true } as ZLibStatus));
+  });
 }
 
 app.whenReady().then(async () => {

@@ -2293,7 +2293,7 @@ async function fetchZlibAccount(sess: Electron.Session): Promise<ZLibStatus> {
     const currentUrl = win.webContents.getURL();
     try {
       if (new URL(currentUrl).pathname.includes("login")) {
-        return { loggedIn: true };
+        return { loggedIn: false };
       }
     } catch {
       // invalid URL, proceed with scraping

@@ -119,6 +119,13 @@ export interface OnlineSource {
   value: string;
 }
 
+export interface ZLibStatus {
+  loggedIn: boolean;
+  email?: string;
+  remaining?: number;
+  dailyLimit?: number;
+}
+
 export interface OnlineSourceTestItem {
   index: number;
   title?: string;
@@ -287,4 +294,8 @@ export interface ReaderApi {
   saveFile(content: string, suggestedName: string): Promise<boolean>;
   fetchCoverForBook(bookId: string): Promise<boolean>;
   getSessionsByDate(): Promise<DailyReadingStat[]>;
+  zlibStatus(): Promise<ZLibStatus>;
+  zlibLogin(): Promise<ZLibStatus>;
+  zlibLogout(): Promise<void>;
+  zlibFetchAccount(): Promise<ZLibStatus>;
 }

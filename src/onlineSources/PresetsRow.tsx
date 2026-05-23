@@ -45,21 +45,37 @@ export function PresetsRow({
     let value: string;
 
     if (preset.id === "zlibrary") {
-      // Build an HTML scraper config from the user's mirror base URL.
-      // Z-library search lives at /s/{query}; detail pages carry the download button.
+      // Z-library has a JS-PoW anti-bot challenge that sets a cookie via
+      // an in-page proof-of-work loop and then reloads. We need renderJs:true
+      // to run that JS in an Electron BrowserWindow and waitForSelector to
+      // wait for the real results page to appear after the reload.
+      //
+      // The result list uses <z-bookcard> custom elements whose attributes
+      // directly carry the download URL (`download="/dl/abc"`), file format
+      // (`extension="epub"`), and title/author live in [slot="title"] /
+      // [slot="author"] children. The /dl/ URL has no file extension, so
+      // we read the format from the `extension` attribute via formatAttr.
       kind = "html";
       value = JSON.stringify({
         adapter: "html",
         searchUrl: `${baseUrl}/s/{query}`,
         baseUrl,
-        itemSelector: "tr.resItemBox, .book-item, .z-bookcard",
-        titleSelector: ".color1, h3 a, .book-title a",
-        authorSelector: ".authors, .book-item__authors",
-        detailLinkSelector: "a[href*='/book/']",
-        downloadSelector: "a.dlButton, a.addDownloadedBook, a[href*='/dl/'], .btn-primary.dlButton",
-        downloadAttr: "href",
-        maxDetailPages: 5,
-        sourceName: preset.name
+        renderJs: true,
+        waitForSelector: "z-bookcard",
+        timeout: 20000,
+        delay: 500,
+        itemSelector: "z-bookcard",
+        titleSelector: '[slot="title"]',
+        authorSelector: '[slot="author"]',
+        downloadSelector: "z-bookcard",
+        downloadAttr: "download",
+        formatAttr: "extension",
+        coverSelector: "img",
+        coverAttr: "data-src,src",
+        sourceName: preset.name,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
       });
     } else {
       value = baseUrl;

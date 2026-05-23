@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.3.2 - 2026-05-23
+
+### Bug fixes
+
+- **zlibrary 书源真正修好了** — 1.3.1 改了 `kind` 但选择器对不上 zlibrary 的实际 DOM。新版基于真实页面验证：
+  - 启用 `renderJs: true`，让 Electron BrowserWindow 跑完 z-library 的 JS 防爬挑战（执行 PoW 设置 cookie 后刷新）。
+  - 选择器对准 `<z-bookcard>` 自定义元素：标题 / 作者从 `[slot="title"]` / `[slot="author"]` 取，下载地址从元素自身的 `download` 属性取。
+  - 新增 `formatAttr` 配置项：当下载 URL 没有扩展名时（z-library 的 `/dl/xxx` 即如此），从元素属性（这里是 `extension="epub"`）读取格式。
+- **架构改进** — `HtmlSourceConfig` 现在支持 `formatAttr` 字段，对所有需要从元素属性读格式的爬虫源都适用。
+
+### 升级说明
+
+下载 `Natsu-1.3.2.exe` 替换旧版即可。**已添加的 zlibrary 书源需要删除后通过预设按钮重新添加**（旧条目还是旧配置）。
+
+---
+
 ## v1.3.1 - 2026-05-22
 
 ### Bug fixes

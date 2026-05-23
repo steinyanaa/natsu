@@ -174,6 +174,9 @@ interface HtmlSourceConfig {
   detailLinkSelector?: string;
   detailLinkAttr?: string;
   format?: BookFormat;
+  // When the download URL has no extension (e.g. z-library /dl/abc), read
+  // the file format from this attribute on the item element instead.
+  formatAttr?: string;
   maxDetailPages?: number;
   delay?: number;
   renderJs?: boolean;
@@ -1196,6 +1199,7 @@ function resolveCustomSourceConfig(sourceValue: string): string | JsonSourceConf
           typeof parsed.format === "string" && supportedExtensions().includes(parsed.format as BookFormat)
             ? (parsed.format as BookFormat)
             : undefined,
+        formatAttr: typeof parsed.formatAttr === "string" ? parsed.formatAttr.trim() : undefined,
         maxDetailPages,
         delay,
         renderJs: parsed.renderJs === true || parsed.js === true || parsed.javascript === true,
@@ -1528,7 +1532,14 @@ function directDownloadResult(
     return undefined;
   }
 
-  const format = formatFromUrl(downloadUrl, config.format);
+  let format = formatFromUrl(downloadUrl, config.format);
+
+  if (!format && config.formatAttr) {
+    const formatValue = element.getAttribute(config.formatAttr)?.trim().toLowerCase();
+    if (formatValue && supportedExtensions().includes(formatValue as BookFormat)) {
+      format = formatValue as BookFormat;
+    }
+  }
 
   if (!format) {
     return undefined;

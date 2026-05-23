@@ -365,12 +365,55 @@ function normalizeOnlineSources(value: unknown, legacyValue?: unknown): OnlineSo
         continue;
       }
 
+      // Migrate stale zlibrary html configs: old versions used wrong selectors that
+      // didn't match the real z-library DOM (z-bookcard custom elements).
+      let migratedValue = rawValue;
+      if (kind === "html" && rawValue.trim().startsWith("{")) {
+        try {
+          const parsed = JSON.parse(rawValue);
+          const searchUrl = typeof parsed.searchUrl === "string" ? parsed.searchUrl : "";
+          if (
+            (searchUrl.includes("z-library") || searchUrl.includes("zlibrary")) &&
+            parsed.titleSelector !== '[slot="title"]'
+          ) {
+            const baseUrl =
+              typeof parsed.baseUrl === "string"
+                ? parsed.baseUrl
+                : searchUrl.replace(/\/s\/\{query\}.*/, "").trim();
+            migratedValue = JSON.stringify({
+              adapter: "html",
+              searchUrl: `${baseUrl}/s/{query}`,
+              baseUrl,
+              renderJs: true,
+              waitForSelector: "z-bookcard",
+              timeout: 20000,
+              delay: 500,
+              itemSelector: "z-bookcard",
+              titleSelector: '[slot="title"]',
+              authorSelector: '[slot="author"]',
+              downloadSelector: "z-bookcard",
+              downloadAttr: "download",
+              formatAttr: "extension",
+              coverSelector: "img",
+              coverAttr: "data-src,src",
+              sourceName: name,
+              headers: {
+                "User-Agent":
+                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+              }
+            });
+          }
+        } catch {
+          // keep rawValue on parse failure
+        }
+      }
+
       sources.push({
         id,
         name,
         enabled,
         kind,
-        value: kind === "gutenberg" ? "" : rawValue
+        value: kind === "gutenberg" ? "" : migratedValue
       });
     }
   }
@@ -753,14 +796,14 @@ async function browserDownloadToBuffer(
 ): Promise<Buffer | undefined> {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "natsu-download-"));
   const tempPath = path.join(tempDir, `download.${format}`);
-  const downloadPartition = `natsu-download-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const downloadSession = session.fromPartition(downloadPartition);
+  // Use the default session so that cookies set by renderJs search (e.g. z-library's
+  // PoW c_token) are available here too — avoids a second challenge round-trip.
+  const downloadSession = session.defaultSession;
   const win = new BrowserWindow({
     show: false,
     width: 900,
     height: 700,
     webPreferences: {
-      partition: downloadPartition,
       contextIsolation: true,
       javascript: true,
       nodeIntegration: false,
@@ -817,7 +860,6 @@ async function browserDownloadToBuffer(
       win.destroy();
     }
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
-    await downloadSession.clearStorageData().catch(() => undefined);
   }
 }
 
@@ -844,20 +886,26 @@ async function importOnlineBook(book: OnlineBookResult): Promise<ClientBookRecor
   let fetchFailure = "";
 
   try {
-    const response = await net.fetch(downloadUrl, { headers });
+    const ac = new AbortController();
+    const fetchTimer = setTimeout(() => ac.abort(), 15000);
+    try {
+      const response = await net.fetch(downloadUrl, { headers, signal: ac.signal });
 
-    if (response.ok) {
-      const contentType = response.headers.get("content-type");
-      const buffer = Buffer.from(await response.arrayBuffer());
+      if (response.ok) {
+        const contentType = response.headers.get("content-type");
+        const buffer = Buffer.from(await response.arrayBuffer());
 
-      if (bufferLooksLikeFormat(buffer, format, contentType)) {
-        return importOnlineBuffer(book, downloadUrl, format, buffer);
+        if (bufferLooksLikeFormat(buffer, format, contentType)) {
+          return importOnlineBuffer(book, downloadUrl, format, buffer);
+        }
+
+        const size = `${Math.max(1, Math.round(buffer.byteLength / 1024))} KB`;
+        fetchFailure = `普通下载拿到的不是有效 ${format.toUpperCase()}：${contentType || "未知类型"}（${size}）`;
+      } else {
+        fetchFailure = `普通下载失败：HTTP ${response.status}`;
       }
-
-      const size = `${Math.max(1, Math.round(buffer.byteLength / 1024))} KB`;
-      fetchFailure = `普通下载拿到的不是有效 ${format.toUpperCase()}：${contentType || "未知类型"}（${size}）`;
-    } else {
-      fetchFailure = `普通下载失败：HTTP ${response.status}`;
+    } finally {
+      clearTimeout(fetchTimer);
     }
   } catch (error) {
     fetchFailure = error instanceof Error ? error.message : "普通下载失败";

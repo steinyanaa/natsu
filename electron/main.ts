@@ -807,13 +807,12 @@ async function browserDownloadToBuffer(
   url: string,
   format: BookFormat,
   headers: Headers,
-  timeoutMs = 60000
+  timeoutMs = 60000,
+  sess?: Electron.Session
 ): Promise<Buffer | undefined> {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "natsu-download-"));
   const tempPath = path.join(tempDir, `download.${format}`);
-  // Use the default session so that cookies set by renderJs search (e.g. z-library's
-  // PoW c_token) are available here too — avoids a second challenge round-trip.
-  const downloadSession = session.defaultSession;
+  const downloadSession = sess ?? session.defaultSession;
   const win = new BrowserWindow({
     show: false,
     width: 900,
@@ -822,7 +821,8 @@ async function browserDownloadToBuffer(
       contextIsolation: true,
       javascript: true,
       nodeIntegration: false,
-      sandbox: true
+      sandbox: true,
+      ...(sess ? { session: sess } : {})
     }
   });
 
@@ -926,7 +926,8 @@ async function importOnlineBook(book: OnlineBookResult): Promise<ClientBookRecor
     fetchFailure = error instanceof Error ? error.message : "普通下载失败";
   }
 
-  const browserBuffer = await browserDownloadToBuffer(downloadUrl, format, headers);
+  const sess = isZlibUrl(downloadUrl) ? zlibSession() : undefined;
+  const browserBuffer = await browserDownloadToBuffer(downloadUrl, format, headers, 60000, sess);
   if (browserBuffer) {
     return importOnlineBuffer(book, downloadUrl, format, browserBuffer);
   }
@@ -1467,7 +1468,11 @@ function isZlibUrl(url: string): boolean {
   return url.includes("z-library") || url.includes("zlibrary");
 }
 
-async function fetchRenderedHtml(url: string, config: HtmlSourceConfig): Promise<string> {
+async function fetchRenderedHtml(
+  url: string,
+  config: HtmlSourceConfig,
+  sess?: Electron.Session
+): Promise<string> {
   const win = new BrowserWindow({
     show: false,
     width: 1280,
@@ -1477,7 +1482,8 @@ async function fetchRenderedHtml(url: string, config: HtmlSourceConfig): Promise
       javascript: true,
       nodeIntegration: false,
       sandbox: true,
-      webSecurity: true
+      webSecurity: true,
+      ...(sess ? { session: sess } : {})
     }
   });
 
@@ -1575,9 +1581,9 @@ async function fetchRenderedHtml(url: string, config: HtmlSourceConfig): Promise
   }
 }
 
-async function loadHtml(url: string, config: HtmlSourceConfig): Promise<string> {
+async function loadHtml(url: string, config: HtmlSourceConfig, sess?: Electron.Session): Promise<string> {
   if (config.renderJs) {
-    const rendered = await fetchRenderedHtml(url, config);
+    const rendered = await fetchRenderedHtml(url, config, sess);
     if (rendered) {
       return rendered;
     }
@@ -1691,7 +1697,8 @@ async function searchHtmlAdapterBooks(query: string, config: HtmlSourceConfig): 
     return [];
   }
 
-  const html = await loadHtml(url, config);
+  const sess = isZlibUrl(url) ? zlibSession() : undefined;
+  const html = await loadHtml(url, config, sess);
   if (!html) {
     return [];
   }

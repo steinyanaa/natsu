@@ -2289,6 +2289,12 @@ async function fetchZlibAccount(sess: Electron.Session): Promise<ZLibStatus> {
       false
     );
 
+    // Check that profile page actually loaded (not redirected to /login)
+    const currentUrl = win.webContents.getURL();
+    if (currentUrl.includes("/login")) {
+      return { loggedIn: true };
+    }
+
     const result = await withTimeout(
       win.webContents.executeJavaScript(`
         (function() {
@@ -2319,13 +2325,16 @@ async function fetchZlibAccount(sess: Electron.Session): Promise<ZLibStatus> {
       { email: undefined, remaining: undefined, dailyLimit: undefined }
     ) as { email?: string; remaining?: number; dailyLimit?: number };
 
-    const cache: ZlibCache = {
-      email: result.email,
-      remaining: result.remaining,
-      dailyLimit: result.dailyLimit,
-      cachedAt: Date.now()
-    };
-    store.set("zlibCache", cache);
+    // Only cache if we got at least some data
+    if (result.email !== undefined || result.remaining !== undefined) {
+      const cache: ZlibCache = {
+        email: result.email,
+        remaining: result.remaining,
+        dailyLimit: result.dailyLimit,
+        cachedAt: Date.now()
+      };
+      store.set("zlibCache", cache);
+    }
 
     return { loggedIn: true, ...result };
   } finally {

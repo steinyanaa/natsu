@@ -8,6 +8,7 @@ import { ErrorState, LoadingState } from "./ReaderState";
 import { SelectionMenu } from "./SelectionMenu";
 import { DictionaryPopover } from "./DictionaryPopover";
 import { applyHighlightToDOM, selectionToHighlightData } from "./highlightUtils";
+import { imageUrlsFromHtml } from "./htmlMedia";
 import type { AnchorJumpRequest, JumpRequest } from "./types";
 import { editableEventTarget, nowProgress, readerFontStack } from "./utils";
 import { useDictionary } from "./useDictionary";
@@ -32,43 +33,6 @@ interface PinnedNote {
   label: string;
   html?: string;
   refId?: string;
-}
-
-function imageUrlsFromSrcset(srcset: string): string[] {
-  return srcset
-    .split(",")
-    .map((candidate) => candidate.trim().split(/\s+/)[0])
-    .filter(Boolean);
-}
-
-function imageUrlsFromHtml(html: string): string[] {
-  const parsed = new DOMParser().parseFromString(html, "text/html");
-  const urls = new Set<string>();
-
-  parsed.querySelectorAll("img[src], image[href], image[xlink\\:href], video[poster], source[src]").forEach((node) => {
-    ["src", "href", "xlink:href", "poster"].forEach((attribute) => {
-      const value = node.getAttribute(attribute);
-      if (value) {
-        urls.add(value);
-      }
-    });
-  });
-
-  parsed.querySelectorAll("img[srcset], source[srcset]").forEach((node) => {
-    const srcset = node.getAttribute("srcset");
-    if (srcset) {
-      imageUrlsFromSrcset(srcset).forEach((url) => urls.add(url));
-    }
-  });
-
-  html.replace(/url\((['"]?)(.*?)\1\)/gi, (_match, _quote: string, url: string) => {
-    if (url) {
-      urls.add(url);
-    }
-    return "";
-  });
-
-  return [...urls].filter((url) => /^(?:blob:|data:image\/|https?:)/i.test(url));
 }
 
 function openExternalUrl(href: string): void {

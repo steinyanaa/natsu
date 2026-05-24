@@ -7,6 +7,15 @@ import { parse, type HTMLElement } from "node-html-parser";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  formatFromPath,
+  formatFromUrl,
+  sanitizeFileName,
+  supportedExtensions,
+  titleFromFile,
+  titleFromUrl
+} from "./services/bookFormats.js";
+import { IPC_CHANNELS } from "./ipc/channels.js";
 
 type BookFormat =
   | "epub"
@@ -489,20 +498,6 @@ function normalizePreferences(preferences?: Partial<ReaderPreferences> & { onlin
   };
 }
 
-function supportedExtensions(): BookFormat[] {
-  return ["epub", "txt", "mobi", "azw3", "pdf", "cbz", "zip", "cbr", "rar"];
-}
-
-function formatFromPath(filePath: string): BookFormat | undefined {
-  const extension = path.extname(filePath).slice(1).toLowerCase();
-
-  if (supportedExtensions().includes(extension as BookFormat)) {
-    return extension as BookFormat;
-  }
-
-  return undefined;
-}
-
 function httpUrl(value: unknown): URL | undefined {
   if (typeof value !== "string") {
     return undefined;
@@ -536,19 +531,6 @@ async function openHttpExternal(url: unknown): Promise<boolean> {
 
   await shell.openExternal(parsed.toString());
   return true;
-}
-
-function titleFromFile(filePath: string): string {
-  return path.basename(filePath, path.extname(filePath)).replace(/[_-]+/g, " ");
-}
-
-function titleFromUrl(url: string): string {
-  try {
-    const parsed = new URL(url);
-    return titleFromFile(decodeURIComponent(parsed.pathname.split("/").pop() || "book"));
-  } catch {
-    return "Online book";
-  }
 }
 
 function sizeLabelFromText(text?: string): string | undefined {
@@ -655,19 +637,6 @@ async function openExternalAndAutoImport(book: OnlineBookResult): Promise<Client
   throw new Error("已在浏览器中打开下载链接。为避免误导入其他文件，请下载完成后手动导入。");
 }
 
-function formatFromUrl(url: string, explicitFormat?: BookFormat): BookFormat | undefined {
-  if (explicitFormat && supportedExtensions().includes(explicitFormat)) {
-    return explicitFormat;
-  }
-
-  try {
-    const parsed = new URL(url);
-    return formatFromPath(parsed.pathname);
-  } catch {
-    return undefined;
-  }
-}
-
 function isLikelyHtml(buffer: Buffer, contentType?: string | null): boolean {
   if (contentType?.toLowerCase().includes("text/html")) {
     return true;
@@ -699,10 +668,6 @@ function bufferLooksLikeFormat(buffer: Buffer, format: BookFormat, contentType?:
   }
 
   return true;
-}
-
-function sanitizeFileName(value: string): string {
-  return value.replace(/[<>:"/\\|?*\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 96);
 }
 
 function hashBuffer(buffer: Buffer): string {
@@ -2347,11 +2312,11 @@ async function fetchZlibAccount(sess: Electron.Session): Promise<ZLibStatus> {
 }
 
 function registerIpc(): void {
-  ipcMain.handle("library:listBooks", () => {
+  ipcMain.handle(IPC_CHANNELS.libraryListBooks, () => {
     return store.get("books", []).map(bookToClient);
   });
 
-  ipcMain.handle("library:importBooks", async () => {
+  ipcMain.handle(IPC_CHANNELS.libraryImportBooks, async () => {
     const result = await dialog.showOpenDialog({
       title: "Import books",
       properties: ["openFile", "multiSelections"],
@@ -2379,27 +2344,27 @@ function registerIpc(): void {
     return imported;
   });
 
-  ipcMain.handle("library:searchOnlineBooks", async (_event, query: string) => {
+  ipcMain.handle(IPC_CHANNELS.librarySearchOnlineBooks, async (_event, query: string) => {
     return searchOnlineBooks(query);
   });
 
-  ipcMain.handle("library:testOnlineSource", async (_event, query: string, source: OnlineSource) => {
+  ipcMain.handle(IPC_CHANNELS.libraryTestOnlineSource, async (_event, query: string, source: OnlineSource) => {
     return testOnlineSource(query, source);
   });
 
-  ipcMain.handle("library:importOnlineBook", async (_event, book: OnlineBookResult) => {
+  ipcMain.handle(IPC_CHANNELS.libraryImportOnlineBook, async (_event, book: OnlineBookResult) => {
     return importOnlineBook(book);
   });
 
-  ipcMain.handle("library:openExternalAndAutoImport", async (_event, book: OnlineBookResult) => {
+  ipcMain.handle(IPC_CHANNELS.libraryOpenExternalAndAutoImport, async (_event, book: OnlineBookResult) => {
     return openExternalAndAutoImport(book);
   });
 
-  ipcMain.handle("system:openExternal", async (_event, url: string) => {
+  ipcMain.handle(IPC_CHANNELS.systemOpenExternal, async (_event, url: string) => {
     return openHttpExternal(url);
   });
 
-  ipcMain.handle("system:saveFile", async (_event, content: string, suggestedName: string) => {
+  ipcMain.handle(IPC_CHANNELS.systemSaveFile, async (_event, content: string, suggestedName: string) => {
     if (typeof content !== "string" || typeof suggestedName !== "string") return false;
     const { canceled, filePath } = await dialog.showSaveDialog(mainWindow!, {
       defaultPath: suggestedName,
@@ -2416,7 +2381,7 @@ function registerIpc(): void {
     }
   });
 
-  ipcMain.handle("library:openBook", (_event, id: string) => {
+  ipcMain.handle(IPC_CHANNELS.libraryOpenBook, (_event, id: string) => {
     const book = updateBook(id, (current) => ({
       ...current,
       lastOpenedAt: new Date().toISOString()
@@ -2425,7 +2390,7 @@ function registerIpc(): void {
     return book ? bookToClient(book) : undefined;
   });
 
-  ipcMain.handle("library:saveProgress", (_event, id: string, progress: ReaderProgress) => {
+  ipcMain.handle(IPC_CHANNELS.librarySaveProgress, (_event, id: string, progress: ReaderProgress) => {
     // Buffer the update and debounce the actual disk write (5 s)
     pendingProgressUpdates.set(id, progress);
     if (progressFlushTimer !== null) clearTimeout(progressFlushTimer);
@@ -2438,7 +2403,7 @@ function registerIpc(): void {
     return bookToClient({ ...book, progress });
   });
 
-  ipcMain.handle("library:saveBookmark", (_event, id: string, bookmark: Bookmark) => {
+  ipcMain.handle(IPC_CHANNELS.librarySaveBookmark, (_event, id: string, bookmark: Bookmark) => {
     const book = updateBook(id, (current) => ({
       ...current,
       bookmarks: [bookmark, ...current.bookmarks].slice(0, 200)
@@ -2447,7 +2412,7 @@ function registerIpc(): void {
   });
 
   ipcMain.handle(
-    "library:updateBookmark",
+    IPC_CHANNELS.libraryUpdateBookmark,
     (
       _event,
       bookId: string,
@@ -2470,7 +2435,7 @@ function registerIpc(): void {
     }
   );
 
-  ipcMain.handle("library:removeBookmarks", (_event, bookId: string, bookmarkIds: string[]) => {
+  ipcMain.handle(IPC_CHANNELS.libraryRemoveBookmarks, (_event, bookId: string, bookmarkIds: string[]) => {
     const removeSet = new Set(bookmarkIds);
     const book = updateBook(bookId, (current) => ({
       ...current,
@@ -2479,7 +2444,7 @@ function registerIpc(): void {
     return book ? bookToClient(book) : undefined;
   });
 
-  ipcMain.handle("library:saveHighlight", (_event, bookId: string, highlight: Highlight) => {
+  ipcMain.handle(IPC_CHANNELS.librarySaveHighlight, (_event, bookId: string, highlight: Highlight) => {
     const book = updateBook(bookId, (current) => ({
       ...current,
       highlights: [...(current.highlights ?? []), highlight]
@@ -2487,7 +2452,7 @@ function registerIpc(): void {
     return book ? bookToClient(book) : undefined;
   });
 
-  ipcMain.handle("library:updateHighlight", (_event, bookId: string, highlightId: string, patch: Partial<Pick<Highlight, "color" | "note">>) => {
+  ipcMain.handle(IPC_CHANNELS.libraryUpdateHighlight, (_event, bookId: string, highlightId: string, patch: Partial<Pick<Highlight, "color" | "note">>) => {
     const book = updateBook(bookId, (current) => ({
       ...current,
       highlights: (current.highlights ?? []).map((h) =>
@@ -2497,7 +2462,7 @@ function registerIpc(): void {
     return book ? bookToClient(book) : undefined;
   });
 
-  ipcMain.handle("library:removeHighlights", (_event, bookId: string, highlightIds: string[]) => {
+  ipcMain.handle(IPC_CHANNELS.libraryRemoveHighlights, (_event, bookId: string, highlightIds: string[]) => {
     const set = new Set(highlightIds);
     const book = updateBook(bookId, (current) => ({
       ...current,
@@ -2506,7 +2471,7 @@ function registerIpc(): void {
     return book ? bookToClient(book) : undefined;
   });
 
-  ipcMain.handle("library:removeBook", async (_event, id: string) => {
+  ipcMain.handle(IPC_CHANNELS.libraryRemoveBook, async (_event, id: string) => {
     const books = store.get("books", []);
     const book = books.find((item) => item.id === id);
 
@@ -2523,7 +2488,7 @@ function registerIpc(): void {
     return store.get("books", []).map(bookToClient);
   });
 
-  ipcMain.handle("cover:has", async (_event, bookId: string) => {
+  ipcMain.handle(IPC_CHANNELS.coverHas, async (_event, bookId: string) => {
     if (typeof bookId !== "string" || !bookId) return false;
     try {
       await fs.access(coverPathFor(bookId));
@@ -2533,7 +2498,7 @@ function registerIpc(): void {
     }
   });
 
-  ipcMain.handle("cover:save", async (_event, bookId: string, bytes: Uint8Array | ArrayBuffer) => {
+  ipcMain.handle(IPC_CHANNELS.coverSave, async (_event, bookId: string, bytes: Uint8Array | ArrayBuffer) => {
     if (typeof bookId !== "string" || !bookId) return false;
     await ensureCoverDir();
     const buf =
@@ -2542,7 +2507,7 @@ function registerIpc(): void {
     return true;
   });
 
-  ipcMain.handle("cover:fetchForBook", async (_event, bookId: string) => {
+  ipcMain.handle(IPC_CHANNELS.coverFetchForBook, async (_event, bookId: string) => {
     if (typeof bookId !== "string" || !bookId) return false;
     const books = store.get("books", []);
     const book = books.find((b) => b.id === bookId);
@@ -2581,7 +2546,7 @@ function registerIpc(): void {
     }
   });
 
-  ipcMain.handle("preferences:get", () => {
+  ipcMain.handle(IPC_CHANNELS.preferencesGet, () => {
     const userPrefs = store.get("preferences");
     const merged = { ...defaultPreferences(), ...userPrefs };
     const preferences = normalizePreferences(migratePreferences(merged));
@@ -2589,7 +2554,7 @@ function registerIpc(): void {
     return preferences;
   });
 
-  ipcMain.handle("preferences:save", (_event, preferences: Partial<ReaderPreferences>) => {
+  ipcMain.handle(IPC_CHANNELS.preferencesSave, (_event, preferences: Partial<ReaderPreferences>) => {
     const userPrefs = store.get("preferences");
     const merged = { ...defaultPreferences(), ...userPrefs, ...preferences };
     const nextPreferences = normalizePreferences(migratePreferences(merged));
@@ -2598,7 +2563,7 @@ function registerIpc(): void {
   });
 
   // 批量删除
-  ipcMain.handle("library:removeBooks", async (_event, ids: string[]) => {
+  ipcMain.handle(IPC_CHANNELS.libraryRemoveBooks, async (_event, ids: string[]) => {
     const idSet = new Set<string>(ids);
     const books = store.get("books", []);
     for (const book of books) {
@@ -2612,7 +2577,7 @@ function registerIpc(): void {
   });
 
   // 拖放导入（路径列表直接导入）
-  ipcMain.handle("library:importByPaths", async (_event, paths: string[]) => {
+  ipcMain.handle(IPC_CHANNELS.libraryImportByPaths, async (_event, paths: string[]) => {
     const imported: ClientBookRecord[] = [];
     for (const filePath of paths) {
       const book = await importOneBook(filePath);
@@ -2622,7 +2587,7 @@ function registerIpc(): void {
   });
 
   // 编辑书籍元数据（标题/作者）
-  ipcMain.handle("library:updateBookMeta", (_event, id: string, patch: { title?: string; author?: string }) => {
+  ipcMain.handle(IPC_CHANNELS.libraryUpdateBookMeta, (_event, id: string, patch: { title?: string; author?: string }) => {
     const book = updateBook(id, (current) => ({
       ...current,
       ...(patch.title?.trim() ? { title: patch.title.trim() } : {}),
@@ -2632,7 +2597,7 @@ function registerIpc(): void {
   });
 
   // 保存阅读 session
-  ipcMain.handle("library:saveReadingSession", (_event, bookId: string, session: ReadingSession) => {
+  ipcMain.handle(IPC_CHANNELS.librarySaveReadingSession, (_event, bookId: string, session: ReadingSession) => {
     const book = updateBook(bookId, (current) => ({
       ...current,
       readingSessions: [...(current.readingSessions ?? []), session].slice(-500)
@@ -2641,7 +2606,7 @@ function registerIpc(): void {
   });
 
   // 导出数据到 JSON 文件
-  ipcMain.handle("library:exportData", async () => {
+  ipcMain.handle(IPC_CHANNELS.libraryExportData, async () => {
     const result = await dialog.showSaveDialog({
       title: "导出 Natsu 数据",
       defaultPath: `natsu-backup-${new Date().toISOString().slice(0, 10)}.json`,
@@ -2658,11 +2623,11 @@ function registerIpc(): void {
   });
 
   // ── 收藏夹 ──────────────────────────────────────────────────────────────────
-  ipcMain.handle("library:listCollections", () => {
+  ipcMain.handle(IPC_CHANNELS.libraryListCollections, () => {
     return store.get("collections", []);
   });
 
-  ipcMain.handle("library:saveCollection", (_event, collection: Collection) => {
+  ipcMain.handle(IPC_CHANNELS.librarySaveCollection, (_event, collection: Collection) => {
     const current = store.get("collections", []);
     const exists = current.find((c) => c.id === collection.id);
     const next = exists
@@ -2672,13 +2637,13 @@ function registerIpc(): void {
     return next;
   });
 
-  ipcMain.handle("library:removeCollection", (_event, id: string) => {
+  ipcMain.handle(IPC_CHANNELS.libraryRemoveCollection, (_event, id: string) => {
     const next = store.get("collections", []).filter((c) => c.id !== id);
     store.set("collections", next);
     return next;
   });
 
-  ipcMain.handle("library:addBookToCollection", (_event, collectionId: string, bookId: string) => {
+  ipcMain.handle(IPC_CHANNELS.libraryAddBookToCollection, (_event, collectionId: string, bookId: string) => {
     const collections = store.get("collections", []);
     const next = collections.map((c) =>
       c.id === collectionId
@@ -2689,7 +2654,7 @@ function registerIpc(): void {
     return next;
   });
 
-  ipcMain.handle("library:removeBookFromCollection", (_event, collectionId: string, bookId: string) => {
+  ipcMain.handle(IPC_CHANNELS.libraryRemoveBookFromCollection, (_event, collectionId: string, bookId: string) => {
     const collections = store.get("collections", []);
     const next = collections.map((c) =>
       c.id === collectionId ? { ...c, bookIds: c.bookIds.filter((id) => id !== bookId) } : c
@@ -2699,13 +2664,13 @@ function registerIpc(): void {
   });
 
   // 书籍标签
-  ipcMain.handle("library:updateBookTags", (_event, bookId: string, tags: string[]) => {
+  ipcMain.handle(IPC_CHANNELS.libraryUpdateBookTags, (_event, bookId: string, tags: string[]) => {
     const book = updateBook(bookId, (current) => ({ ...current, tags }));
     return book ? bookToClient(book) : undefined;
   });
 
   // 阅读目标统计（今日分钟、连续天数）
-  ipcMain.handle("library:getGoalStats", () => {
+  ipcMain.handle(IPC_CHANNELS.libraryGetGoalStats, () => {
     const preferences = store.get("preferences");
     const dailyGoalMinutes = preferences.dailyGoalMinutes ?? 30;
     const books = store.get("books", []);
@@ -2749,7 +2714,7 @@ function registerIpc(): void {
     };
   });
 
-  ipcMain.handle("library:getSessionsByDate", () => {
+  ipcMain.handle(IPC_CHANNELS.libraryGetSessionsByDate, () => {
     const books = store.get("books", []);
     const dayMap = new Map<string, number>();
     for (const book of books) {
@@ -2766,7 +2731,7 @@ function registerIpc(): void {
   });
 
   // 从 JSON 文件导入数据（按 hash 合并）
-  ipcMain.handle("library:importData", async () => {
+  ipcMain.handle(IPC_CHANNELS.libraryImportData, async () => {
     const result = await dialog.showOpenDialog({
       title: "导入 Natsu 数据",
       filters: [{ name: "JSON", extensions: ["json"] }],
@@ -2809,7 +2774,7 @@ function registerIpc(): void {
     return true;
   });
 
-  ipcMain.handle("zlib:status", async (): Promise<ZLibStatus> => {
+  ipcMain.handle(IPC_CHANNELS.zlibStatus, async (): Promise<ZLibStatus> => {
     const sess = zlibSession();
     const cookies = await sess.cookies.get({ domain: ".z-library.sk" });
     const loggedIn = cookies.some((c) => c.name === "remix_userkey" || c.name === "remix_userid");
@@ -2824,12 +2789,12 @@ function registerIpc(): void {
     return { loggedIn: true };
   });
 
-  ipcMain.handle("zlib:logout", async (): Promise<void> => {
+  ipcMain.handle(IPC_CHANNELS.zlibLogout, async (): Promise<void> => {
     await zlibSession().clearStorageData();
     store.delete("zlibCache" as never);
   });
 
-  ipcMain.handle("zlib:login", async (): Promise<ZLibStatus> => {
+  ipcMain.handle(IPC_CHANNELS.zlibLogin, async (): Promise<ZLibStatus> => {
     const sess = zlibSession();
     const baseUrl = "https://z-library.sk";
 
@@ -2893,7 +2858,7 @@ function registerIpc(): void {
     });
   });
 
-  ipcMain.handle("zlib:fetch-account", async (): Promise<ZLibStatus> => {
+  ipcMain.handle(IPC_CHANNELS.zlibFetchAccount, async (): Promise<ZLibStatus> => {
     const sess = zlibSession();
     const cookies = await sess.cookies.get({ domain: ".z-library.sk" });
     const loggedIn = cookies.some((c) => c.name === "remix_userkey" || c.name === "remix_userid");

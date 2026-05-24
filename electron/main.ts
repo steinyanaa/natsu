@@ -6,7 +6,7 @@ import fs from "node:fs/promises";
 import { parse, type HTMLElement } from "node-html-parser";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
 import {
   formatFromPath,
   formatFromUrl,
@@ -16,6 +16,7 @@ import {
   titleFromUrl
 } from "./services/bookFormats.js";
 import { IPC_CHANNELS } from "./ipc/channels.js";
+import { rootDir, appIconPath, ensureLibraryDir, ensureCoverDir, coverPathFor } from "./paths.js";
 
 type BookFormat =
   | "epub"
@@ -252,11 +253,6 @@ interface StoreShape {
   collections: Collection[];
   zlibCache?: ZlibCache;
 }
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const rootDir = path.join(__dirname, "..");
-const appIconPath = (): string =>
-  app.isPackaged ? path.join(process.resourcesPath, "icon.ico") : path.join(rootDir, "build", "icon.ico");
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -560,12 +556,6 @@ function bookToClient(book: BookRecord): ClientBookRecord {
     highlights: publicBook.highlights ?? [],
     fileUrl: `manga-reader://book/${encodeURIComponent(book.id)}`
   };
-}
-
-async function ensureLibraryDir(): Promise<string> {
-  const libraryDir = path.join(app.getPath("userData"), "library");
-  await fs.mkdir(libraryDir, { recursive: true });
-  return libraryDir;
 }
 
 async function hashFile(filePath: string): Promise<string> {
@@ -927,17 +917,6 @@ function contentTypeFor(format: BookFormat): string {
   if (format === "zip" || format === "cbz") return "application/zip";
   if (format === "rar" || format === "cbr") return "application/vnd.rar";
   return "application/octet-stream";
-}
-
-async function ensureCoverDir(): Promise<string> {
-  const dir = path.join(app.getPath("userData"), "covers");
-  await fs.mkdir(dir, { recursive: true });
-  return dir;
-}
-
-function coverPathFor(bookId: string): string {
-  const safe = bookId.replace(/[^a-zA-Z0-9_-]/g, "_");
-  return path.join(app.getPath("userData"), "covers", `${safe}.jpg`);
 }
 
 async function handleBookProtocol(request: GlobalRequest): Promise<Response> {

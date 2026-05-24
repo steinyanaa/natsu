@@ -17,242 +17,28 @@ import {
 } from "./services/bookFormats.js";
 import { IPC_CHANNELS } from "./ipc/channels.js";
 import { rootDir, appIconPath, ensureLibraryDir, ensureCoverDir, coverPathFor } from "./paths.js";
-
-type BookFormat =
-  | "epub"
-  | "txt"
-  | "mobi"
-  | "azw3"
-  | "pdf"
-  | "cbz"
-  | "zip"
-  | "cbr"
-  | "rar";
-
-interface ReaderProgress {
-  kind: "text" | "page" | "epub";
-  current: number;
-  total?: number;
-  percent: number;
-  label?: string;
-  cfi?: string;
-  updatedAt: string;
-}
-
-interface Bookmark {
-  id: string;
-  label: string;
-  progress: ReaderProgress;
-  createdAt: string;
-  note?: string;
-}
-
-interface Highlight {
-  id: string;
-  chapterId: string;
-  selectedText: string;
-  contextBefore: string;
-  contextAfter: string;
-  color: "yellow" | "green" | "blue" | "pink";
-  note?: string;
-  createdAt: string;
-}
-
-interface ThemeCustomColors {
-  primary: string;
-  secondary: string;
-  tertiary: string;
-  surface: string;
-}
-
-interface ReaderPreferences {
-  theme: "ramune" | "seaside" | "natsumatsuri" | "google-night";
-  themeMode: "system" | "light" | "dark";
-  themeSource: "preset" | "seed" | "custom";
-  themeSeedColor: string;
-  customColors: ThemeCustomColors;
-  language: "zh-CN" | "ja-JP" | "en-US";
-  motion: "full" | "gentle" | "reduced";
-  readerMode: "scroll" | "paged";
-  fontSize: number;
-  lineHeight: number;
-  columnWidth: number;
-  fontFamily: "serif-cn" | "sans" | "kai" | "jp-serif" | "serif-en" | "custom";
-  customFontStack: string;
-  imageScale: number;
-  imageMode: "manual" | "fit-screen";
-  autoAlign: boolean;
-  reduceMotion: boolean;
-  pageTurnStyle: "slide" | "fade" | "none";
-  spread: "auto" | "single" | "double";
-  tapToTurn: boolean;
-  onlineSources: OnlineSource[];
-  readerColorPreset: "default" | "paper" | "quiet" | "gray" | "night";
-  brightness: number;
-  pageMargin: "narrow" | "normal" | "wide";
-  justify: boolean;
-  hyphenate: boolean;
-  preferencesVersion: number;
-  dailyGoalMinutes?: number;
-}
-
-interface OnlineBookResult {
-  id: string;
-  source: string;
-  title: string;
-  author?: string;
-  language?: string;
-  subjects: string[];
-  coverUrl?: string;
-  downloadUrl: string;
-  format?: BookFormat;
-  sizeLabel?: string;
-  requestHeaders?: Record<string, string>;
-  downloads?: number;
-}
-
-interface OnlineSource {
-  id: string;
-  name: string;
-  enabled: boolean;
-  kind: "gutenberg" | "url" | "json" | "html" | "rss";
-  value: string;
-}
-
-interface OnlineSourceTestItem {
-  index: number;
-  title?: string;
-  author?: string;
-  coverUrl?: string;
-  detailUrl?: string;
-  downloadUrl?: string;
-  format?: BookFormat;
-  sizeLabel?: string;
-  ok: boolean;
-  reason?: string;
-}
-
-interface OnlineSourceTestReport {
-  ok: boolean;
-  sourceName: string;
-  kind: OnlineSource["kind"];
-  searchUrl?: string;
-  fetched: boolean;
-  renderedJs?: boolean;
-  itemCount: number;
-  items: OnlineSourceTestItem[];
-  message?: string;
-}
-
-interface JsonSourceMappings {
-  id?: string;
-  title?: string;
-  author?: string;
-  language?: string;
-  subjects?: string;
-  coverUrl?: string;
-  downloadUrl?: string;
-  format?: string;
-  sizeLabel?: string;
-  size?: string;
-  source?: string;
-}
-
-interface JsonSourceConfig {
-  adapter: "json";
-  searchUrl: string;
-  resultPath?: string;
-  sourceName?: string;
-  headers?: Record<string, string>;
-  mappings?: JsonSourceMappings;
-}
-
-interface HtmlSourceConfig {
-  adapter: "html";
-  searchUrl: string;
-  baseUrl?: string;
-  sourceName?: string;
-  headers?: Record<string, string>;
-  itemSelector?: string;
-  titleSelector?: string;
-  authorSelector?: string;
-  coverSelector?: string;
-  coverAttr?: string;
-  downloadSelector?: string;
-  downloadAttr?: string;
-  downloadHeaders?: Record<string, string>;
-  detailLinkSelector?: string;
-  detailLinkAttr?: string;
-  format?: BookFormat;
-  // When the download URL has no extension (e.g. z-library /dl/abc), read
-  // the file format from this attribute on the item element instead.
-  formatAttr?: string;
-  maxDetailPages?: number;
-  delay?: number;
-  renderJs?: boolean;
-  waitForSelector?: string;
-  autoScroll?: boolean;
-  timeout?: number;
-}
-
-interface ZLibStatus {
-  loggedIn: boolean;
-  email?: string;
-  remaining?: number;
-  dailyLimit?: number;
-}
-
-interface ReadingSession {
-  bookId: string;
-  start: string;
-  end: string;
-  charsRead: number;
-}
-
-interface BookRecord {
-  id: string;
-  hash: string;
-  title: string;
-  author?: string;
-  format: BookFormat;
-  fileName: string;
-  filePath: string;
-  size: number;
-  importedAt: string;
-  lastOpenedAt?: string;
-  progress?: ReaderProgress;
-  bookmarks: Bookmark[];
-  highlights: Highlight[];
-  preferences?: Partial<ReaderPreferences>;
-  coverSeed: number;
-  readingSessions?: ReadingSession[];
-}
-
-interface ClientBookRecord extends Omit<BookRecord, "filePath"> {
-  fileUrl: string;
-}
-
-interface Collection {
-  id: string;
-  name: string;
-  bookIds: string[];
-  color?: string;
-  createdAt: string;
-}
-
-interface ZlibCache {
-  email?: string;
-  remaining?: number;
-  dailyLimit?: number;
-  cachedAt: number;
-}
-
-interface StoreShape {
-  books: BookRecord[];
-  preferences: ReaderPreferences;
-  collections: Collection[];
-  zlibCache?: ZlibCache;
-}
+import type {
+  BookFormat,
+  ReaderProgress,
+  Bookmark,
+  Highlight,
+  ThemeCustomColors,
+  ReaderPreferences,
+  OnlineBookResult,
+  OnlineSource,
+  OnlineSourceTestItem,
+  OnlineSourceTestReport,
+  JsonSourceMappings,
+  JsonSourceConfig,
+  HtmlSourceConfig,
+  ZLibStatus,
+  ReadingSession,
+  BookRecord,
+  ClientBookRecord,
+  Collection,
+  ZlibCache,
+  StoreShape
+} from "./ipc/types.js";
 
 protocol.registerSchemesAsPrivileged([
   {

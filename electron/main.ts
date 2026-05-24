@@ -1,5 +1,4 @@
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, session, shell } from "electron";
-import Store from "electron-store";
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
@@ -17,6 +16,16 @@ import {
 } from "./services/bookFormats.js";
 import { IPC_CHANNELS } from "./ipc/channels.js";
 import { rootDir, appIconPath, ensureLibraryDir, ensureCoverDir, coverPathFor } from "./paths.js";
+import {
+  initStore,
+  getStore,
+  defaultPreferences,
+  migratePreferences,
+  normalizePreferences,
+  seedFromHash,
+  bookToClient,
+  updateBook
+} from "./services/store.js";
 import type {
   BookFormat,
   ReaderProgress,
@@ -36,8 +45,7 @@ import type {
   BookRecord,
   ClientBookRecord,
   Collection,
-  ZlibCache,
-  StoreShape
+  ZlibCache
 } from "./ipc/types.js";
 
 protocol.registerSchemesAsPrivileged([
@@ -54,7 +62,6 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 let mainWindow: BrowserWindow | undefined;
-let store: Store<StoreShape>;
 
 // P0-4: debounce progress writes to avoid full-library JSON rewrite on every page turn
 const pendingProgressUpdates = new Map<string, ReaderProgress>();
@@ -66,218 +73,13 @@ function flushProgressUpdates(): void {
     progressFlushTimer = null;
   }
   if (pendingProgressUpdates.size === 0) return;
-  const books = store.get("books", []);
+  const books = getStore().get("books", []);
   const updates = new Map(pendingProgressUpdates);
   pendingProgressUpdates.clear();
   const updated = books.map((book) =>
     updates.has(book.id) ? { ...book, progress: updates.get(book.id)! } : book
   );
-  store.set("books", updated);
-}
-
-function systemLanguage(): ReaderPreferences["language"] {
-  const locale = app.getLocale().toLowerCase();
-
-  if (locale.startsWith("ja")) {
-    return "ja-JP";
-  }
-
-  if (locale.startsWith("en")) {
-    return "en-US";
-  }
-
-  return "zh-CN";
-}
-
-function defaultPreferences(): ReaderPreferences {
-  return {
-    theme: "ramune",
-    themeMode: "system",
-    themeSource: "preset",
-    themeSeedColor: "#35a7d8",
-    customColors: {
-      primary: "#35a7d8",
-      secondary: "#ffc4d6",
-      tertiary: "#ffe27a",
-      surface: "#f7fcff"
-    },
-    language: systemLanguage(),
-    motion: "full",
-    readerMode: "scroll",
-    fontSize: 18,
-    lineHeight: 1.82,
-    columnWidth: 760,
-    fontFamily: "serif-cn",
-    customFontStack: "",
-    imageScale: 82,
-    imageMode: "manual",
-    autoAlign: true,
-    reduceMotion: false,
-    pageTurnStyle: "slide",
-    spread: "auto",
-    tapToTurn: true,
-    readerColorPreset: "default",
-    brightness: 1,
-    pageMargin: "normal",
-    justify: false,
-    hyphenate: false,
-    preferencesVersion: 3,
-    onlineSources: [
-      {
-        id: "gutenberg",
-        name: "Project Gutenberg",
-        enabled: true,
-        kind: "gutenberg",
-        value: ""
-      }
-    ]
-  };
-}
-
-function defaultOnlineSource(): OnlineSource {
-  return {
-    id: "gutenberg",
-    name: "Project Gutenberg",
-    enabled: true,
-    kind: "gutenberg",
-    value: ""
-  };
-}
-
-function normalizeOnlineSources(value: unknown, legacyValue?: unknown): OnlineSource[] {
-  const sources: OnlineSource[] = [];
-
-  if (Array.isArray(value)) {
-    for (const entry of value) {
-      if (!entry || typeof entry !== "object") {
-        continue;
-      }
-
-      const item = entry as Partial<OnlineSource>;
-      const kind =
-        item.kind === "gutenberg" || item.kind === "json" || item.kind === "html" || item.kind === "rss"
-          ? item.kind : "url";
-      const id = typeof item.id === "string" && item.id.trim() ? item.id.trim() : `source-${sources.length + 1}`;
-      const name =
-        typeof item.name === "string" && item.name.trim()
-          ? item.name.trim()
-          : kind === "gutenberg"
-            ? "Project Gutenberg"
-            : `Custom Source ${sources.length + 1}`;
-      const enabled = item.enabled !== false;
-      const rawValue = typeof item.value === "string" ? item.value : "";
-
-      if (kind !== "gutenberg" && !rawValue.trim()) {
-        continue;
-      }
-
-      // Migrate stale zlibrary html configs: old versions used wrong selectors that
-      // didn't match the real z-library DOM (z-bookcard custom elements).
-      let migratedValue = rawValue;
-      if (kind === "html" && rawValue.trim().startsWith("{")) {
-        try {
-          const parsed = JSON.parse(rawValue);
-          const searchUrl = typeof parsed.searchUrl === "string" ? parsed.searchUrl : "";
-          if (
-            (searchUrl.includes("z-library") || searchUrl.includes("zlibrary")) &&
-            parsed.titleSelector !== '[slot="title"]'
-          ) {
-            const baseUrl =
-              typeof parsed.baseUrl === "string"
-                ? parsed.baseUrl
-                : searchUrl.replace(/\/s\/\{query\}.*/, "").trim();
-            migratedValue = JSON.stringify({
-              adapter: "html",
-              searchUrl: `${baseUrl}/s/{query}`,
-              baseUrl,
-              renderJs: true,
-              waitForSelector: "z-bookcard",
-              timeout: 20000,
-              delay: 500,
-              itemSelector: "z-bookcard",
-              titleSelector: '[slot="title"]',
-              authorSelector: '[slot="author"]',
-              downloadSelector: "z-bookcard",
-              downloadAttr: "download",
-              formatAttr: "extension",
-              coverSelector: "img",
-              coverAttr: "data-src,src",
-              sourceName: name,
-              headers: {
-                "User-Agent":
-                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-              }
-            });
-          }
-        } catch {
-          // keep rawValue on parse failure
-        }
-      }
-
-      sources.push({
-        id,
-        name,
-        enabled,
-        kind,
-        value: kind === "gutenberg" ? "" : migratedValue
-      });
-    }
-  }
-
-  const hasGutenberg = sources.some((item) => item.kind === "gutenberg");
-  if (!hasGutenberg) {
-    sources.unshift(defaultOnlineSource());
-  }
-
-  if (!sources.some((item) => item.kind !== "gutenberg") && typeof legacyValue === "string" && legacyValue.trim()) {
-    sources.push({
-      id: "legacy-custom",
-      name: "Custom Source",
-      enabled: true,
-      kind: legacyValue.trim().startsWith("{") ? "json" : "url",
-      value: legacyValue.trim()
-    });
-  }
-
-  return sources;
-}
-
-function migratePreferences(prefs: Partial<ReaderPreferences>): Partial<ReaderPreferences> {
-  const version = prefs.preferencesVersion ?? 1;
-  const migrated = { ...prefs };
-
-  // v1 → v2: 补 tapToTurn, pageTurnStyle, spread
-  if (version < 2) {
-    if (migrated.tapToTurn === undefined) migrated.tapToTurn = true;
-    if (migrated.pageTurnStyle === undefined) migrated.pageTurnStyle = "slide";
-    if (migrated.spread === undefined) migrated.spread = "auto";
-  }
-
-  // v2 → v3: 补 readerColorPreset, brightness, pageMargin, justify, hyphenate
-  if (version < 3) {
-    if (migrated.readerColorPreset === undefined) migrated.readerColorPreset = "default";
-    if (migrated.brightness === undefined) migrated.brightness = 1;
-    if (migrated.pageMargin === undefined) migrated.pageMargin = "normal";
-    if (migrated.justify === undefined) migrated.justify = false;
-    if (migrated.hyphenate === undefined) migrated.hyphenate = false;
-  }
-
-  migrated.preferencesVersion = 3;
-  return migrated;
-}
-
-function normalizePreferences(preferences?: Partial<ReaderPreferences> & { onlineSourceUrl?: string }): ReaderPreferences {
-  const defaults = defaultPreferences();
-
-  return {
-    ...defaults,
-    ...preferences,
-    onlineSources: normalizeOnlineSources(preferences?.onlineSources, preferences?.onlineSourceUrl),
-    customColors: {
-      ...defaults.customColors,
-      ...preferences?.customColors
-    }
-  };
+  getStore().set("books", updated);
 }
 
 function httpUrl(value: unknown): URL | undefined {
@@ -330,20 +132,6 @@ function sizeLabelFromText(text?: string): string | undefined {
   return `${value} ${unit}`;
 }
 
-function seedFromHash(hash: string): number {
-  return Number.parseInt(hash.slice(0, 8), 16) || 1;
-}
-
-function bookToClient(book: BookRecord): ClientBookRecord {
-  const { filePath: _filePath, ...publicBook } = book;
-
-  return {
-    ...publicBook,
-    highlights: publicBook.highlights ?? [],
-    fileUrl: `manga-reader://book/${encodeURIComponent(book.id)}`
-  };
-}
-
 async function hashFile(filePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const hash = createHash("sha256");
@@ -364,7 +152,7 @@ async function importOneBook(filePath: string): Promise<ClientBookRecord | undef
 
   const stats = await fs.stat(filePath);
   const hash = await hashFile(filePath);
-  const books = store.get("books", []);
+  const books = getStore().get("books", []);
   const duplicate = books.find((book) => book.hash === hash);
 
   if (duplicate) {
@@ -393,7 +181,7 @@ async function importOneBook(filePath: string): Promise<ClientBookRecord | undef
     coverSeed: seedFromHash(hash)
   };
 
-  store.set("books", [book, ...books]);
+  getStore().set("books", [book, ...books]);
 
   return bookToClient(book);
 }
@@ -509,7 +297,7 @@ async function importOnlineBuffer(
   buffer: Buffer
 ): Promise<ClientBookRecord | undefined> {
   const hash = hashBuffer(buffer);
-  const books = store.get("books", []);
+  const books = getStore().get("books", []);
   const duplicate = books.find((item) => item.hash === hash);
 
   if (duplicate) {
@@ -540,7 +328,7 @@ async function importOnlineBuffer(
     coverSeed: seedFromHash(hash)
   };
 
-  store.set("books", [record, ...books]);
+  getStore().set("books", [record, ...books]);
   return bookToClient(record);
 }
 
@@ -676,26 +464,6 @@ async function importOnlineBook(book: OnlineBookResult): Promise<ClientBookRecor
   throw new Error(`${fetchFailure}；浏览器下载回退也没有拿到有效 ${format.toUpperCase()} 文件。`);
 }
 
-function updateBook(id: string, updater: (book: BookRecord) => BookRecord): BookRecord | undefined {
-  const books = store.get("books", []);
-  let changed: BookRecord | undefined;
-
-  const nextBooks = books.map((book) => {
-    if (book.id !== id) {
-      return book;
-    }
-
-    changed = updater(book);
-    return changed;
-  });
-
-  if (changed) {
-    store.set("books", nextBooks);
-  }
-
-  return changed;
-}
-
 function contentTypeFor(format: BookFormat): string {
   if (format === "pdf") return "application/pdf";
   if (format === "epub") return "application/epub+zip";
@@ -728,7 +496,7 @@ async function handleBookProtocol(request: GlobalRequest): Promise<Response> {
   }
 
   const id = decodeURIComponent(url.pathname.slice(1));
-  const book = store.get("books", []).find((item) => item.id === id);
+  const book = getStore().get("books", []).find((item) => item.id === id);
 
   if (!book) {
     return new Response("Book not found", { status: 404 });
@@ -1914,7 +1682,7 @@ async function searchOnlineBooks(query: string): Promise<OnlineBookResult[]> {
     return [];
   }
 
-  const preferences = normalizePreferences(store.get("preferences"));
+  const preferences = normalizePreferences(getStore().get("preferences"));
   const enabledSources = preferences.onlineSources.filter((source) => source.enabled);
   const results = await Promise.allSettled(
     enabledSources.map((source) =>
@@ -1991,7 +1759,7 @@ async function createWindow(): Promise<void> {
 
 async function fetchZlibAccount(sess: Electron.Session): Promise<ZLibStatus> {
   const CACHE_TTL = 30 * 60 * 1000;
-  const cached = store.get("zlibCache");
+  const cached = getStore().get("zlibCache");
   if (cached && Date.now() - cached.cachedAt < CACHE_TTL) {
     return { loggedIn: true, email: cached.email, remaining: cached.remaining, dailyLimit: cached.dailyLimit };
   }
@@ -2067,7 +1835,7 @@ async function fetchZlibAccount(sess: Electron.Session): Promise<ZLibStatus> {
         dailyLimit: result.dailyLimit,
         cachedAt: Date.now()
       };
-      store.set("zlibCache", cache);
+      getStore().set("zlibCache", cache);
     }
 
     return { loggedIn: true, ...result };
@@ -2078,7 +1846,7 @@ async function fetchZlibAccount(sess: Electron.Session): Promise<ZLibStatus> {
 
 function registerIpc(): void {
   ipcMain.handle(IPC_CHANNELS.libraryListBooks, () => {
-    return store.get("books", []).map(bookToClient);
+    return getStore().get("books", []).map(bookToClient);
   });
 
   ipcMain.handle(IPC_CHANNELS.libraryImportBooks, async () => {
@@ -2162,7 +1930,7 @@ function registerIpc(): void {
     progressFlushTimer = setTimeout(flushProgressUpdates, 5000);
 
     // Return optimistic client record from current in-memory store
-    const books = store.get("books", []);
+    const books = getStore().get("books", []);
     const book = books.find((b) => b.id === id);
     if (!book) return undefined;
     return bookToClient({ ...book, progress });
@@ -2237,7 +2005,7 @@ function registerIpc(): void {
   });
 
   ipcMain.handle(IPC_CHANNELS.libraryRemoveBook, async (_event, id: string) => {
-    const books = store.get("books", []);
+    const books = getStore().get("books", []);
     const book = books.find((item) => item.id === id);
 
     if (book) {
@@ -2245,12 +2013,12 @@ function registerIpc(): void {
       await fs.rm(coverPathFor(book.id), { force: true });
     }
 
-    store.set(
+    getStore().set(
       "books",
       books.filter((item) => item.id !== id)
     );
 
-    return store.get("books", []).map(bookToClient);
+    return getStore().get("books", []).map(bookToClient);
   });
 
   ipcMain.handle(IPC_CHANNELS.coverHas, async (_event, bookId: string) => {
@@ -2274,7 +2042,7 @@ function registerIpc(): void {
 
   ipcMain.handle(IPC_CHANNELS.coverFetchForBook, async (_event, bookId: string) => {
     if (typeof bookId !== "string" || !bookId) return false;
-    const books = store.get("books", []);
+    const books = getStore().get("books", []);
     const book = books.find((b) => b.id === bookId);
     if (!book) return false;
 
@@ -2312,33 +2080,33 @@ function registerIpc(): void {
   });
 
   ipcMain.handle(IPC_CHANNELS.preferencesGet, () => {
-    const userPrefs = store.get("preferences");
+    const userPrefs = getStore().get("preferences");
     const merged = { ...defaultPreferences(), ...userPrefs };
     const preferences = normalizePreferences(migratePreferences(merged));
-    store.set("preferences", preferences);
+    getStore().set("preferences", preferences);
     return preferences;
   });
 
   ipcMain.handle(IPC_CHANNELS.preferencesSave, (_event, preferences: Partial<ReaderPreferences>) => {
-    const userPrefs = store.get("preferences");
+    const userPrefs = getStore().get("preferences");
     const merged = { ...defaultPreferences(), ...userPrefs, ...preferences };
     const nextPreferences = normalizePreferences(migratePreferences(merged));
-    store.set("preferences", nextPreferences);
+    getStore().set("preferences", nextPreferences);
     return nextPreferences;
   });
 
   // 批量删除
   ipcMain.handle(IPC_CHANNELS.libraryRemoveBooks, async (_event, ids: string[]) => {
     const idSet = new Set<string>(ids);
-    const books = store.get("books", []);
+    const books = getStore().get("books", []);
     for (const book of books) {
       if (idSet.has(book.id)) {
         await fs.rm(book.filePath, { force: true });
         await fs.rm(coverPathFor(book.id), { force: true });
       }
     }
-    store.set("books", books.filter((b) => !idSet.has(b.id)));
-    return store.get("books", []).map(bookToClient);
+    getStore().set("books", books.filter((b) => !idSet.has(b.id)));
+    return getStore().get("books", []).map(bookToClient);
   });
 
   // 拖放导入（路径列表直接导入）
@@ -2378,53 +2146,53 @@ function registerIpc(): void {
       filters: [{ name: "JSON", extensions: ["json"] }]
     });
     if (result.canceled || !result.filePath) return false;
-    const books = store.get("books", []).map((b) => {
+    const books = getStore().get("books", []).map((b) => {
       const { filePath: _fp, ...rest } = b;
       return rest;
     });
-    const preferences = store.get("preferences");
+    const preferences = getStore().get("preferences");
     await fs.writeFile(result.filePath, JSON.stringify({ version: 1, books, preferences }, null, 2), "utf-8");
     return true;
   });
 
   // ── 收藏夹 ──────────────────────────────────────────────────────────────────
   ipcMain.handle(IPC_CHANNELS.libraryListCollections, () => {
-    return store.get("collections", []);
+    return getStore().get("collections", []);
   });
 
   ipcMain.handle(IPC_CHANNELS.librarySaveCollection, (_event, collection: Collection) => {
-    const current = store.get("collections", []);
+    const current = getStore().get("collections", []);
     const exists = current.find((c) => c.id === collection.id);
     const next = exists
       ? current.map((c) => (c.id === collection.id ? collection : c))
       : [...current, collection];
-    store.set("collections", next);
+    getStore().set("collections", next);
     return next;
   });
 
   ipcMain.handle(IPC_CHANNELS.libraryRemoveCollection, (_event, id: string) => {
-    const next = store.get("collections", []).filter((c) => c.id !== id);
-    store.set("collections", next);
+    const next = getStore().get("collections", []).filter((c) => c.id !== id);
+    getStore().set("collections", next);
     return next;
   });
 
   ipcMain.handle(IPC_CHANNELS.libraryAddBookToCollection, (_event, collectionId: string, bookId: string) => {
-    const collections = store.get("collections", []);
+    const collections = getStore().get("collections", []);
     const next = collections.map((c) =>
       c.id === collectionId
         ? { ...c, bookIds: c.bookIds.includes(bookId) ? c.bookIds : [...c.bookIds, bookId] }
         : c
     );
-    store.set("collections", next);
+    getStore().set("collections", next);
     return next;
   });
 
   ipcMain.handle(IPC_CHANNELS.libraryRemoveBookFromCollection, (_event, collectionId: string, bookId: string) => {
-    const collections = store.get("collections", []);
+    const collections = getStore().get("collections", []);
     const next = collections.map((c) =>
       c.id === collectionId ? { ...c, bookIds: c.bookIds.filter((id) => id !== bookId) } : c
     );
-    store.set("collections", next);
+    getStore().set("collections", next);
     return next;
   });
 
@@ -2436,9 +2204,9 @@ function registerIpc(): void {
 
   // 阅读目标统计（今日分钟、连续天数）
   ipcMain.handle(IPC_CHANNELS.libraryGetGoalStats, () => {
-    const preferences = store.get("preferences");
+    const preferences = getStore().get("preferences");
     const dailyGoalMinutes = preferences.dailyGoalMinutes ?? 30;
-    const books = store.get("books", []);
+    const books = getStore().get("books", []);
     const today = new Date().toISOString().slice(0, 10);
     const now = Date.now();
 
@@ -2480,7 +2248,7 @@ function registerIpc(): void {
   });
 
   ipcMain.handle(IPC_CHANNELS.libraryGetSessionsByDate, () => {
-    const books = store.get("books", []);
+    const books = getStore().get("books", []);
     const dayMap = new Map<string, number>();
     for (const book of books) {
       for (const session of book.readingSessions ?? []) {
@@ -2511,7 +2279,7 @@ function registerIpc(): void {
       return false;
     }
     if (!parsed || !Array.isArray(parsed.books)) return false;
-    const existing = store.get("books", []);
+    const existing = getStore().get("books", []);
     const existingByHash = new Map(existing.map((b) => [b.hash, b]));
     for (const imported of parsed.books) {
       if (!imported.hash || !imported.id) continue;
@@ -2531,10 +2299,10 @@ function registerIpc(): void {
         existingByHash.set(match.hash, merged);
       }
     }
-    store.set("books", [...existingByHash.values()]);
+    getStore().set("books", [...existingByHash.values()]);
     if (parsed.preferences) {
-      const userPrefs = store.get("preferences");
-      store.set("preferences", normalizePreferences(migratePreferences({ ...defaultPreferences(), ...userPrefs, ...parsed.preferences })));
+      const userPrefs = getStore().get("preferences");
+      getStore().set("preferences", normalizePreferences(migratePreferences({ ...defaultPreferences(), ...userPrefs, ...parsed.preferences })));
     }
     return true;
   });
@@ -2546,7 +2314,7 @@ function registerIpc(): void {
     if (!loggedIn) {
       return { loggedIn: false };
     }
-    const cached = store.get("zlibCache");
+    const cached = getStore().get("zlibCache");
     const CACHE_TTL = 30 * 60 * 1000;
     if (cached && Date.now() - cached.cachedAt < CACHE_TTL) {
       return { loggedIn: true, email: cached.email, remaining: cached.remaining, dailyLimit: cached.dailyLimit };
@@ -2556,7 +2324,7 @@ function registerIpc(): void {
 
   ipcMain.handle(IPC_CHANNELS.zlibLogout, async (): Promise<void> => {
     await zlibSession().clearStorageData();
-    store.delete("zlibCache" as never);
+    getStore().delete("zlibCache" as never);
   });
 
   ipcMain.handle(IPC_CHANNELS.zlibLogin, async (): Promise<ZLibStatus> => {
@@ -2631,20 +2399,13 @@ function registerIpc(): void {
       return { loggedIn: false };
     }
     // Force fresh fetch by clearing cache before calling
-    store.delete("zlibCache" as never);
+    getStore().delete("zlibCache" as never);
     return fetchZlibAccount(sess).catch(() => ({ loggedIn: true } as ZLibStatus));
   });
 }
 
 app.whenReady().then(async () => {
-  store = new Store<StoreShape>({
-    name: "natsu",
-    defaults: {
-      books: [],
-      preferences: defaultPreferences(),
-      collections: []
-    }
-  });
+  initStore();
 
   protocol.handle("manga-reader", handleBookProtocol);
   registerIpc();

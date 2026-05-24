@@ -5,7 +5,6 @@ import fs from "node:fs/promises";
 import { parse, type HTMLElement } from "node-html-parser";
 import os from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import {
   formatFromPath,
   formatFromUrl,
@@ -16,6 +15,7 @@ import {
 } from "./services/bookFormats.js";
 import { IPC_CHANNELS } from "./ipc/channels.js";
 import { rootDir, appIconPath, ensureLibraryDir, ensureCoverDir, coverPathFor } from "./paths.js";
+import { handleBookProtocol } from "./services/protocol.js";
 import {
   initStore,
   getStore,
@@ -462,56 +462,6 @@ async function importOnlineBook(book: OnlineBookResult): Promise<ClientBookRecor
   }
 
   throw new Error(`${fetchFailure}；浏览器下载回退也没有拿到有效 ${format.toUpperCase()} 文件。`);
-}
-
-function contentTypeFor(format: BookFormat): string {
-  if (format === "pdf") return "application/pdf";
-  if (format === "epub") return "application/epub+zip";
-  if (format === "txt") return "text/plain; charset=utf-8";
-  if (format === "zip" || format === "cbz") return "application/zip";
-  if (format === "rar" || format === "cbr") return "application/vnd.rar";
-  return "application/octet-stream";
-}
-
-async function handleBookProtocol(request: GlobalRequest): Promise<Response> {
-  const url = new URL(request.url);
-
-  if (url.hostname === "cover") {
-    const id = decodeURIComponent(url.pathname.slice(1));
-    const filePath = coverPathFor(id);
-    try {
-      await fs.access(filePath);
-      const response = await net.fetch(pathToFileURL(filePath).toString());
-      const headers = new Headers(response.headers);
-      headers.set("content-type", "image/jpeg");
-      headers.set("cache-control", "private, max-age=31536000, immutable");
-      return new Response(response.body, { status: response.status, headers });
-    } catch {
-      return new Response("Cover not found", { status: 404 });
-    }
-  }
-
-  if (url.hostname !== "book") {
-    return new Response("Unknown resource", { status: 404 });
-  }
-
-  const id = decodeURIComponent(url.pathname.slice(1));
-  const book = getStore().get("books", []).find((item) => item.id === id);
-
-  if (!book) {
-    return new Response("Book not found", { status: 404 });
-  }
-
-  try {
-    await fs.access(book.filePath);
-    const response = await net.fetch(pathToFileURL(book.filePath).toString());
-    const headers = new Headers(response.headers);
-    headers.set("content-type", contentTypeFor(book.format));
-    headers.set("cache-control", "no-store");
-    return new Response(response.body, { status: response.status, headers });
-  } catch {
-    return new Response("Book file missing", { status: 404 });
-  }
 }
 
 function firstDownloadUrl(formats: Record<string, unknown>): { url: string; format: BookFormat } | undefined {

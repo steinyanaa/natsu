@@ -1,21 +1,25 @@
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, session, shell } from "electron";
-import { createHash } from "node:crypto";
-import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
 import { parse, type HTMLElement } from "node-html-parser";
 import os from "node:os";
 import path from "node:path";
 import {
-  formatFromPath,
   formatFromUrl,
   sanitizeFileName,
   supportedExtensions,
-  titleFromFile,
   titleFromUrl
 } from "./services/bookFormats.js";
 import { IPC_CHANNELS } from "./ipc/channels.js";
 import { rootDir, appIconPath, ensureLibraryDir, ensureCoverDir, coverPathFor } from "./paths.js";
 import { handleBookProtocol } from "./services/protocol.js";
+import {
+  bufferLooksLikeFormat,
+  flushProgressUpdates,
+  hashBuffer,
+  importOneBook,
+  queueProgressUpdate,
+  sizeLabelFromText
+} from "./services/library.js";
 import {
   initStore,
   getStore,
@@ -63,25 +67,6 @@ protocol.registerSchemesAsPrivileged([
 
 let mainWindow: BrowserWindow | undefined;
 
-// P0-4: debounce progress writes to avoid full-library JSON rewrite on every page turn
-const pendingProgressUpdates = new Map<string, ReaderProgress>();
-let progressFlushTimer: ReturnType<typeof setTimeout> | null = null;
-
-function flushProgressUpdates(): void {
-  if (progressFlushTimer !== null) {
-    clearTimeout(progressFlushTimer);
-    progressFlushTimer = null;
-  }
-  if (pendingProgressUpdates.size === 0) return;
-  const books = getStore().get("books", []);
-  const updates = new Map(pendingProgressUpdates);
-  pendingProgressUpdates.clear();
-  const updated = books.map((book) =>
-    updates.has(book.id) ? { ...book, progress: updates.get(book.id)! } : book
-  );
-  getStore().set("books", updated);
-}
-
 function httpUrl(value: unknown): URL | undefined {
   if (typeof value !== "string") {
     return undefined;
@@ -117,75 +102,6 @@ async function openHttpExternal(url: unknown): Promise<boolean> {
   return true;
 }
 
-function sizeLabelFromText(text?: string): string | undefined {
-  if (!text) {
-    return undefined;
-  }
-
-  const match = text.replace(/\s+/g, " ").match(/(\d+(?:[.,]\d+)?)\s*(B|KB|KIB|MB|MIB|GB|GIB)\b/i);
-  if (!match) {
-    return undefined;
-  }
-
-  const value = match[1].replace(",", ".");
-  const unit = match[2].toUpperCase().replace("IB", "B");
-  return `${value} ${unit}`;
-}
-
-async function hashFile(filePath: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const hash = createHash("sha256");
-    const stream = createReadStream(filePath);
-
-    stream.on("data", (chunk) => hash.update(chunk));
-    stream.on("error", reject);
-    stream.on("end", () => resolve(hash.digest("hex")));
-  });
-}
-
-async function importOneBook(filePath: string): Promise<ClientBookRecord | undefined> {
-  const format = formatFromPath(filePath);
-
-  if (!format) {
-    return undefined;
-  }
-
-  const stats = await fs.stat(filePath);
-  const hash = await hashFile(filePath);
-  const books = getStore().get("books", []);
-  const duplicate = books.find((book) => book.hash === hash);
-
-  if (duplicate) {
-    return bookToClient(duplicate);
-  }
-
-  const libraryDir = await ensureLibraryDir();
-  const id = hash.slice(0, 20);
-  const storedFileName = `${id}.${format}`;
-  const storedPath = path.join(libraryDir, storedFileName);
-
-  await fs.copyFile(filePath, storedPath);
-
-  const now = new Date().toISOString();
-  const book: BookRecord = {
-    id,
-    hash,
-    title: titleFromFile(filePath),
-    format,
-    fileName: path.basename(filePath),
-    filePath: storedPath,
-    size: stats.size,
-    importedAt: now,
-    bookmarks: [],
-    highlights: [],
-    coverSeed: seedFromHash(hash)
-  };
-
-  getStore().set("books", [book, ...books]);
-
-  return bookToClient(book);
-}
-
 async function openExternalAndAutoImport(book: OnlineBookResult): Promise<ClientBookRecord | undefined> {
   const downloadUrl = book.downloadUrl?.trim();
   if (!downloadUrl) {
@@ -199,43 +115,6 @@ async function openExternalAndAutoImport(book: OnlineBookResult): Promise<Client
 
   await shell.openExternal(parsed.toString());
   throw new Error("已在浏览器中打开下载链接。为避免误导入其他文件，请下载完成后手动导入。");
-}
-
-function isLikelyHtml(buffer: Buffer, contentType?: string | null): boolean {
-  if (contentType?.toLowerCase().includes("text/html")) {
-    return true;
-  }
-
-  const prefix = buffer.subarray(0, Math.min(buffer.byteLength, 512)).toString("utf8").trimStart().toLowerCase();
-  return prefix.startsWith("<!doctype html") || prefix.startsWith("<html") || prefix.includes("<title>");
-}
-
-function bufferLooksLikeFormat(buffer: Buffer, format: BookFormat, contentType?: string | null): boolean {
-  if (!buffer.byteLength || isLikelyHtml(buffer, contentType)) {
-    return false;
-  }
-
-  if (format === "epub" || format === "zip" || format === "cbz") {
-    return buffer.subarray(0, 2).toString("ascii") === "PK";
-  }
-
-  if (format === "pdf") {
-    return buffer.subarray(0, 4).toString("ascii") === "%PDF";
-  }
-
-  if (format === "rar" || format === "cbr") {
-    return buffer.subarray(0, 4).toString("ascii") === "Rar!";
-  }
-
-  if (format === "txt") {
-    return !buffer.subarray(0, Math.min(buffer.byteLength, 256)).includes(0);
-  }
-
-  return true;
-}
-
-function hashBuffer(buffer: Buffer): string {
-  return createHash("sha256").update(buffer).digest("hex");
 }
 
 async function cookieHeaderForUrl(url: string): Promise<string | undefined> {
@@ -1875,9 +1754,7 @@ function registerIpc(): void {
 
   ipcMain.handle(IPC_CHANNELS.librarySaveProgress, (_event, id: string, progress: ReaderProgress) => {
     // Buffer the update and debounce the actual disk write (5 s)
-    pendingProgressUpdates.set(id, progress);
-    if (progressFlushTimer !== null) clearTimeout(progressFlushTimer);
-    progressFlushTimer = setTimeout(flushProgressUpdates, 5000);
+    queueProgressUpdate(id, progress);
 
     // Return optimistic client record from current in-memory store
     const books = getStore().get("books", []);

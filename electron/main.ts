@@ -21,6 +21,20 @@ import {
   sizeLabelFromText
 } from "./services/library.js";
 import {
+  attrCandidates,
+  hrefFrom,
+  htmlDownloadHeaders,
+  importabilityReason,
+  normalizeSubjects,
+  resolveUrl,
+  resultArrayFromCustomPayload,
+  selectedAttr,
+  selectedElement,
+  selectedText,
+  stringField,
+  valueByPath
+} from "./services/scraper/dom.js";
+import {
   initStore,
   getStore,
   defaultPreferences,
@@ -442,70 +456,6 @@ function customSourceSearchUrl(sourceUrl: string, query: string): string | undef
   return url.toString();
 }
 
-function resultArrayFromCustomPayload(payload: unknown): unknown[] {
-  if (Array.isArray(payload)) {
-    return payload;
-  }
-
-  if (!payload || typeof payload !== "object") {
-    return [];
-  }
-
-  const object = payload as Record<string, unknown>;
-  const candidates = [object.results, object.items, object.books, object.data];
-  return candidates.find(Array.isArray) as unknown[] | undefined ?? [];
-}
-
-function stringField(item: Record<string, unknown>, keys: string[]): string | undefined {
-  for (const key of keys) {
-    const value = item[key];
-    if (typeof value === "string" && value.trim()) {
-      return value.trim();
-    }
-  }
-
-  return undefined;
-}
-
-function valueByPath(input: unknown, pathValue?: string): unknown {
-  if (!pathValue || !pathValue.trim()) {
-    return undefined;
-  }
-
-  return pathValue.split(".").reduce<unknown>((current, segment) => {
-    if (!segment) {
-      return current;
-    }
-
-    if (Array.isArray(current)) {
-      const index = Number.parseInt(segment, 10);
-      return Number.isInteger(index) ? current[index] : undefined;
-    }
-
-    if (current && typeof current === "object") {
-      return (current as Record<string, unknown>)[segment];
-    }
-
-    return undefined;
-  }, input);
-}
-
-function normalizeSubjects(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.filter((item): item is string => typeof item === "string" && Boolean(item.trim())).slice(0, 6);
-  }
-
-  if (typeof value === "string" && value.trim()) {
-    return value
-      .split(/[|,/]/)
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .slice(0, 6);
-  }
-
-  return [];
-}
-
 function resolveCustomSourceConfig(sourceValue: string): string | JsonSourceConfig | HtmlSourceConfig | undefined {
   const trimmed = sourceValue.trim();
 
@@ -673,86 +623,6 @@ async function searchJsonAdapterBooks(query: string, config: JsonSourceConfig): 
     .map((item, index) => mapJsonResult(item, config, index))
     .filter((item): item is OnlineBookResult => Boolean(item))
     .slice(0, 40);
-}
-
-function resolveUrl(baseUrl: string, value?: string): string | undefined {
-  if (!value?.trim()) {
-    return undefined;
-  }
-
-  try {
-    const url = new URL(value.trim(), baseUrl);
-    if (url.protocol !== "https:" && url.protocol !== "http:") {
-      return undefined;
-    }
-    return url.toString();
-  } catch {
-    return undefined;
-  }
-}
-
-function selectedElement(root: HTMLElement, selector?: string): HTMLElement | undefined {
-  if (!selector) {
-    return root;
-  }
-
-  try {
-    if (root.matches(selector)) {
-      return root;
-    }
-  } catch {
-    // Some selector lists may be unsupported by the parser. Fall back to querySelector.
-  }
-
-  return root.querySelector(selector) ?? undefined;
-}
-
-function selectedText(root: HTMLElement, selector?: string): string | undefined {
-  const element = selectedElement(root, selector);
-  const text = element?.textContent?.replace(/\s+/g, " ").trim();
-  return text || undefined;
-}
-
-function attrCandidates(value: string | undefined, fallback: string[]): string[] {
-  const explicit = value
-    ?.split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-  return explicit?.length ? explicit : fallback;
-}
-
-function selectedAttr(root: HTMLElement, selector: string | undefined, attr: string | undefined, fallback: string[]): string | undefined {
-  const element = selectedElement(root, selector);
-  if (!element) {
-    return undefined;
-  }
-
-  for (const candidate of attrCandidates(attr, fallback)) {
-    const value = element.getAttribute(candidate)?.trim();
-    if (value) {
-      return value;
-    }
-  }
-
-  return undefined;
-}
-
-function hrefFrom(root: HTMLElement, selector?: string, attr?: string): string | undefined {
-  return selectedAttr(root, selector, attr, ["href", "src", "data-href", "data-url", "download"]);
-}
-
-function htmlDownloadHeaders(config: HtmlSourceConfig, referer: string): Record<string, string> | undefined {
-  const headers = {
-    ...(config.headers ?? {}),
-    ...(config.downloadHeaders ?? {})
-  };
-  const hasReferer = Object.keys(headers).some((key) => key.toLowerCase() === "referer");
-
-  if (!hasReferer) {
-    headers.Referer = referer;
-  }
-
-  return Object.keys(headers).length ? headers : undefined;
 }
 
 async function fetchHtml(url: string, headers?: Record<string, string>): Promise<string> {
@@ -1065,18 +935,6 @@ async function searchHtmlAdapterBooks(query: string, config: HtmlSourceConfig): 
   }
 
   return results.slice(0, 40);
-}
-
-function importabilityReason(downloadUrl?: string, format?: BookFormat): string | undefined {
-  if (!downloadUrl) {
-    return "没有解析到下载链接";
-  }
-
-  if (!format) {
-    return "下载链接无法判断格式；如果是无后缀链接，请在配置中指定 format，例如 epub";
-  }
-
-  return undefined;
 }
 
 async function testHtmlAdapterBooks(query: string, config: HtmlSourceConfig): Promise<OnlineSourceTestReport> {

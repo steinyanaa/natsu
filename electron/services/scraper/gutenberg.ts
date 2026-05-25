@@ -2,7 +2,7 @@ import { net } from "electron";
 import { formatFromUrl } from "../bookFormats.js";
 import type { BookFormat, OnlineBookResult } from "../../ipc/types.js";
 
-export function firstDownloadUrl(formats: Record<string, unknown>): { url: string; format: BookFormat } | undefined {
+function firstDownloadUrl(formats: Record<string, unknown>): { url: string; format: BookFormat } | undefined {
   const priorities: Array<[string, BookFormat]> = [
     ["application/epub+zip", "epub"],
     ["application/x-mobipocket-ebook", "mobi"],

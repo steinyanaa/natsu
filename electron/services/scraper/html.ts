@@ -14,6 +14,7 @@ import {
 import { loadHtml } from "./fetch.js";
 import type { BookFormat, HtmlSourceConfig, OnlineBookResult, OnlineSourceTestItem, OnlineSourceTestReport } from "../../ipc/types.js";
 
+// Duplicated from main.ts; flagged for deduplication in Task 10 (zlib service split).
 function zlibSession(): Session {
   return session.fromPartition("persist:natsu-zlib");
 }

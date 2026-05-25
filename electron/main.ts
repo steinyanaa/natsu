@@ -1,6 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, session, shell } from "electron";
 import fs from "node:fs/promises";
-import { parse } from "node-html-parser";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -26,6 +25,7 @@ import { customSourceSearchUrl, resolveCustomSourceConfig } from "./services/scr
 import { searchGutenbergBooks } from "./services/scraper/gutenberg.js";
 import { searchHtmlAdapterBooks, testHtmlAdapterBooks } from "./services/scraper/html.js";
 import { searchJsonAdapterBooks, testJsonAdapterBooks } from "./services/scraper/json.js";
+import { searchRssFeed } from "./services/scraper/rss.js";
 import {
   initStore,
   getStore,
@@ -403,68 +403,6 @@ async function searchCustomBooks(query: string, sourceUrl: string, sourceName = 
     })
     .filter((item): item is OnlineBookResult => Boolean(item))
     .slice(0, 40);
-}
-
-async function searchRssFeed(query: string, feedUrl: string, sourceName: string): Promise<OnlineBookResult[]> {
-  const resolvedUrl = feedUrl.replace(/\{q\}/g, encodeURIComponent(query));
-  try {
-    const response = await withTimeout(net.fetch(resolvedUrl, {
-      headers: { "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml" }
-    }), 15000, null);
-    if (!response || !response.ok) return [];
-    const xml = await response.text();
-    const doc = parse(xml);
-    const lowerQuery = query.toLowerCase();
-
-    const items = doc.querySelectorAll("item, entry");
-    const results: OnlineBookResult[] = [];
-
-    for (const item of items) {
-      const title = item.querySelector("title")?.text?.trim() ?? "";
-      const author = item.querySelector("author name, dc\\:creator, author")?.text?.trim() ?? "";
-      const link = item.querySelector("enclosure")?.getAttribute("url")
-        ?? item.querySelector("link[rel='enclosure']")?.getAttribute("href")
-        ?? item.querySelector("link")?.getAttribute("href")
-        ?? item.querySelector("link")?.text?.trim()
-        ?? "";
-
-      if (!feedUrl.includes("{q}")) {
-        const haystack = `${title} ${author}`.toLowerCase();
-        if (!haystack.includes(lowerQuery)) continue;
-      }
-
-      if (!link) continue;
-
-      const enclosureType = item.querySelector("enclosure")?.getAttribute("type") ?? "";
-      const format: BookFormat | undefined =
-        link.endsWith(".epub") || enclosureType.includes("epub") ? "epub"
-        : link.endsWith(".pdf") || enclosureType.includes("pdf") ? "pdf"
-        : link.endsWith(".txt") || enclosureType.includes("text/plain") ? "txt"
-        : undefined;
-
-      if (!format) continue;
-
-      const coverUrl = item.querySelector("image url, media\\:thumbnail, itunes\\:image")?.text?.trim()
-        ?? item.querySelector("media\\:thumbnail")?.getAttribute("url")
-        ?? undefined;
-
-      results.push({
-        id: `rss-${Buffer.from(link).toString("base64").slice(0, 16)}`,
-        source: sourceName,
-        title: title || "Untitled",
-        author: author || undefined,
-        language: undefined,
-        subjects: [],
-        coverUrl: coverUrl || undefined,
-        downloadUrl: link,
-        format,
-        sizeLabel: undefined
-      });
-    }
-    return results.slice(0, 40);
-  } catch {
-    return [];
-  }
 }
 
 async function searchSource(query: string, source: OnlineSource): Promise<OnlineBookResult[]> {

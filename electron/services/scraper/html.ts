@@ -1,7 +1,7 @@
-import { session, type Session } from "electron";
 import { parse, type HTMLElement } from "node-html-parser";
 import { formatFromUrl, supportedExtensions, titleFromUrl } from "../bookFormats.js";
 import { sizeLabelFromText } from "../library.js";
+import { isZlibUrl, zlibSession } from "../zlib/session.js";
 import { customSourceSearchUrl } from "./custom.js";
 import {
   hrefFrom,
@@ -13,15 +13,6 @@ import {
 } from "./dom.js";
 import { loadHtml } from "./fetch.js";
 import type { BookFormat, HtmlSourceConfig, OnlineBookResult, OnlineSourceTestItem, OnlineSourceTestReport } from "../../ipc/types.js";
-
-// Duplicated from main.ts; flagged for deduplication in Task 10 (zlib service split).
-function zlibSession(): Session {
-  return session.fromPartition("persist:natsu-zlib");
-}
-
-function isZlibUrl(url: string): boolean {
-  return url.includes("z-library") || url.includes("zlibrary");
-}
 
 function directDownloadResult(
   element: HTMLElement,

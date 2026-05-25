@@ -13,6 +13,7 @@ import {
   hashBuffer
 } from "./library.js";
 import { bookToClient, getStore, seedFromHash } from "./store.js";
+import { isZlibUrl, zlibSession } from "./zlib/session.js";
 import type {
   BookFormat,
   BookRecord,
@@ -31,10 +32,6 @@ function httpUrl(value: unknown): URL | undefined {
   } catch {
     return undefined;
   }
-}
-
-function isZlibUrl(url: string): boolean {
-  return url.includes("z-library") || url.includes("zlibrary");
 }
 
 export async function openExternalAndAutoImport(book: OnlineBookResult): Promise<ClientBookRecord | undefined> {
@@ -269,7 +266,7 @@ export async function importOnlineBook(book: OnlineBookResult): Promise<ClientBo
     fetchFailure = error instanceof Error ? error.message : "普通下载失败";
   }
 
-  const sess = isZlibUrl(downloadUrl) ? session.fromPartition("persist:natsu-zlib") : undefined;
+  const sess = isZlibUrl(downloadUrl) ? zlibSession() : undefined;
   const browserBuffer = await browserDownloadToBuffer(downloadUrl, format, headers, 60000, sess);
   if (browserBuffer) {
     return importOnlineBuffer(book, downloadUrl, format, browserBuffer);

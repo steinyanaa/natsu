@@ -1,5 +1,8 @@
-import { supportedExtensions } from "../bookFormats.js";
-import type { BookFormat, HtmlSourceConfig, JsonSourceConfig, JsonSourceMappings } from "../../ipc/types.js";
+import { net } from "electron";
+import { formatFromUrl, supportedExtensions } from "../bookFormats.js";
+import { sizeLabelFromText } from "../library.js";
+import { resultArrayFromCustomPayload, stringField } from "./dom.js";
+import type { BookFormat, HtmlSourceConfig, JsonSourceConfig, JsonSourceMappings, OnlineBookResult } from "../../ipc/types.js";
 
 export function customSourceSearchUrl(sourceUrl: string, query: string): string | undefined {
   const trimmed = sourceUrl.trim();
@@ -120,4 +123,56 @@ export function resolveCustomSourceConfig(sourceValue: string): string | JsonSou
   }
 
   return trimmed;
+}
+
+export async function searchCustomBooks(query: string, sourceUrl: string, sourceName = "Custom Source"): Promise<OnlineBookResult[]> {
+  const url = customSourceSearchUrl(sourceUrl, query);
+
+  if (!url) {
+    return [];
+  }
+
+  const response = await net.fetch(url);
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const payload = await response.json();
+  return resultArrayFromCustomPayload(payload)
+    .map((raw, index): OnlineBookResult | undefined => {
+      if (!raw || typeof raw !== "object") {
+        return undefined;
+      }
+
+      const item = raw as Record<string, unknown>;
+      const downloadUrl = stringField(item, ["downloadUrl", "download_url", "url", "href", "file"]);
+      const title = stringField(item, ["title", "name"]);
+      const sizeLabel = stringField(item, ["sizeLabel", "size_label", "size", "fileSize", "file_size"]);
+
+      if (!downloadUrl || !title) {
+        return undefined;
+      }
+
+      const format = formatFromUrl(downloadUrl, stringField(item, ["format"]) as BookFormat | undefined);
+
+      if (!format) {
+        return undefined;
+      }
+
+      return {
+        id: stringField(item, ["id"]) ?? `custom-${index}-${title}`,
+        source: stringField(item, ["source"]) ?? sourceName,
+        title,
+        author: stringField(item, ["author", "creator"]),
+        language: stringField(item, ["language", "lang"]),
+        subjects: Array.isArray(item.subjects) ? item.subjects.filter((value) => typeof value === "string").slice(0, 4) : [],
+        coverUrl: stringField(item, ["coverUrl", "cover_url", "cover"]),
+        downloadUrl,
+        format,
+        sizeLabel: sizeLabel || sizeLabelFromText(JSON.stringify(item))
+      };
+    })
+    .filter((item): item is OnlineBookResult => Boolean(item))
+    .slice(0, 40);
 }

@@ -16,12 +16,11 @@ import {
   flushProgressUpdates,
   hashBuffer,
   importOneBook,
-  queueProgressUpdate,
-  sizeLabelFromText
+  queueProgressUpdate
 } from "./services/library.js";
-import { importabilityReason, resultArrayFromCustomPayload, stringField } from "./services/scraper/dom.js";
-import { fetchJson, loadHtml, withTimeout } from "./services/scraper/fetch.js";
-import { customSourceSearchUrl, resolveCustomSourceConfig } from "./services/scraper/custom.js";
+import { importabilityReason } from "./services/scraper/dom.js";
+import { withTimeout } from "./services/scraper/fetch.js";
+import { customSourceSearchUrl, resolveCustomSourceConfig, searchCustomBooks } from "./services/scraper/custom.js";
 import { searchGutenbergBooks } from "./services/scraper/gutenberg.js";
 import { searchHtmlAdapterBooks, testHtmlAdapterBooks } from "./services/scraper/html.js";
 import { searchJsonAdapterBooks, testJsonAdapterBooks } from "./services/scraper/json.js";
@@ -351,58 +350,6 @@ function zlibSession(): Electron.Session {
 
 function isZlibUrl(url: string): boolean {
   return url.includes("z-library") || url.includes("zlibrary");
-}
-
-async function searchCustomBooks(query: string, sourceUrl: string, sourceName = "Custom Source"): Promise<OnlineBookResult[]> {
-  const url = customSourceSearchUrl(sourceUrl, query);
-
-  if (!url) {
-    return [];
-  }
-
-  const response = await net.fetch(url);
-
-  if (!response.ok) {
-    return [];
-  }
-
-  const payload = await response.json();
-  return resultArrayFromCustomPayload(payload)
-    .map((raw, index): OnlineBookResult | undefined => {
-      if (!raw || typeof raw !== "object") {
-        return undefined;
-      }
-
-      const item = raw as Record<string, unknown>;
-      const downloadUrl = stringField(item, ["downloadUrl", "download_url", "url", "href", "file"]);
-      const title = stringField(item, ["title", "name"]);
-      const sizeLabel = stringField(item, ["sizeLabel", "size_label", "size", "fileSize", "file_size"]);
-
-      if (!downloadUrl || !title) {
-        return undefined;
-      }
-
-      const format = formatFromUrl(downloadUrl, stringField(item, ["format"]) as BookFormat | undefined);
-
-      if (!format) {
-        return undefined;
-      }
-
-      return {
-        id: stringField(item, ["id"]) ?? `custom-${index}-${title}`,
-        source: stringField(item, ["source"]) ?? sourceName,
-        title,
-        author: stringField(item, ["author", "creator"]),
-        language: stringField(item, ["language", "lang"]),
-        subjects: Array.isArray(item.subjects) ? item.subjects.filter((value) => typeof value === "string").slice(0, 4) : [],
-        coverUrl: stringField(item, ["coverUrl", "cover_url", "cover"]),
-        downloadUrl,
-        format,
-        sizeLabel: sizeLabel || sizeLabelFromText(JSON.stringify(item))
-      };
-    })
-    .filter((item): item is OnlineBookResult => Boolean(item))
-    .slice(0, 40);
 }
 
 async function searchSource(query: string, source: OnlineSource): Promise<OnlineBookResult[]> {

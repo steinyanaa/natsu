@@ -25,17 +25,17 @@ import {
   hrefFrom,
   htmlDownloadHeaders,
   importabilityReason,
-  normalizeSubjects,
   resolveUrl,
   resultArrayFromCustomPayload,
   selectedAttr,
   selectedElement,
   selectedText,
-  stringField,
-  valueByPath
+  stringField
 } from "./services/scraper/dom.js";
 import { fetchJson, loadHtml, withTimeout } from "./services/scraper/fetch.js";
+import { customSourceSearchUrl, resolveCustomSourceConfig } from "./services/scraper/custom.js";
 import { searchGutenbergBooks } from "./services/scraper/gutenberg.js";
+import { searchJsonAdapterBooks, testJsonAdapterBooks } from "./services/scraper/json.js";
 import {
   initStore,
   getStore,
@@ -57,7 +57,6 @@ import type {
   OnlineSource,
   OnlineSourceTestItem,
   OnlineSourceTestReport,
-  JsonSourceMappings,
   JsonSourceConfig,
   HtmlSourceConfig,
   ZLibStatus,
@@ -359,184 +358,6 @@ async function importOnlineBook(book: OnlineBookResult): Promise<ClientBookRecor
   throw new Error(`${fetchFailure}；浏览器下载回退也没有拿到有效 ${format.toUpperCase()} 文件。`);
 }
 
-function customSourceSearchUrl(sourceUrl: string, query: string): string | undefined {
-  const trimmed = sourceUrl.trim();
-
-  if (!trimmed) {
-    return undefined;
-  }
-
-  const resolved = trimmed.includes("{query}") ? trimmed.replaceAll("{query}", encodeURIComponent(query)) : trimmed;
-  const url = new URL(resolved);
-
-  if (url.protocol !== "https:" && url.protocol !== "http:") {
-    return undefined;
-  }
-
-  if (!trimmed.includes("{query}")) {
-    url.searchParams.set("q", query);
-  }
-
-  return url.toString();
-}
-
-function resolveCustomSourceConfig(sourceValue: string): string | JsonSourceConfig | HtmlSourceConfig | undefined {
-  const trimmed = sourceValue.trim();
-
-  if (!trimmed) {
-    return undefined;
-  }
-
-  if (!trimmed.startsWith("{")) {
-    return trimmed;
-  }
-
-  try {
-    const parsed = JSON.parse(trimmed) as Record<string, unknown>;
-    if (parsed.adapter === "json" && typeof parsed.searchUrl === "string" && parsed.searchUrl.trim()) {
-      return {
-        adapter: "json",
-        searchUrl: parsed.searchUrl.trim(),
-        resultPath: typeof parsed.resultPath === "string" ? parsed.resultPath.trim() : undefined,
-        sourceName: typeof parsed.sourceName === "string" ? parsed.sourceName.trim() : undefined,
-        headers:
-          parsed.headers && typeof parsed.headers === "object"
-            ? Object.fromEntries(
-                Object.entries(parsed.headers).filter(
-                  (entry): entry is [string, string] => typeof entry[0] === "string" && typeof entry[1] === "string"
-                )
-              )
-            : undefined,
-        mappings: parsed.mappings && typeof parsed.mappings === "object" ? (parsed.mappings as JsonSourceMappings) : undefined
-      };
-    }
-
-    if (parsed.adapter === "html" && typeof parsed.searchUrl === "string" && parsed.searchUrl.trim()) {
-      const maxDetailPages =
-        typeof parsed.maxDetailPages === "number"
-          ? parsed.maxDetailPages
-          : typeof parsed.maxPages === "number"
-            ? parsed.maxPages
-            : undefined;
-      const delay =
-        typeof parsed.delay === "number"
-          ? Math.max(0, Math.min(parsed.delay, 5000))
-          : typeof parsed.waitMs === "number"
-            ? Math.max(0, Math.min(parsed.waitMs, 5000))
-            : undefined;
-      const timeout =
-        typeof parsed.timeout === "number"
-          ? Math.max(1000, Math.min(parsed.timeout, 30000))
-          : typeof parsed.timeoutMs === "number"
-            ? Math.max(1000, Math.min(parsed.timeoutMs, 30000))
-            : undefined;
-      return {
-        adapter: "html",
-        searchUrl: parsed.searchUrl.trim(),
-        baseUrl: typeof parsed.baseUrl === "string" ? parsed.baseUrl.trim() : undefined,
-        sourceName: typeof parsed.sourceName === "string" ? parsed.sourceName.trim() : undefined,
-        headers:
-          parsed.headers && typeof parsed.headers === "object"
-            ? Object.fromEntries(
-                Object.entries(parsed.headers).filter(
-                  (entry): entry is [string, string] => typeof entry[0] === "string" && typeof entry[1] === "string"
-                )
-              )
-            : undefined,
-        itemSelector: typeof parsed.itemSelector === "string" ? parsed.itemSelector.trim() : undefined,
-        titleSelector: typeof parsed.titleSelector === "string" ? parsed.titleSelector.trim() : undefined,
-        authorSelector: typeof parsed.authorSelector === "string" ? parsed.authorSelector.trim() : undefined,
-        coverSelector: typeof parsed.coverSelector === "string" ? parsed.coverSelector.trim() : undefined,
-        coverAttr: typeof parsed.coverAttr === "string" ? parsed.coverAttr.trim() : undefined,
-        downloadSelector: typeof parsed.downloadSelector === "string" ? parsed.downloadSelector.trim() : undefined,
-        downloadAttr: typeof parsed.downloadAttr === "string" ? parsed.downloadAttr.trim() : undefined,
-        downloadHeaders:
-          parsed.downloadHeaders && typeof parsed.downloadHeaders === "object"
-            ? Object.fromEntries(
-                Object.entries(parsed.downloadHeaders).filter(
-                  (entry): entry is [string, string] => typeof entry[0] === "string" && typeof entry[1] === "string"
-                )
-              )
-            : undefined,
-        detailLinkSelector: typeof parsed.detailLinkSelector === "string" ? parsed.detailLinkSelector.trim() : undefined,
-        detailLinkAttr: typeof parsed.detailLinkAttr === "string" ? parsed.detailLinkAttr.trim() : undefined,
-        format:
-          typeof parsed.format === "string" && supportedExtensions().includes(parsed.format as BookFormat)
-            ? (parsed.format as BookFormat)
-            : undefined,
-        formatAttr: typeof parsed.formatAttr === "string" ? parsed.formatAttr.trim() : undefined,
-        maxDetailPages,
-        delay,
-        renderJs: parsed.renderJs === true || parsed.js === true || parsed.javascript === true,
-        waitForSelector: typeof parsed.waitForSelector === "string" ? parsed.waitForSelector.trim() : undefined,
-        autoScroll: parsed.autoScroll === true || parsed.scroll === true || parsed.scrollToBottom === true,
-        timeout
-      };
-    }
-  } catch {
-    return trimmed;
-  }
-
-  return trimmed;
-}
-
-function mapJsonResult(item: unknown, config: JsonSourceConfig, index: number): OnlineBookResult | undefined {
-  if (!item || typeof item !== "object") {
-    return undefined;
-  }
-
-  const mappings = config.mappings ?? {};
-  const object = item as Record<string, unknown>;
-  const id = valueByPath(object, mappings.id);
-  const title = valueByPath(object, mappings.title);
-  const author = valueByPath(object, mappings.author);
-  const language = valueByPath(object, mappings.language);
-  const subjects = valueByPath(object, mappings.subjects);
-  const coverUrl = valueByPath(object, mappings.coverUrl);
-  const downloadUrl = valueByPath(object, mappings.downloadUrl);
-  const formatValue = valueByPath(object, mappings.format);
-  const sizeValue = valueByPath(object, mappings.sizeLabel ?? mappings.size);
-  const source = valueByPath(object, mappings.source);
-
-  if (typeof title !== "string" || typeof downloadUrl !== "string") {
-    return undefined;
-  }
-
-  const format = formatFromUrl(downloadUrl, typeof formatValue === "string" ? (formatValue as BookFormat) : undefined);
-
-  if (!format) {
-    return undefined;
-  }
-
-  return {
-    id: typeof id === "string" && id.trim() ? id : `json-${index}-${title}`,
-    source: typeof source === "string" && source.trim() ? source : config.sourceName || "Custom source",
-    title: title.trim(),
-    author: typeof author === "string" && author.trim() ? author.trim() : undefined,
-    language: typeof language === "string" && language.trim() ? language.trim() : undefined,
-    subjects: normalizeSubjects(subjects),
-    coverUrl: typeof coverUrl === "string" && coverUrl.trim() ? coverUrl.trim() : undefined,
-    downloadUrl: downloadUrl.trim(),
-    format,
-    sizeLabel: typeof sizeValue === "string" && sizeValue.trim() ? sizeValue.trim() : sizeLabelFromText(JSON.stringify(object))
-  };
-}
-
-async function searchJsonAdapterBooks(query: string, config: JsonSourceConfig): Promise<OnlineBookResult[]> {
-  const url = customSourceSearchUrl(config.searchUrl, query);
-
-  if (!url) {
-    return [];
-  }
-
-  const payload = await fetchJson(url, config.headers);
-  const root = config.resultPath ? valueByPath(payload, config.resultPath) : payload;
-  return resultArrayFromCustomPayload(root)
-    .map((item, index) => mapJsonResult(item, config, index))
-    .filter((item): item is OnlineBookResult => Boolean(item))
-    .slice(0, 40);
-}
-
 function zlibSession(): Electron.Session {
   return session.fromPartition("persist:natsu-zlib");
 }
@@ -794,51 +615,6 @@ async function testHtmlAdapterBooks(query: string, config: HtmlSourceConfig): Pr
         : okCount > 0
           ? `可导入 ${okCount} / ${items.length} 条样本`
           : "匹配到了结果，但样本里没有可直接导入的下载链接"
-  };
-}
-
-async function testJsonAdapterBooks(query: string, config: JsonSourceConfig): Promise<OnlineSourceTestReport> {
-  const url = customSourceSearchUrl(config.searchUrl, query);
-  if (!url) {
-    return {
-      ok: false,
-      sourceName: config.sourceName || "JSON Source",
-      kind: "json",
-      fetched: false,
-      itemCount: 0,
-      items: [],
-      message: "searchUrl 无效"
-    };
-  }
-
-  const payload = await fetchJson(url, config.headers);
-  const root = config.resultPath ? valueByPath(payload, config.resultPath) : payload;
-  const rawItems = resultArrayFromCustomPayload(root).slice(0, 12);
-  const items = rawItems.map((item, index): OnlineSourceTestItem => {
-    const mapped = mapJsonResult(item, config, index);
-    return {
-      index,
-      title: mapped?.title,
-      author: mapped?.author,
-      coverUrl: mapped?.coverUrl,
-      downloadUrl: mapped?.downloadUrl,
-      format: mapped?.format,
-      sizeLabel: mapped?.sizeLabel,
-      ok: Boolean(mapped),
-      reason: mapped ? undefined : "JSON 映射后缺少 title/downloadUrl，或无法判断格式"
-    };
-  });
-
-  const okCount = items.filter((item) => item.ok).length;
-  return {
-    ok: okCount > 0,
-    sourceName: config.sourceName || "JSON Source",
-    kind: "json",
-    searchUrl: url,
-    fetched: true,
-    itemCount: resultArrayFromCustomPayload(root).length,
-    items,
-    message: okCount > 0 ? `可导入 ${okCount} / ${items.length} 条样本` : "没有解析到可导入结果"
   };
 }
 

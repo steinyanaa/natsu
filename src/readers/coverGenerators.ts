@@ -1,12 +1,6 @@
-import * as pdfjs from "pdfjs-dist";
 import type { BookFormat } from "../types";
 import { extractEpubCover } from "./epub";
 import { openRarComic, openZipComic } from "./comic";
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
-).toString();
 
 export type CoverPath = "epub" | "pdf" | "comic";
 
@@ -39,6 +33,11 @@ async function generateEpubCover(file: Blob): Promise<Blob | undefined> {
 }
 
 async function generatePdfCover(data: ArrayBuffer): Promise<Blob | undefined> {
+  const pdfjs = await import("pdfjs-dist");
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    "pdfjs-dist/build/pdf.worker.min.mjs",
+    import.meta.url
+  ).toString();
   const pdf = await pdfjs.getDocument({ data }).promise;
   try {
     const page = await pdf.getPage(1);

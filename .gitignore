@@ -11,9 +11,12 @@ tmp-*.txt
 *.log
 oracle-thinking-answer.txt
 NATSU-审查报告.md
+# 一次性爬虫/源验证脚本（按需创建、不入库）
+test-*.cjs
 
 # Claude Code internal
 .claude/
+.superpowers/
 
 # Internal docs
 docs/superpowers/

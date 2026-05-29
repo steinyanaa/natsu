@@ -10,9 +10,10 @@ import { ReaderStage } from "./ReaderStage";
 import { SearchPanel } from "./SearchPanel";
 import { TTSBar } from "./TTSBar";
 import { TocTree } from "./TocTree";
+import { useReaderChrome } from "./useReaderChrome";
 import { useSwipeGesture } from "./useSwipeGesture";
 import type { AnchorJumpRequest, JumpRequest } from "./types";
-import { editableEventTarget, nowProgress } from "./utils";
+import { editableEventTarget, nowProgress, percentLabel } from "./utils";
 import { LoadingState } from "./ReaderState";
 import type { BookRecord, Bookmark as BookmarkRecord, GoalStats, Highlight, ParsedTextDocument, ReaderPreferences, ReaderProgress, TocItem } from "../types";
 import { useReadingSession } from "../wellness/useReadingSession";
@@ -28,10 +29,6 @@ const SettingsPanel = lazy(() =>
   loadSettingsPanel().then((module) => ({ default: module.SettingsPanel }))
 );
 
-function percentLabel(progress?: ReaderProgress): string {
-  if (!progress) return "0%";
-  return `${Math.max(0, Math.min(100, Math.round(progress.percent * 100)))}%`;
-}
 export function ReaderScreen({
   book,
   preferences,
@@ -64,9 +61,7 @@ export function ReaderScreen({
   const [toast, setToast] = useState("");
   const [jumpRequest, setJumpRequest] = useState<JumpRequest>();
   const [anchorJumpRequest, setAnchorJumpRequest] = useState<AnchorJumpRequest>();
-  const [controlsVisible, setControlsVisible] = useState(true);
   const [chapterEta, setChapterEta] = useState("");
-  const [cursorHidden, setCursorHidden] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [chapters, setChapters] = useState<ParsedTextDocument["chapters"]>([]);
   const [ttsOpen, setTtsOpen] = useState(false);
@@ -79,12 +74,12 @@ export function ReaderScreen({
   const shellRef = useRef<HTMLElement | null>(null);
   const sessionStartRef = useRef(Date.now());
   const saveTimer = useRef<number | undefined>(undefined);
-  const chromeTimer = useRef<number | undefined>(undefined);
-  const cursorTimer = useRef<number | undefined>(undefined);
   const latestProgressRef = useRef(progress);
   const lastSavedPercentRef = useRef(book.progress?.percent ?? progress.percent);
   const lastRevealRef = useRef<number>(0);
   const readerPanelOpen = tocOpen || settingsOpen;
+
+  const { controlsVisible, cursorHidden, revealChrome, hideChrome } = useReaderChrome(readerPanelOpen);
 
   const { pomodoroAlert, dismissPomodoroAlert } = useReadingSession(preferences.wellness);
 
@@ -245,43 +240,6 @@ export function ReaderScreen({
     const updated = await window.readerApi.removeHighlights(book.id, ids);
     if (updated) onBookUpdated(updated);
   }, [book.id, onBookUpdated]);
-
-  const revealChrome = useCallback(() => {
-    setControlsVisible(true);
-    window.clearTimeout(chromeTimer.current);
-
-    if (!readerPanelOpen) {
-      chromeTimer.current = window.setTimeout(() => setControlsVisible(false), 2400);
-    }
-  }, [readerPanelOpen]);
-
-  const hideChrome = useCallback(() => {
-    if (readerPanelOpen) {
-      return;
-    }
-
-    window.clearTimeout(chromeTimer.current);
-    setControlsVisible(false);
-  }, [readerPanelOpen]);
-
-  useEffect(() => {
-    revealChrome();
-
-    return () => window.clearTimeout(chromeTimer.current);
-  }, [revealChrome]);
-
-  useEffect(() => {
-    window.clearTimeout(cursorTimer.current);
-    if (controlsVisible) {
-      setCursorHidden(false);
-    } else {
-      cursorTimer.current = window.setTimeout(() => {
-        setCursorHidden(true);
-      }, 1600);
-    }
-
-    return () => window.clearTimeout(cursorTimer.current);
-  }, [controlsVisible]);
 
   // 阅读统计：每分钟 tick 更新已读时长
   useEffect(() => {

@@ -16,11 +16,26 @@
   - `electron/services/zlib/*` — Z-Library session 与账户
   - `electron/window/createWindow.ts` — 窗口创建与生命周期
 - **preload 拆分**：`electron/preload.cjs` 拆为 `electron/preload/groups/*`（library / online / preferences / covers / zlib / system）+ `index.cjs` 合并入口，`window.readerApi` 保持完全相同的扁平 40 键结构，渲染进程零改动。
+- **前端 hook 拆分**：`src/App.tsx` 从 1075 行精简到 704 行，按领域抽出两个自定义 hook（与既有 `useLibrary` / `useReaderNavigation` / `useBookShelf` 同构）：
+  - `src/app/useEpubCovers.ts` — EPUB 封面的磁盘缓存 / 提取 / Google Books 回退加载（限并发）与 blob 释放。
+  - `src/app/useOnlineSearch.ts` — 在线搜索面板状态与三条导入路径（直链下载 / 浏览器回退 / 搜索）。
+- **前端内联组件拆分**：`App.tsx` 中的 `EmptyShelf` / `EditMetaDialog`（移至 `src/bookshelf/`）、`ConfirmDialog` / `CommandPalette`（移至 `src/components/`）拆为独立文件，`percentLabel` 随 `CommandPalette` 内聚迁移。
+- `src/reader/chapterHeight.ts` — 从 `TextPane.tsx` 抽出纯函数 `estimateChapterHeight`（虚拟滚动的章节高度估算）。
+- `src/readers/epubPaths.ts` — 从 `epub.ts`（933 → 875 行）抽出纯路径 / href / MIME 工具组（`resolvePath` / `splitHref` / `chapterDomId` / `mimeFromPath` 等）。
+- `src/onlineSources/OnlineSourceManager.tsx` — 从 `SettingsPanel.tsx`（981 → 656 行）抽出在线书源管理 UI（书源卡片 / 测试 / 草稿添加 / 书源包导入 + `OnlineSourceTestView`）。
+- `src/reader/useReaderChrome.ts` — 从 `ReaderScreen.tsx`（736 → 694 行）抽出顶/底控件与光标的自动隐藏逻辑（`controlsVisible` / `cursorHidden` / `revealChrome` / `hideChrome` + 两个计时 effect）。
+- `percentLabel` 去重：合并 `ReaderScreen` 与 `CommandPalette` 的两份拷贝到 `reader/utils.ts`，统一导出。
+- `src/reader/comicLayout.ts` — 从 `ComicPane.tsx`（422 → 405 行）抽出纯函数 `computeSpreads`（漫画单页/双页跨页分组，含 coverSolo 与奇偶尾页处理）。
 - 行为零变更；纯架构重构。
 
 ### Added
 
-- **后端单元测试**：为 `services/store`、`services/library`、`services/scraper/dom`、`services/scraper/custom` 新增 vitest 测试；新增 `ipc/register` 契约测试（断言 `IPC_CHANNELS` 每个 channel 恰好注册一个 handler）。测试总数从 8 增至 53。
+- **后端单元测试**：为 `services/store`、`services/library`、`services/scraper/dom`、`services/scraper/custom` 新增 vitest 测试；新增 `ipc/register` 契约测试（断言 `IPC_CHANNELS` 每个 channel 恰好注册一个 handler）。
+- **前端单元测试**：新增 `readers/text`（BOM 探测 / gb18030 回退 / 章节切分 / HTML 转义）、`stats/speedTracker`（滚动采样与 CPM 计算）、`reader/utils`（字体栈 / 进度时间戳）、`reader/chapterHeight`（高度估算边界）、`readers/epubPaths`（路径解析 / DOM id / 外链判定 / MIME 映射）五组测试，并为 `reader/utils` 补充 `percentLabel`（取整 / 钳制 / 空值）、`reader/comicLayout`（跨页分组的 coverSolo 与奇偶边界）用例。测试总数从 8 增至 116。
+
+### Fixed
+
+- `.gitignore` 新增 `test-*.cjs` 与 `.superpowers/`，避免一次性源验证脚本与内部目录误入库。
 
 ---
 

@@ -11,6 +11,7 @@ import { applyHighlightToDOM, selectionToHighlightData } from "./highlightUtils"
 import { imageUrlsFromHtml } from "./htmlMedia";
 import type { AnchorJumpRequest, JumpRequest } from "./types";
 import { editableEventTarget, nowProgress, readerFontStack } from "./utils";
+import { estimateChapterHeight } from "./chapterHeight";
 import { useDictionary } from "./useDictionary";
 import { usePageTurn } from "./usePageTurn";
 import { useEpubChapter } from "./useEpubChapter";
@@ -61,34 +62,6 @@ function extractNoteHtml(el: HTMLElement | null | undefined): string | undefined
   }
 
   return node.innerHTML;
-}
-
-function estimateChapterHeight({
-  chapter,
-  preferences,
-  viewportHeight
-}: {
-  chapter: ParsedTextDocument["chapters"][number];
-  preferences: ReaderPreferences;
-  viewportHeight: number;
-}): number {
-  if (chapter.layout === "fixed" && chapter.viewport) {
-    const ratio = chapter.viewport.height / Math.max(1, chapter.viewport.width);
-    const widthBoundHeight = Math.min(preferences.columnWidth, chapter.viewport.width) * ratio;
-    return Math.max(360, Math.min(Math.max(420, viewportHeight - 160), widthBoundHeight || chapter.viewport.height));
-  }
-
-  const strippedTextLength = chapter.html.replace(/<[^>]+>/g, "").trim().length;
-  const plainLength = Math.max(chapter.plainText.length, strippedTextLength);
-  const charsPerLine = Math.max(12, Math.floor(preferences.columnWidth / Math.max(12, preferences.fontSize)));
-  const lineCount = Math.ceil(plainLength / charsPerLine);
-  const textHeight = lineCount * preferences.fontSize * preferences.lineHeight;
-  const imageCount = (chapter.html.match(/<(?:img|svg|picture|image)\b/gi) ?? []).length;
-  const imageHeight = imageCount * Math.min(viewportHeight * 0.68, preferences.columnWidth * 0.72);
-  const blockCount = (chapter.html.match(/<(?:p|div|section|h[1-6]|li|blockquote)\b/gi) ?? []).length;
-  const blockSpacing = blockCount * Math.max(4, preferences.fontSize * 0.38);
-
-  return Math.max(viewportHeight * 0.62, Math.min(12000, textHeight + imageHeight + blockSpacing + 180));
 }
 
 export function TextPane({

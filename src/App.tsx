@@ -12,20 +12,25 @@ import {
   X
 } from "lucide-react";
 import type * as React from "react";
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useState } from "react";
 import { createTranslator } from "./i18n";
-import { extractEpubCover } from "./readers/epub";
 
 import { OpenBookTransition } from "./reader/OpenBookTransition";
 import { SegmentedControl } from "./components/SegmentedControl";
 import { ViewMorph } from "./components/ViewMorph";
 import { LoadingStrip } from "./reader/ReaderState";
 import { applyReaderTheme } from "./themeEngine";
-import type { BookFormat, BookRecord, Collection, OnlineBookResult, OnlineSource, ReaderPreferences, ReaderProgress } from "./types";
+import type { BookRecord, Collection, ReaderPreferences } from "./types";
 import { useLibrary } from "./app/useLibrary";
 import { useReaderNavigation } from "./app/useReaderNavigation";
+import { useEpubCovers } from "./app/useEpubCovers";
+import { useOnlineSearch } from "./app/useOnlineSearch";
 import { useBookShelf, type AppSection, type ShelfFilter, type ShelfSort, type ShelfView } from "./bookshelf/useBookShelf";
 import { BookShelf } from "./bookshelf/BookShelf";
+import { EmptyShelf } from "./bookshelf/EmptyShelf";
+import { EditMetaDialog } from "./bookshelf/EditMetaDialog";
+import { ConfirmDialog } from "./components/ConfirmDialog";
+import { CommandPalette } from "./components/CommandPalette";
 import { StatsView } from "./stats/StatsView";
 import { OnlineSearchPanelManaged } from "./online/OnlineSearchPanel";
 
@@ -113,17 +118,6 @@ function normalizePreferences(preferences?: Partial<ReaderPreferences>): ReaderP
   };
 }
 
-function enabledOnlineSources(preferences: ReaderPreferences): OnlineSource[] {
-  return preferences.onlineSources.filter((source) => source.enabled);
-}
-
-function percentLabel(progress?: ReaderProgress): string {
-  if (!progress) {
-    return "0%";
-  }
-  return `${Math.max(0, Math.min(100, Math.round(progress.percent * 100)))}%`;
-}
-
 function useApplyPreferences(preferences: ReaderPreferences) {
   useEffect(() => {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -177,16 +171,6 @@ export function App() {
   const [newColMode, setNewColMode] = useState(false);
   const [settingsMounted, setSettingsMounted] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [onlineOpen, setOnlineOpen] = useState(false);
-  const [onlineQuery, setOnlineQuery] = useState("");
-  const [onlineResults, setOnlineResults] = useState<OnlineBookResult[]>([]);
-  const [onlineLoading, setOnlineLoading] = useState(false);
-  const [onlineError, setOnlineError] = useState("");
-  const [onlineImportingId, setOnlineImportingId] = useState("");
-  const [epubCovers, setEpubCovers] = useState<Map<string, string>>(new Map());
-  const [fetchingCoverIds, setFetchingCoverIds] = useState<Set<string>>(new Set());
-  const epubCoverRef = useRef(new Map<string, string>());
-  const loadingCoversRef = useRef(new Set<string>());
 
   const {
     books, setBooks,
@@ -211,6 +195,20 @@ export function App() {
     activeCollectionId, setActiveCollectionId,
     filteredBooks
   } = useBookShelf(books, collections);
+
+  const { epubCovers, fetchingCoverIds, refetchCover } = useEpubCovers(books);
+
+  const {
+    onlineOpen, setOnlineOpen,
+    onlineQuery, setOnlineQuery,
+    onlineResults,
+    onlineLoading,
+    onlineError,
+    onlineImportingId,
+    importOnlineResult,
+    browserDownloadAndImport,
+    runOnlineSearch
+  } = useOnlineSearch({ preferences, query, setBooks });
 
   useApplyPreferences(preferences);
   useEveningMode(preferences);
@@ -244,109 +242,6 @@ export function App() {
     };
   }, [setBooks, setCollections]);
 
-  // EPUB cover loading
-  useEffect(() => {
-    let cancelled = false;
-    const epubBooks = books.filter((book) => book.format === "epub").slice(0, 200);
-    const MAX_CONCURRENT = 4;
-    const queue: BookRecord[] = [];
-
-    for (const book of epubBooks) {
-      if (epubCoverRef.current.has(book.id) || loadingCoversRef.current.has(book.id)) {
-        continue;
-      }
-      queue.push(book);
-    }
-
-    const runOne = async (book: BookRecord) => {
-      loadingCoversRef.current.add(book.id);
-      try {
-        const cached = await window.readerApi.hasCover(book.id);
-        if (cancelled) return;
-
-        if (cached) {
-          const url = `manga-reader://cover/${encodeURIComponent(book.id)}?v=${book.hash || book.id}`;
-          epubCoverRef.current.set(book.id, url);
-          setEpubCovers(new Map(epubCoverRef.current));
-          return;
-        }
-
-        const buffer = await fetch(book.fileUrl).then((response) => response.arrayBuffer());
-        if (cancelled) return;
-        const blobUrl = await extractEpubCover(new Blob([buffer], { type: "application/epub+zip" }));
-        if (cancelled || !blobUrl) {
-          if (blobUrl) URL.revokeObjectURL(blobUrl);
-          return;
-        }
-
-        try {
-          const blob = await fetch(blobUrl).then((res) => res.blob());
-          const bytes = new Uint8Array(await blob.arrayBuffer());
-          await window.readerApi.saveCover(book.id, bytes);
-        } catch {
-          // Fall back to in-memory blob URL if disk write fails.
-          epubCoverRef.current.set(book.id, blobUrl);
-          setEpubCovers(new Map(epubCoverRef.current));
-          return;
-        } finally {
-          URL.revokeObjectURL(blobUrl);
-        }
-
-        if (cancelled) return;
-        const url = `manga-reader://cover/${encodeURIComponent(book.id)}?v=${book.hash || book.id}`;
-        epubCoverRef.current.set(book.id, url);
-        setEpubCovers(new Map(epubCoverRef.current));
-      } catch {
-        // EPUB had no embedded art — try fetching from Google Books silently
-        try {
-          const ok = await window.readerApi.fetchCoverForBook(book.id);
-          if (ok) {
-            const url = `manga-reader://cover/${encodeURIComponent(book.id)}?v=${Date.now()}`;
-            epubCoverRef.current.set(book.id, url);
-            setEpubCovers(new Map(epubCoverRef.current));
-          }
-        } catch { /* silence */ }
-      } finally {
-        loadingCoversRef.current.delete(book.id);
-      }
-    };
-
-    const workers: Promise<void>[] = [];
-    let cursor = 0;
-    const next = async (): Promise<void> => {
-      while (!cancelled && cursor < queue.length) {
-        const book = queue[cursor++];
-        await runOne(book);
-      }
-    };
-    for (let i = 0; i < Math.min(MAX_CONCURRENT, queue.length); i += 1) {
-      workers.push(next());
-    }
-    void Promise.all(workers);
-
-    for (const [bookId, coverUrl] of epubCoverRef.current) {
-      if (!books.some((book) => book.id === bookId)) {
-        if (coverUrl.startsWith("blob:")) URL.revokeObjectURL(coverUrl);
-        epubCoverRef.current.delete(bookId);
-      }
-    }
-
-    setEpubCovers(new Map(epubCoverRef.current));
-
-    return () => {
-      cancelled = true;
-    };
-  }, [books]);
-
-  useEffect(() => {
-    return () => {
-      epubCoverRef.current.forEach((coverUrl) => {
-        if (coverUrl.startsWith("blob:")) URL.revokeObjectURL(coverUrl);
-      });
-      epubCoverRef.current.clear();
-    };
-  }, []);
-
   const savePreferences = useCallback(async (patch: Partial<ReaderPreferences>) => {
     setPreferences((current) => normalizePreferences({ ...current, ...patch }));
     const saved = await window.readerApi.savePreferences(patch);
@@ -364,26 +259,6 @@ export function App() {
       requestAnimationFrame(() => setSettingsOpen(true));
     });
   }, [settingsOpen]);
-
-  const refetchCover = useCallback(async (book: BookRecord) => {
-    setFetchingCoverIds((prev) => new Set([...prev, book.id]));
-    try {
-      // Delete cached cover so it re-loads after fetch
-      epubCoverRef.current.delete(book.id);
-      const ok = await window.readerApi.fetchCoverForBook(book.id);
-      if (ok) {
-        const url = `manga-reader://cover/${encodeURIComponent(book.id)}?v=${Date.now()}`;
-        epubCoverRef.current.set(book.id, url);
-        setEpubCovers(new Map(epubCoverRef.current));
-      }
-    } finally {
-      setFetchingCoverIds((prev) => {
-        const next = new Set(prev);
-        next.delete(book.id);
-        return next;
-      });
-    }
-  }, []);
 
   const openBook = useCallback(async (book: BookRecord, coverRect?: DOMRect) => {
     await openBookHook(book, coverRect, (opened) => {
@@ -466,82 +341,6 @@ export function App() {
       setBatchConfirm(false);
     });
   }, [batchRemoveBooksHook, selectedIds]);
-
-  const importOnlineResult = useCallback(
-    async (result: OnlineBookResult) => {
-      setOnlineImportingId(result.id);
-      setOnlineError("");
-
-      try {
-        const imported = await window.readerApi.importOnlineBook(result);
-        if (imported) {
-          setBooks((current) => [imported, ...current.filter((book) => book.id !== imported.id)]);
-          setOnlineOpen(false);
-        } else {
-          setOnlineError("这个结果没有可导入的 EPUB/TXT/MOBI/PDF 直链");
-        }
-      } catch (error) {
-        setOnlineError(error instanceof Error ? error.message : "导入失败，请确认书源返回的是可直接下载的文件链接");
-      } finally {
-        setOnlineImportingId("");
-      }
-    },
-    [setBooks]
-  );
-
-  const browserDownloadAndImport = useCallback(
-    async (result: OnlineBookResult) => {
-      setOnlineImportingId(`browser-${result.id}`);
-      setOnlineError("已打开浏览器下载，等待下载完成后自动导入...");
-
-      try {
-        const imported = await window.readerApi.openExternalAndAutoImport(result);
-        if (imported) {
-          setBooks((current) => [imported, ...current.filter((book) => book.id !== imported.id)]);
-          setOnlineOpen(false);
-          setOnlineError("");
-        }
-      } catch (error) {
-        setOnlineError(error instanceof Error ? error.message : "浏览器下载后自动导入失败，请手动导入下载文件。");
-      } finally {
-        setOnlineImportingId("");
-      }
-    },
-    [setBooks]
-  );
-
-  const runOnlineSearch = useCallback(async () => {
-    const searchText = (onlineQuery || query).trim();
-    const activeSources = enabledOnlineSources(preferences);
-
-    if (!searchText) {
-      return;
-    }
-
-    if (!activeSources.length) {
-      setOnlineOpen(true);
-      setOnlineResults([]);
-      setOnlineError("Enable at least one online source in Settings.");
-      return;
-    }
-
-    setOnlineOpen(true);
-    setOnlineLoading(true);
-    setOnlineError("");
-
-    try {
-      const results = await window.readerApi.searchOnlineBooks(searchText);
-      setOnlineResults(results);
-      if (!results.length) {
-        setOnlineError("No importable results from enabled sources.");
-      }
-    } catch {
-      setOnlineResults([]);
-      setOnlineError("Online sources are temporarily unavailable.");
-    } finally {
-      setOnlineLoading(false);
-    }
-  }, [onlineQuery, preferences, query]);
 
   // 命令面板快捷键
   useEffect(() => {
@@ -901,175 +700,5 @@ export function App() {
         />
       ) : null}
     </main>
-  );
-}
-
-function EmptyShelf({
-  t,
-  onImport,
-  recent
-}: {
-  t: ReturnType<typeof createTranslator>;
-  onImport: () => void;
-  recent?: boolean;
-}) {
-  return (
-    <section className="empty-shelf">
-      <div className="summer-orbit" aria-hidden="true">
-        <span />
-        <i />
-      </div>
-      <h2>{recent ? t("recent") : t("emptyTitle")}</h2>
-      <p>{recent ? t("noRecent") : t("emptyBody")}</p>
-      {!recent ? (
-        <button className="primary-button pressable stretch-button" onClick={onImport}>
-          <FolderPlus size={18} />
-          <span>{t("import")}</span>
-        </button>
-      ) : null}
-    </section>
-  );
-}
-
-// ─── 确认删除弹窗 ────────────────────────────────────────────────────────────
-function ConfirmDialog({
-  title,
-  body,
-  confirmLabel,
-  cancelLabel,
-  danger,
-  onConfirm,
-  onCancel
-}: {
-  title: string;
-  body: string;
-  confirmLabel: string;
-  cancelLabel: string;
-  danger?: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="dialog-backdrop" onClick={onCancel}>
-      <div className="dialog-card" onClick={(e) => e.stopPropagation()}>
-        <h3>{title}</h3>
-        <p>{body}</p>
-        <div className="dialog-actions">
-          <button className="soft-button pressable" onClick={onCancel}>{cancelLabel}</button>
-          <button className={`primary-button pressable${danger ? " danger" : ""}`} onClick={onConfirm}>{confirmLabel}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── 元数据编辑弹窗 ──────────────────────────────────────────────────────────
-function EditMetaDialog({
-  book,
-  t,
-  onSave,
-  onCancel
-}: {
-  book: BookRecord;
-  t: ReturnType<typeof createTranslator>;
-  onSave: (patch: { title?: string; author?: string }) => void;
-  onCancel: () => void;
-}) {
-  const [title, setTitle] = useState(book.title);
-  const [author, setAuthor] = useState(book.author ?? "");
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave({ title: title.trim() || book.title, author: author.trim() });
-  };
-
-  return (
-    <div className="dialog-backdrop" onClick={onCancel}>
-      <form className="dialog-card" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
-        <h3>{t("editMetadata")}</h3>
-        <label className="meta-field">
-          <span>{t("titleLabel")}</span>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
-        </label>
-        <label className="meta-field">
-          <span>{t("authorLabel")}</span>
-          <input value={author} onChange={(e) => setAuthor(e.target.value)} />
-        </label>
-        <div className="dialog-actions">
-          <button type="button" className="soft-button pressable" onClick={onCancel}>{t("cancel")}</button>
-          <button type="submit" className="primary-button pressable">{t("saveChanges")}</button>
-        </div>
-      </form>
-    </div>
-  );
-}
-
-// ─── 命令面板 ────────────────────────────────────────────────────────────────
-function CommandPalette({
-  books,
-  t,
-  onSelect,
-  onClose
-}: {
-  books: BookRecord[];
-  t: ReturnType<typeof createTranslator>;
-  onSelect: (book: BookRecord) => void;
-  onClose: () => void;
-}) {
-  const [q, setQ] = useState("");
-  const [cursor, setCursor] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => { inputRef.current?.focus(); }, []);
-
-  const results = useMemo(() => {
-    const norm = q.trim().toLowerCase();
-    if (!norm) return books.slice(0, 8);
-    return books
-      .filter((b) => `${b.title} ${b.author ?? ""}`.toLowerCase().includes(norm))
-      .slice(0, 8);
-  }, [books, q]);
-
-  const handleKey = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowDown") { e.preventDefault(); setCursor((c) => Math.min(c + 1, results.length - 1)); }
-    else if (e.key === "ArrowUp") { e.preventDefault(); setCursor((c) => Math.max(c - 1, 0)); }
-    else if (e.key === "Enter") { if (results[cursor]) onSelect(results[cursor]); }
-    else if (e.key === "Escape") { onClose(); }
-  };
-
-  return (
-    <div className="dialog-backdrop command-backdrop" onClick={onClose}>
-      <div className="command-palette" onClick={(e) => e.stopPropagation()}>
-        <div className="command-search-row">
-          <Search size={18} />
-          <input
-            ref={inputRef}
-            className="command-input"
-            value={q}
-            onChange={(e) => { setQ(e.target.value); setCursor(0); }}
-            onKeyDown={handleKey}
-            placeholder={t("commandPalette")}
-          />
-          <kbd className="command-esc-hint">ESC</kbd>
-        </div>
-        <ul className="command-list" role="listbox">
-          {results.map((book, i) => (
-            <li
-              key={book.id}
-              className={`command-item${i === cursor ? " active" : ""}`}
-              role="option"
-              aria-selected={i === cursor}
-              onMouseEnter={() => setCursor(i)}
-              onClick={() => onSelect(book)}
-            >
-              <span className="format-chip small">{book.format.toUpperCase()}</span>
-              <span className="command-title">{book.title}</span>
-              {book.author && <span className="command-author">{book.author}</span>}
-              <span className="command-progress">{percentLabel(book.progress)}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
   );
 }

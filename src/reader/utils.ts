@@ -34,3 +34,11 @@ export function nowProgress(progress: Omit<ReaderProgress, "updatedAt">): Reader
     updatedAt: new Date().toISOString()
   };
 }
+
+/** Formats reading progress as a clamped whole-percent string, e.g. "73%". */
+export function percentLabel(progress?: ReaderProgress): string {
+  if (!progress) {
+    return "0%";
+  }
+  return `${Math.max(0, Math.min(100, Math.round(progress.percent * 100)))}%`;
+}

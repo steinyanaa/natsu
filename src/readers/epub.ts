@@ -1,5 +1,16 @@
 import { BlobReader, BlobWriter, TextWriter, ZipReader, type Entry } from "@zip.js/zip.js";
 import type { ParsedTextDocument, TextChapter, TocItem } from "../types";
+import {
+  anchorDomId,
+  chapterDomId,
+  isExternalLink,
+  isExternalResource,
+  mimeFromPath,
+  normalizePath,
+  resolvePath,
+  resourceExtensionPattern,
+  splitHref
+} from "./epubPaths";
 
 interface ManifestItem {
   id: string;
@@ -40,75 +51,6 @@ function extractFontFamilyNames(css: string): string[] {
     }
   }
   return names;
-}
-
-const resourceExtensionPattern = /\.(?:avif|bmp|gif|jpe?g|png|svg|webp|otf|ttf|woff2?)$/i;
-
-function normalizePath(value: string): string {
-  return value.replace(/^\/+/, "");
-}
-
-function dirname(value: string): string {
-  const index = value.lastIndexOf("/");
-  return index >= 0 ? value.slice(0, index + 1) : "";
-}
-
-function resolvePath(basePath: string, href: string): string {
-  const [cleanHref] = href.split("#");
-  if (!cleanHref) {
-    return normalizePath(basePath);
-  }
-
-  const url = new URL(cleanHref, `https://reader.local/${dirname(basePath)}`);
-  return decodeURIComponent(normalizePath(url.pathname));
-}
-
-function decodeFragment(value: string): string {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-}
-
-function splitHref(href: string): { path: string; fragment?: string } {
-  const [path, fragment] = href.split("#");
-  return {
-    path,
-    fragment: fragment ? decodeFragment(fragment) : undefined
-  };
-}
-
-function chapterDomId(chapterPath: string): string {
-  return `epub-chapter-${encodeURIComponent(normalizePath(chapterPath)).replace(/%/g, "_")}`;
-}
-
-function anchorDomId(chapterPath: string, anchorId: string): string {
-  return `${chapterDomId(chapterPath)}__${encodeURIComponent(anchorId).replace(/%/g, "_")}`;
-}
-
-function isExternalResource(href: string): boolean {
-  return /^(?:[a-z]+:|#)/i.test(href.trim());
-}
-
-function isExternalLink(href: string): boolean {
-  return /^(?:[a-z]+:|\/\/)/i.test(href.trim());
-}
-
-function mimeFromPath(path: string, fallback = "application/octet-stream"): string {
-  const lower = path.toLowerCase();
-  if (lower.endsWith(".avif")) return "image/avif";
-  if (lower.endsWith(".bmp")) return "image/bmp";
-  if (lower.endsWith(".gif")) return "image/gif";
-  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
-  if (lower.endsWith(".png")) return "image/png";
-  if (lower.endsWith(".svg")) return "image/svg+xml";
-  if (lower.endsWith(".webp")) return "image/webp";
-  if (lower.endsWith(".otf")) return "font/otf";
-  if (lower.endsWith(".ttf")) return "font/ttf";
-  if (lower.endsWith(".woff")) return "font/woff";
-  if (lower.endsWith(".woff2")) return "font/woff2";
-  return fallback;
 }
 
 function textOf(element: Element | null | undefined): string {

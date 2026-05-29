@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createTranslator } from "../i18n";
 import { readRarComic, readZipComic, type ComicPage } from "../readers/comic";
 import type { BookRecord, ComicFitMode, ReaderPreferences, ReaderProgress } from "../types";
+import { computeSpreads } from "./comicLayout";
 import { ErrorState, LoadingState } from "./ReaderState";
 import type { JumpRequest } from "./types";
 import { nowProgress } from "./utils";
@@ -33,28 +34,10 @@ export function ComicPane({
   const rtl = preferences.readingDirection === "rtl";
   const coverSolo = preferences.comicCoverSolo ?? true;
   const scale = fit === "manual" ? manualScale : 1;
-  const spreads = useMemo<number[][]>(() => {
-    if (!pages.length) return [];
-    if (layout !== "double") {
-      return pages.map((_, i) => [i]);
-    }
-    const result: number[][] = [];
-    let i = 0;
-    if (coverSolo) {
-      result.push([0]);
-      i = 1;
-    }
-    while (i < pages.length) {
-      if (i + 1 < pages.length) {
-        result.push([i, i + 1]);
-        i += 2;
-      } else {
-        result.push([i]);
-        i += 1;
-      }
-    }
-    return result;
-  }, [pages, layout, coverSolo]);
+  const spreads = useMemo<number[][]>(
+    () => computeSpreads(pages.length, layout, coverSolo),
+    [pages.length, layout, coverSolo]
+  );
   const [error, setError] = useState("");
   const [viewport, setViewport] = useState({ top: 0, height: 900 });
   const scrollerRef = useRef<HTMLDivElement | null>(null);

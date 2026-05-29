@@ -21,13 +21,13 @@
 
 ## Latest release / 最新版本
 
-**v1.4.0** adds Z-Library account login and a dedicated management panel:
+**v1.4.1** is a pure architecture-refactor release — **no user-facing behavior changes**:
 
-- **Z-Library 账户管理面板** — Settings > Online Sources 中，zlibrary 书源卡片新增"管理"按钮，点击展开专属管理面板。
-- **登录功能** — 打开真实 Z-Library 登录页（可见窗口），登录成功后自动关闭并同步账户信息。免费账户每日 10 次下载，Premium 无限制（游客 5 次/天）。
-- **今日余量显示** — 管理面板内显示邮箱地址与今日下载余量进度条。
-- **镜像地址管理** — 在管理面板内直接修改并保存 Z-Library 镜像地址，无需手动编辑 JSON 配置。
-- **Session 持久化** — 登录状态重启 App 后保持，PoW 挑战 cookies 与搜索/下载共享。
+- **按领域全面拆分** — 主进程从单文件 2903 行拆为 `ipc` / `services` / `scraper` / `window` 等领域模块；前端大组件（App / SettingsPanel / ReaderScreen / ComicPane）抽出聚焦的 hook 与独立组件文件。
+- **可测纯逻辑独立成文件** — EPUB 路径解析、漫画跨页分组、章节高度估算等纯函数拆出并配套测试。
+- **单元测试 8 → 116** — 覆盖后端服务、IPC 注册契约与前端解析器/工具函数。
+
+Earlier, **v1.4.0** added Z-Library account login, a dedicated management panel, today's-quota display, mirror-address management, and session persistence.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full history.
 

@@ -23,7 +23,7 @@ import { applyReaderTheme } from "./themeEngine";
 import type { BookRecord, Collection, ReaderPreferences } from "./types";
 import { useLibrary } from "./app/useLibrary";
 import { useReaderNavigation } from "./app/useReaderNavigation";
-import { useEpubCovers } from "./app/useEpubCovers";
+import { useCovers } from "./app/useCovers";
 import { useOnlineSearch } from "./app/useOnlineSearch";
 import { useBookShelf, type AppSection, type ShelfFilter, type ShelfSort, type ShelfView } from "./bookshelf/useBookShelf";
 import { BookShelf } from "./bookshelf/BookShelf";
@@ -196,7 +196,7 @@ export function App() {
     filteredBooks
   } = useBookShelf(books, collections);
 
-  const { epubCovers, fetchingCoverIds, refetchCover } = useEpubCovers(books);
+  const { coverUrls, fetchingCoverIds, refetchCover, requestCover } = useCovers(books);
 
   const {
     onlineOpen, setOnlineOpen,
@@ -562,7 +562,7 @@ export function App() {
           <BookShelf
             books={filteredBooks}
             view={view}
-            coverUrls={epubCovers}
+            coverUrls={coverUrls}
             t={t}
             selectedIds={selectedIds}
             collections={collections}
@@ -581,6 +581,7 @@ export function App() {
             onToggleCollection={toggleBookInCollection}
             onRefetchCover={refetchCover}
             fetchingCoverIds={fetchingCoverIds}
+            onCoverNeeded={requestCover}
           />
         ) : (
           <EmptyShelf t={t} onImport={importBooks} recent={section === "recent"} />

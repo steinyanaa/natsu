@@ -75,6 +75,7 @@ const fallbackPreferences: ReaderPreferences = {
   preferencesVersion: 5,
   dailyGoalMinutes: 30,
   dictionaryEnabled: true,
+  autoScrollSpeed: 40,
   wellness: {
     pomodoroEnabled: true,
     pomodoroMinutes: 25,

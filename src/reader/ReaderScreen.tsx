@@ -1,4 +1,4 @@
-import { ArrowLeft, Bookmark, BookmarkCheck, PanelLeft, SlidersHorizontal, Volume2 } from "lucide-react";
+import { ArrowLeft, Bookmark, BookmarkCheck, PanelLeft, Pause, Play, SlidersHorizontal, Volume2 } from "lucide-react";
 import { Suspense, lazy, useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { SegmentedControl } from "../components/SegmentedControl";
 import { createTranslator } from "../i18n";
@@ -16,6 +16,7 @@ import type { AnchorJumpRequest, JumpRequest } from "./types";
 import { editableEventTarget, nowProgress, percentLabel } from "./utils";
 import { LoadingState } from "./ReaderState";
 import type { BookRecord, Bookmark as BookmarkRecord, GoalStats, Highlight, ParsedTextDocument, ReaderPreferences, ReaderProgress, TocItem } from "../types";
+import { useAutoScroll } from "./useAutoScroll";
 import { useReadingSession } from "../wellness/useReadingSession";
 import { DailySummaryCard } from "../wellness/DailySummaryCard";
 import { ExportSheet } from "../export/ExportSheet";
@@ -274,6 +275,12 @@ export function ReaderScreen({
     );
   }, []);
 
+  const autoScroll = useAutoScroll(findReaderScroller, preferences.autoScrollSpeed ?? 40);
+
+  useEffect(() => {
+    autoScroll.stop();
+  }, [book.id, autoScroll.stop]);
+
   const scrollReaderByKey = useCallback(
     (direction: 1 | -1, repeated: boolean) => {
       const scroller = findReaderScroller();
@@ -401,6 +408,22 @@ export function ReaderScreen({
       return;
     }
 
+    if (event.key === " ") {
+      event.preventDefault();
+      autoScroll.toggle();
+      return;
+    }
+    if (event.key === ",") {
+      event.preventDefault();
+      onPreferencesChange({ autoScrollSpeed: Math.max(10, (preferences.autoScrollSpeed ?? 40) - 10) });
+      return;
+    }
+    if (event.key === ".") {
+      event.preventDefault();
+      onPreferencesChange({ autoScrollSpeed: Math.min(200, (preferences.autoScrollSpeed ?? 40) + 10) });
+      return;
+    }
+
     if (event.key === "ArrowDown" || event.key === "ArrowRight") {
       event.preventDefault();
       scrollReaderByKey(1, event.repeat);
@@ -448,7 +471,7 @@ export function ReaderScreen({
     }
 
     revealChrome();
-  }, [onPreferencesChange, preferences.brightness, preferences.immersive, revealChrome, scrollReaderByKey]);
+  }, [autoScroll, onPreferencesChange, preferences.autoScrollSpeed, preferences.brightness, preferences.immersive, revealChrome, scrollReaderByKey]);
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
@@ -527,6 +550,14 @@ export function ReaderScreen({
           title="朗读本章"
         >
           <Volume2 size={18} />
+        </button>
+        <button
+          className="icon-button pressable"
+          onClick={autoScroll.toggle}
+          title={autoScroll.running ? "暂停自动滚动 (空格)" : "自动滚动 (空格)"}
+          aria-label="自动滚动"
+        >
+          {autoScroll.running ? <Pause size={18} /> : <Play size={18} />}
         </button>
         <button className="icon-button pressable bookmark-pop" onClick={addBookmark} title={t("addBookmark")}>
           {book.bookmarks.length ? <BookmarkCheck size={18} /> : <Bookmark size={18} />}

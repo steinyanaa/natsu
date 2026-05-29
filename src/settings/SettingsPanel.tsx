@@ -252,6 +252,14 @@ export function SettingsPanel({
         />
       </SettingGroup>
 
+      <SettingGroup label="按封面配色">
+        <ToggleSetting
+          label="阅读时用封面主色染色"
+          checked={preferences.coverTheme ?? true}
+          onChange={(coverTheme) => onChange({ coverTheme })}
+        />
+      </SettingGroup>
+
       <SettingGroup label={t("theme")}>
         <div className="theme-grid">
           {themeOptions.map((theme) => (

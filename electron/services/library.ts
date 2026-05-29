@@ -8,7 +8,7 @@ import { formatFromPath, titleFromFile } from "./bookFormats.js";
 import { bookToClient, getStore, seedFromHash } from "./store.js";
 
 // P0-4: debounce progress writes to avoid full-library JSON rewrite on every page turn
-export const pendingProgressUpdates = new Map<string, ReaderProgress>();
+const pendingProgressUpdates = new Map<string, ReaderProgress>();
 let progressFlushTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function flushProgressUpdates(): void {

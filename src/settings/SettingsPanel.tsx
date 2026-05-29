@@ -486,6 +486,18 @@ export function SettingsPanel({
         />
       </SettingGroup>
 
+      <SettingGroup label="自动滚动">
+        <RangeSetting
+          label="滚动速度"
+          value={preferences.autoScrollSpeed ?? 40}
+          min={10}
+          max={200}
+          step={10}
+          unit=" px/s"
+          onChange={(autoScrollSpeed) => onChange({ autoScrollSpeed })}
+        />
+      </SettingGroup>
+
       <RangeSetting
         label={t("imageScale")}
         value={preferences.imageScale}

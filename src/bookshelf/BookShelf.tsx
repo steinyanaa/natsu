@@ -8,7 +8,7 @@ import {
   Trash2
 } from "lucide-react";
 import type * as React from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { createTranslator } from "../i18n";
 import type { BookRecord, Collection, ReaderProgress } from "../types";
 import type { ShelfView } from "./useBookShelf";
@@ -66,7 +66,8 @@ export function BookShelf({
   onSelect,
   onToggleCollection,
   onRefetchCover,
-  fetchingCoverIds
+  fetchingCoverIds,
+  onCoverNeeded
 }: {
   books: BookRecord[];
   view: ShelfView;
@@ -81,8 +82,29 @@ export function BookShelf({
   onToggleCollection: (collectionId: string, bookId: string, add: boolean) => void;
   onRefetchCover: (book: BookRecord) => Promise<void>;
   fetchingCoverIds: Set<string>;
+  onCoverNeeded: (book: BookRecord) => void;
 }) {
   const [tagMenuBook, setTagMenuBook] = useState<BookRecord | null>(null);
+
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const onCoverNeededRef = useRef(onCoverNeeded);
+  onCoverNeededRef.current = onCoverNeeded;
+  const bookByEl = useRef(new WeakMap<Element, BookRecord>());
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const book = bookByEl.current.get(entry.target);
+          if (book) onCoverNeededRef.current(book);
+        }
+      },
+      { rootMargin: "300px 0px" }
+    );
+    observerRef.current = observer;
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <section className={`book-shelf ${view}`}>
@@ -96,6 +118,13 @@ export function BookShelf({
             onClick={(e) => { if (e.ctrlKey || e.metaKey) { onSelect(book.id, true); e.preventDefault(); } }}
           >
             <button
+              ref={(el) => {
+                const observer = observerRef.current;
+                if (!el || !observer) return;
+                bookByEl.current.set(el, book);
+                observer.observe(el);
+                return () => observer.unobserve(el);
+              }}
               className="cover-button"
               onClick={(e) => {
                 if (!(e.ctrlKey || e.metaKey)) {

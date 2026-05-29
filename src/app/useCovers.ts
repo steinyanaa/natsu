@@ -102,6 +102,10 @@ export function useCovers(books: BookRecord[]) {
   }, [books]);
 
   useEffect(() => {
+    // Reset on (re)mount — StrictMode (dev) runs mount → cleanup → mount, and
+    // without resetting here `disposedRef` would stay true after the simulated
+    // unmount, making every `commit` a no-op so covers never appear.
+    disposedRef.current = false;
     return () => {
       disposedRef.current = true;
       coverRef.current.forEach((url) => { if (url.startsWith("blob:")) URL.revokeObjectURL(url); });

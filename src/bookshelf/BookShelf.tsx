@@ -91,19 +91,32 @@ export function BookShelf({
   onCoverNeededRef.current = onCoverNeeded;
   const bookByEl = useRef(new WeakMap<Element, BookRecord>());
 
+  // Create the observer on demand from the tile `ref` callback. Ref attachment
+  // runs in the commit phase, and StrictMode (dev) mounts → unmounts → remounts,
+  // disconnecting and nulling the observer in between. Lazily (re)creating it
+  // here guarantees a live observer exists whenever a tile attaches, in both
+  // dev StrictMode and production.
+  const ensureObserver = (): IntersectionObserver | null => {
+    if (!observerRef.current && typeof IntersectionObserver !== "undefined") {
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            const book = bookByEl.current.get(entry.target);
+            if (book) onCoverNeededRef.current(book);
+          }
+        },
+        { rootMargin: "300px 0px" }
+      );
+    }
+    return observerRef.current;
+  };
+
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const book = bookByEl.current.get(entry.target);
-          if (book) onCoverNeededRef.current(book);
-        }
-      },
-      { rootMargin: "300px 0px" }
-    );
-    observerRef.current = observer;
-    return () => observer.disconnect();
+    return () => {
+      observerRef.current?.disconnect();
+      observerRef.current = null;
+    };
   }, []);
 
   return (
@@ -119,8 +132,9 @@ export function BookShelf({
           >
             <button
               ref={(el) => {
-                const observer = observerRef.current;
-                if (!el || !observer) return;
+                if (!el) return;
+                const observer = ensureObserver();
+                if (!observer) return;
                 bookByEl.current.set(el, book);
                 observer.observe(el);
                 return () => observer.unobserve(el);

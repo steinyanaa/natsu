@@ -20,6 +20,7 @@ import { SegmentedControl } from "./components/SegmentedControl";
 import { ViewMorph } from "./components/ViewMorph";
 import { LoadingStrip } from "./reader/ReaderState";
 import { applyReaderTheme } from "./themeEngine";
+import { extractSeedFromImage } from "./reader/coverThemeColor";
 import type { BookRecord, Collection, ReaderPreferences } from "./types";
 import { useLibrary } from "./app/useLibrary";
 import { useReaderNavigation } from "./app/useReaderNavigation";
@@ -76,6 +77,7 @@ const fallbackPreferences: ReaderPreferences = {
   dailyGoalMinutes: 30,
   dictionaryEnabled: true,
   autoScrollSpeed: 40,
+  coverTheme: true,
   wellness: {
     pomodoroEnabled: true,
     pomodoroMinutes: 25,
@@ -213,6 +215,32 @@ export function App() {
 
   useApplyPreferences(preferences);
   useEveningMode(preferences);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    let cancelled = false;
+    const activeCoverUrl = activeBook ? coverUrls.get(activeBook.id) : undefined;
+
+    const apply = async () => {
+      if (preferences.coverTheme && activeBook && activeCoverUrl) {
+        const seed = await extractSeedFromImage(activeCoverUrl);
+        if (cancelled) return;
+        if (seed) {
+          applyReaderTheme(root, preferences, media.matches, seed);
+          return;
+        }
+      }
+      applyReaderTheme(root, preferences, media.matches);
+    };
+
+    void apply();
+    media.addEventListener("change", apply);
+    return () => {
+      cancelled = true;
+      media.removeEventListener("change", apply);
+    };
+  }, [activeBook, coverUrls, preferences]);
 
   const t = useMemo(() => createTranslator(preferences.language), [preferences.language]);
 

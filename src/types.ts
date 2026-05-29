@@ -109,6 +109,7 @@ export interface ReaderPreferences {
   dailyGoalMinutes: number;
   dictionaryEnabled: boolean;
   autoScrollSpeed: number;
+  coverTheme: boolean;
   wellness: WellnessPreferences;
 }
 

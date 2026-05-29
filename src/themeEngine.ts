@@ -46,20 +46,31 @@ function customColorsForPreferences(preferences: ReaderPreferences): ThemeCustom
   };
 }
 
+export function resolveSeed(preferences: ReaderPreferences, seedOverride?: string): string {
+  const trimmed = seedOverride?.trim() ?? "";
+  if (/^#[0-9a-f]{6}$/i.test(trimmed)) {
+    return trimmed;
+  }
+  return seedForPreferences(preferences);
+}
+
 export function applyReaderTheme(
   root: HTMLElement,
   preferences: ReaderPreferences,
-  systemPrefersDark: boolean
+  systemPrefersDark: boolean,
+  seedOverride?: string
 ) {
   const isDark = modeIsDark(preferences, systemPrefersDark);
-  const theme = themeFromSourceColor(argbFromHex(seedForPreferences(preferences)));
+  const trimmedOverride = seedOverride?.trim() ?? "";
+  const usingOverride = /^#[0-9a-f]{6}$/i.test(trimmedOverride);
+  const theme = themeFromSourceColor(argbFromHex(resolveSeed(preferences, seedOverride)));
   const scheme = isDark ? theme.schemes.dark : theme.schemes.light;
   const custom = customColorsForPreferences(preferences);
-  const primary = preferences.themeSource === "custom" ? custom.primary : hexFromArgb(scheme.primary);
-  const secondary = preferences.themeSource === "custom" ? custom.secondary : hexFromArgb(scheme.secondary);
-  const tertiary = preferences.themeSource === "custom" ? custom.tertiary : hexFromArgb(scheme.tertiary);
-  const surface = preferences.themeSource === "custom" ? custom.surface : hexFromArgb(scheme.surface);
-  const background = preferences.themeSource === "custom" ? custom.surface : hexFromArgb(scheme.background);
+  const primary = preferences.themeSource === "custom" && !usingOverride ? custom.primary : hexFromArgb(scheme.primary);
+  const secondary = preferences.themeSource === "custom" && !usingOverride ? custom.secondary : hexFromArgb(scheme.secondary);
+  const tertiary = preferences.themeSource === "custom" && !usingOverride ? custom.tertiary : hexFromArgb(scheme.tertiary);
+  const surface = preferences.themeSource === "custom" && !usingOverride ? custom.surface : hexFromArgb(scheme.surface);
+  const background = preferences.themeSource === "custom" && !usingOverride ? custom.surface : hexFromArgb(scheme.background);
   const onSurface = hexFromArgb(scheme.onSurface);
   const onPrimary = hexFromArgb(scheme.onPrimary);
   const surfaceContainer = hexFromArgb(isDark ? theme.palettes.neutral.tone(12) : theme.palettes.neutral.tone(94));

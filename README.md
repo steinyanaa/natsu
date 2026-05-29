@@ -21,13 +21,14 @@
 
 ## Latest release / 最新版本
 
-**v1.4.1** is a pure architecture-refactor release — **no user-facing behavior changes**:
+**v1.5.0** adds reading-experience features:
 
-- **按领域全面拆分** — 主进程从单文件 2903 行拆为 `ipc` / `services` / `scraper` / `window` 等领域模块；前端大组件（App / SettingsPanel / ReaderScreen / ComicPane）抽出聚焦的 hook 与独立组件文件。
-- **可测纯逻辑独立成文件** — EPUB 路径解析、漫画跨页分组、章节高度估算等纯函数拆出并配套测试。
-- **单元测试 8 → 116** — 覆盖后端服务、IPC 注册契约与前端解析器/工具函数。
+- **PDF / 漫画首页封面** — PDF 与 CBZ/ZIP/CBR/RAR 自动以首页缩略图作为书架封面。
+- **封面懒加载** — 封面按书架可见区域点播加载，去掉旧的 200 本上限，大书库滚动更流畅。
+- **按封面配色** — 阅读时 reader UI 用书封面主色生成 Material 配色，关书还原（可在设置关闭）。
+- **自动滚动阅读** — 匀速连续滚动：工具栏按钮 / 空格切换，`,` `.` 调速，滚轮暂停，到底自动停。
 
-Earlier, **v1.4.0** added Z-Library account login, a dedicated management panel, today's-quota display, mirror-address management, and session persistence.
+Earlier, **v1.4.1** was a pure architecture refactor (split-by-domain main process + frontend, tests 8 → 116, no behavior change).
 
 See [CHANGELOG.md](CHANGELOG.md) for the full history.
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [1.5.0] - 2026-05-29
 
 ### Added
 
@@ -8,6 +8,14 @@
 - **封面懒加载** — 封面改为按书架可见区域点播加载（IntersectionObserver），去掉旧的 200 本 EPUB 上限；大书库滚动更流畅。
 - **按封面配色** — 阅读时 reader UI 自动用书封面主色生成 Material 配色，关书还原；可在 设置 → 按封面配色 关闭。
 - **自动滚动阅读** — reader 支持匀速连续自动滚动：工具栏按钮 / 空格切换，`,` `.` 调速，手动滚轮暂停，到底自动停；速度可在 设置 → 自动滚动 调整。
+
+### Fixed
+
+- 封面在 React StrictMode（开发模式）下完全不显示的两个生命周期问题：`useCovers` 的 `disposedRef` 在重挂载后未重置导致 `commit` 空转；`BookShelf` 的 IntersectionObserver 在 ref 回调触发时尚未创建。
+
+### Notes
+
+- 三个新功能由三个并行子代理在独立 worktree 中开发，单元测试从 116 增至 129。
 
 ## [1.4.1] - 2026-05-29
 

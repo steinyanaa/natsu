@@ -1,27 +1,8 @@
-const { contextBridge, ipcRenderer } = require("electron");
-const { IPC_CHANNELS } = require("./ipc/channels.cjs");
+const { ipcRenderer } = require("electron");
+const { IPC_CHANNELS } = require("../../ipc/channels.cjs");
 
-const isHttpUrl = (value) => {
-  if (typeof value !== "string") {
-    return false;
-  }
-
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
-  } catch {
-    return false;
-  }
-};
-
-contextBridge.exposeInMainWorld("readerApi", {
+module.exports = {
   importBooks: () => ipcRenderer.invoke(IPC_CHANNELS.libraryImportBooks),
-  searchOnlineBooks: (query) => ipcRenderer.invoke(IPC_CHANNELS.librarySearchOnlineBooks, query),
-  testOnlineSource: (query, source) => ipcRenderer.invoke(IPC_CHANNELS.libraryTestOnlineSource, query, source),
-  importOnlineBook: (book) => ipcRenderer.invoke(IPC_CHANNELS.libraryImportOnlineBook, book),
-  openExternalAndAutoImport: (book) => ipcRenderer.invoke(IPC_CHANNELS.libraryOpenExternalAndAutoImport, book),
-  openExternal: (url) =>
-    isHttpUrl(url) ? ipcRenderer.invoke(IPC_CHANNELS.systemOpenExternal, url) : Promise.resolve(false),
   listBooks: () => ipcRenderer.invoke(IPC_CHANNELS.libraryListBooks),
   openBook: (id) => ipcRenderer.invoke(IPC_CHANNELS.libraryOpenBook, id),
   saveProgress: (id, progress) =>
@@ -52,16 +33,5 @@ contextBridge.exposeInMainWorld("readerApi", {
   removeBookFromCollection: (collectionId, bookId) => ipcRenderer.invoke(IPC_CHANNELS.libraryRemoveBookFromCollection, collectionId, bookId),
   updateBookTags: (bookId, tags) => ipcRenderer.invoke(IPC_CHANNELS.libraryUpdateBookTags, bookId, tags),
   getGoalStats: () => ipcRenderer.invoke(IPC_CHANNELS.libraryGetGoalStats),
-  getPreferences: () => ipcRenderer.invoke(IPC_CHANNELS.preferencesGet),
-  savePreferences: (preferences) =>
-    ipcRenderer.invoke(IPC_CHANNELS.preferencesSave, preferences),
-  hasCover: (bookId) => ipcRenderer.invoke(IPC_CHANNELS.coverHas, bookId),
-  saveCover: (bookId, bytes) => ipcRenderer.invoke(IPC_CHANNELS.coverSave, bookId, bytes),
-  saveFile: (content, suggestedName) => ipcRenderer.invoke(IPC_CHANNELS.systemSaveFile, content, suggestedName),
-  fetchCoverForBook: (bookId) => ipcRenderer.invoke(IPC_CHANNELS.coverFetchForBook, bookId),
-  getSessionsByDate: () => ipcRenderer.invoke(IPC_CHANNELS.libraryGetSessionsByDate),
-  zlibStatus: () => ipcRenderer.invoke(IPC_CHANNELS.zlibStatus),
-  zlibLogin: () => ipcRenderer.invoke(IPC_CHANNELS.zlibLogin),
-  zlibLogout: () => ipcRenderer.invoke(IPC_CHANNELS.zlibLogout),
-  zlibFetchAccount: () => ipcRenderer.invoke(IPC_CHANNELS.zlibFetchAccount),
-});
+  getSessionsByDate: () => ipcRenderer.invoke(IPC_CHANNELS.libraryGetSessionsByDate)
+};

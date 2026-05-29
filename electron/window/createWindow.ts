@@ -56,7 +56,7 @@ export async function createWindow(): Promise<void> {
     titleBarStyle: "hiddenInset",
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(rootDir, "electron", "preload.cjs"),
+      preload: path.join(rootDir, "electron", "preload", "index.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,

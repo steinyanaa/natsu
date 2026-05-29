@@ -193,38 +193,61 @@ npm install
 npm run dev
 ```
 
-### Build and package / 构建与打包
+### Scripts / 常用命令
+
+| Command | What it does / 作用 |
+| --- | --- |
+| `npm run dev` | Vite dev server + Electron with hot reload / 开发模式（热重载） |
+| `npm run typecheck` | Type-check both renderer and Electron tsconfigs / 双 tsconfig 类型检查 |
+| `npm run test:unit` | Run the Vitest unit suite / 运行 Vitest 单元测试 |
+| `npm run build` | Build renderer + Electron main process / 构建渲染层与主进程 |
+| `npm run dist` | Build **and** package the Windows portable `.exe` / 构建并打包便携版 |
+
+Packaged output is written to `release/`. 打包产物输出到 `release/`。
+
+### Testing / 测试
+
+Unit tests run on [Vitest](https://vitest.dev/) and cover the pure logic on both sides of the process boundary — back-end services (store, library, scraper DOM/custom adapters) and an IPC-registration contract test, plus front-end parsers and reader helpers (EPUB path resolution, comic spread grouping, chapter-height estimation, text decoding, reading-speed sampling).
+
+单元测试基于 Vitest，覆盖进程两侧的纯逻辑：后端服务（store / library / 爬虫 DOM 与自定义适配器）与 IPC 注册契约测试，以及前端解析器与阅读器工具函数（EPUB 路径解析、漫画跨页分组、章节高度估算、文本解码、阅读速度采样）。
 
 ```bash
-# Type check only
-npm run typecheck
-
-# Build renderer and Electron main process
-npm run build
-
-# Build + package Windows portable executable
-npm run dist
+npm run test:unit
 ```
-
-Packaged output is written to `release/`.
 
 ### Project structure / 项目结构
 
+The codebase is split by domain on both sides of the Electron boundary. 主进程与渲染层均按领域拆分。
+
 ```text
 natsu/
-├─ electron/               # Main process and preload bridge
-├─ src/
-│  ├─ reader/              # Reader shell and format panes
-│  ├─ readers/             # EPUB/MOBI/TXT/comic parsers
-│  ├─ settings/            # Settings drawer
-│  ├─ components/          # Shared UI components
-│  ├─ styles.css           # Global styles
-│  └─ types.ts             # Shared TypeScript types
-├─ build/                  # App icons
-├─ docs/                   # Guides and design notes
-├─ public/                 # Static assets
+├─ electron/                  # Main process (split by domain)
+│  ├─ main.ts                 # App lifecycle wiring only
+│  ├─ ipc/                    # IPC channel definitions + per-domain handlers
+│  │  └─ handlers/            #   library / online / preferences / covers / system / zlib
+│  ├─ preload/                # contextBridge groups → flat window.readerApi
+│  ├─ services/               # store / library / covers / protocol / online-import
+│  │  ├─ scraper/             #   gutenberg / json / html / rss / custom adapters + dispatcher
+│  │  └─ zlib/                #   Z-Library session + account
+│  └─ window/                 # BrowserWindow creation + lifecycle
+├─ src/                       # Renderer (React 19)
+│  ├─ app/                    # Top-level hooks (useLibrary, useEpubCovers, useOnlineSearch, …)
+│  ├─ bookshelf/              # Shelf grid, filters, dialogs
+│  ├─ reader/                 # Reader shell, format panes, reader hooks + pure helpers
+│  ├─ readers/                # EPUB / MOBI / TXT / comic parsers
+│  ├─ onlineSources/          # Online source manager, presets, Z-Library panel
+│  ├─ settings/               # Settings drawer + controls
+│  ├─ stats/ · wellness/      # Reading stats, goals, and wellness widgets
+│  ├─ components/             # Shared UI (dialogs, command palette, controls)
+│  └─ types.ts                # Shared TypeScript types
+├─ build/                     # App icons
+├─ public/                    # Static assets (dictionaries, fonts)
 └─ package.json
 ```
+
+Modules follow a *split-by-domain, test-the-pure-logic* convention: stateful React components delegate to focused hooks, and side-effect-free helpers (path/MIME resolution, layout math, text decoding) live in their own files with matching `*.test.ts`.
+
+模块遵循「按领域拆分、纯逻辑可测」的约定：有状态的 React 组件委托给聚焦的 hook，无副作用的工具函数（路径/MIME 解析、布局计算、文本解码）独立成文件并配套 `*.test.ts`。
 
 ---
 

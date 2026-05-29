@@ -1,5 +1,29 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- **主进程架构拆分**：`electron/main.ts` 从 2903 行精简到 43 行（仅保留应用生命周期接线），按领域拆分为独立模块：
+  - `electron/paths.ts` — 路径解析（rootDir / 图标 / library / cover 目录）
+  - `electron/ipc/types.ts` — 跨领域 IPC 类型集中定义
+  - `electron/ipc/register.ts` + `electron/ipc/handlers/*` — 40 个 IPC handler 按 library / online / preferences / covers / system / zlib 六个领域分文件
+  - `electron/services/store.ts` — electron-store 单例，改用 `initStore()` / `getStore()` 守护式访问
+  - `electron/services/library.ts` — 导入 / 哈希 / 进度去抖
+  - `electron/services/covers.ts` + `electron/services/protocol.ts` — 封面与 `manga-reader://` 协议
+  - `electron/services/scraper/*` — gutenberg / json / html / rss / custom 适配器 + dom / fetch / index 调度器
+  - `electron/services/online-import.ts` — 在线下载与自动导入
+  - `electron/services/zlib/*` — Z-Library session 与账户
+  - `electron/window/createWindow.ts` — 窗口创建与生命周期
+- **preload 拆分**：`electron/preload.cjs` 拆为 `electron/preload/groups/*`（library / online / preferences / covers / zlib / system）+ `index.cjs` 合并入口，`window.readerApi` 保持完全相同的扁平 40 键结构，渲染进程零改动。
+- 行为零变更；纯架构重构。
+
+### Added
+
+- **后端单元测试**：为 `services/store`、`services/library`、`services/scraper/dom`、`services/scraper/custom` 新增 vitest 测试；新增 `ipc/register` 契约测试（断言 `IPC_CHANNELS` 每个 channel 恰好注册一个 handler）。测试总数从 8 增至 53。
+
+---
+
 ## [1.4.0] - 2026-05-23
 
 ### Added

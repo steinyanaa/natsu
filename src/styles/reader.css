@@ -43,6 +43,22 @@
   -webkit-app-region: no-drag;
 }
 
+.reader-toolbar .icon-button.active {
+  background: color-mix(in oklab, var(--reader-accent) 18%, var(--md-sys-color-surface));
+  color: var(--reader-accent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--reader-accent) 22%, transparent);
+}
+
+.reader-focus-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .reader-title {
   display: flex;
   align-items: center;
@@ -577,6 +593,7 @@
 }
 
 .text-document {
+  position: relative;
   width: min(100%, var(--reader-column-width));
   max-width: var(--reader-column-width);
   margin: 0 auto;
@@ -590,6 +607,31 @@
   -webkit-font-smoothing: antialiased;
   text-size-adjust: 100%;
   overflow-wrap: break-word;
+}
+
+.text-reader:not(.manga-epub) .text-document {
+  text-shadow: 0 1px 0 color-mix(in oklab, var(--reader-paper) 35%, transparent);
+}
+
+.text-reader.reading-focus-active .text-document :is(p, li, blockquote)[data-reading-focus-block] {
+  opacity: .56;
+  transition:
+    opacity 220ms var(--ease-soft),
+    background-color 220ms var(--ease-soft),
+    box-shadow 220ms var(--ease-soft);
+}
+
+.text-reader.reading-focus-active .text-document :is(p, li, blockquote)[data-reading-focus-current="true"] {
+  opacity: 1;
+  border-radius: 12px;
+  background: color-mix(in oklab, var(--reader-warm) 10%, transparent);
+  box-shadow:
+    0 0 0 6px color-mix(in oklab, var(--reader-warm) 10%, transparent),
+    0 10px 28px color-mix(in oklab, var(--reader-ink) 6%, transparent);
+}
+
+.reduce-motion .text-reader.reading-focus-active .text-document :is(p, li, blockquote)[data-reading-focus-block] {
+  transition: none;
 }
 
 .text-reader:not(.epub-text-reader) .text-document,
@@ -1407,21 +1449,25 @@
 
 /* ── Apple 阅读器纸色预设 ── */
 .reader-shell[data-color-preset="paper"] {
-  --reader-bg: #fbf0d9;
-  --reader-ink: #2c1f0e;
-  --reader-muted: #7a6040;
-  --reader-paper: #fbf0d9;
-  --reader-accent: #8b6914;
-  --reader-warm: #c8943a;
+  --reader-bg: #f8edd8;
+  --reader-ink: #2b2116;
+  --reader-muted: #7b684f;
+  --reader-paper: #fff7e8;
+  --reader-accent: #8d6a2b;
+  --reader-warm: #d8a451;
+  --glass-bg: color-mix(in oklab, var(--reader-paper) 66%, transparent);
+  --glass-line: color-mix(in oklab, var(--reader-accent) 18%, transparent);
 }
 
 .reader-shell[data-color-preset="quiet"] {
-  --reader-bg: #f7f4ee;
-  --reader-ink: #1c1c1e;
-  --reader-muted: #6c6c70;
-  --reader-paper: #f7f4ee;
-  --reader-accent: #636366;
-  --reader-warm: #aeaeb2;
+  --reader-bg: #f5f2eb;
+  --reader-ink: #242423;
+  --reader-muted: #74706a;
+  --reader-paper: #fffdf7;
+  --reader-accent: #756f66;
+  --reader-warm: #c7b79e;
+  --glass-bg: color-mix(in oklab, var(--reader-paper) 64%, transparent);
+  --glass-line: color-mix(in oklab, var(--reader-accent) 14%, transparent);
 }
 
 .reader-shell[data-color-preset="gray"] {

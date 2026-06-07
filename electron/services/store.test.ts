@@ -27,6 +27,10 @@ describe("defaultPreferences", () => {
   it("derives language from the system locale", () => {
     expect(defaultPreferences().language).toBe("en-US");
   });
+
+  it("keeps reading focus disabled by default", () => {
+    expect(defaultPreferences().readingFocus).toBe(false);
+  });
 });
 
 describe("migratePreferences", () => {
@@ -40,6 +44,12 @@ describe("migratePreferences", () => {
     const input: Partial<ReaderPreferences> = { fontSize: 22, preferencesVersion: 3 };
     const out = migratePreferences(input);
     expect(out.fontSize).toBe(22);
+  });
+
+  it("migrates older preferences with reading focus disabled", () => {
+    const out = migratePreferences({ preferencesVersion: 3 });
+    expect(out.readingFocus).toBe(false);
+    expect(out.preferencesVersion).toBe(6);
   });
 });
 

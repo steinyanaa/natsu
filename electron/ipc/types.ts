@@ -57,13 +57,13 @@ export interface ReaderPreferences {
   fontSize: number;
   lineHeight: number;
   columnWidth: number;
-  fontFamily: "serif-cn" | "sans" | "kai" | "jp-serif" | "serif-en" | "custom";
+  fontFamily: "serif-cn" | "anthropic-sans" | "sans" | "kai" | "jp-serif" | "serif-en" | "custom";
   customFontStack: string;
   imageScale: number;
   imageMode: "manual" | "fit-screen";
   autoAlign: boolean;
   reduceMotion: boolean;
-  pageTurnStyle: "slide" | "fade" | "none";
+  pageTurnStyle: "slide" | "fade" | "none" | "curl";
   spread: "auto" | "single" | "double";
   tapToTurn: boolean;
   onlineSources: OnlineSource[];
@@ -72,8 +72,27 @@ export interface ReaderPreferences {
   pageMargin: "narrow" | "normal" | "wide";
   justify: boolean;
   hyphenate: boolean;
+  dropCap: boolean;
+  readingFocus: boolean;
+  comicFit: "width" | "height" | "page" | "original" | "manual";
+  comicLayout: "single" | "double" | "webtoon";
+  readingDirection: "ltr" | "rtl";
+  comicCoverSolo: boolean;
+  mangaSnapToPage: boolean;
+  immersive: boolean;
   preferencesVersion: number;
-  dailyGoalMinutes?: number;
+  dailyGoalMinutes: number;
+  dictionaryEnabled: boolean;
+  autoScrollSpeed: number;
+  coverTheme: boolean;
+  wellness: {
+    pomodoroEnabled: boolean;
+    pomodoroMinutes: number;
+    eveningModeEnabled: boolean;
+    eveningModeStart: string;
+    eveningModeEnd: string;
+    showDailySummary: boolean;
+  };
 }
 
 export interface OnlineBookResult {

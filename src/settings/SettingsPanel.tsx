@@ -492,6 +492,11 @@ export function SettingsPanel({
           checked={preferences.dropCap ?? true}
           onChange={(dropCap) => onChange({ dropCap })}
         />
+        <ToggleSetting
+          label="阅读焦点"
+          checked={preferences.readingFocus ?? false}
+          onChange={(readingFocus) => onChange({ readingFocus })}
+        />
       </SettingGroup>
 
       <SettingGroup label="自动滚动">

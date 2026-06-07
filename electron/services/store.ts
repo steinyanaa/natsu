@@ -76,7 +76,27 @@ export function defaultPreferences(): ReaderPreferences {
     pageMargin: "normal",
     justify: false,
     hyphenate: false,
-    preferencesVersion: 3,
+    dropCap: true,
+    readingFocus: false,
+    comicFit: "width",
+    comicLayout: "single",
+    readingDirection: "ltr",
+    comicCoverSolo: true,
+    mangaSnapToPage: true,
+    immersive: false,
+    preferencesVersion: 6,
+    dailyGoalMinutes: 30,
+    dictionaryEnabled: true,
+    autoScrollSpeed: 40,
+    coverTheme: true,
+    wellness: {
+      pomodoroEnabled: true,
+      pomodoroMinutes: 25,
+      eveningModeEnabled: true,
+      eveningModeStart: "20:00",
+      eveningModeEnd: "06:00",
+      showDailySummary: true
+    },
     onlineSources: [
       {
         id: "gutenberg",
@@ -217,7 +237,30 @@ export function migratePreferences(prefs: Partial<ReaderPreferences>): Partial<R
     if (migrated.hyphenate === undefined) migrated.hyphenate = false;
   }
 
-  migrated.preferencesVersion = 3;
+  if (version < 6) {
+    if (migrated.dropCap === undefined) migrated.dropCap = true;
+    if (migrated.readingFocus === undefined) migrated.readingFocus = false;
+    if (migrated.comicFit === undefined) migrated.comicFit = "width";
+    if (migrated.comicLayout === undefined) migrated.comicLayout = "single";
+    if (migrated.readingDirection === undefined) migrated.readingDirection = "ltr";
+    if (migrated.comicCoverSolo === undefined) migrated.comicCoverSolo = true;
+    if (migrated.mangaSnapToPage === undefined) migrated.mangaSnapToPage = true;
+    if (migrated.immersive === undefined) migrated.immersive = false;
+    if (migrated.dailyGoalMinutes === undefined) migrated.dailyGoalMinutes = 30;
+    if (migrated.dictionaryEnabled === undefined) migrated.dictionaryEnabled = true;
+    if (migrated.autoScrollSpeed === undefined) migrated.autoScrollSpeed = 40;
+    if (migrated.coverTheme === undefined) migrated.coverTheme = true;
+    migrated.wellness = {
+      pomodoroEnabled: migrated.wellness?.pomodoroEnabled ?? true,
+      pomodoroMinutes: migrated.wellness?.pomodoroMinutes ?? 25,
+      eveningModeEnabled: migrated.wellness?.eveningModeEnabled ?? true,
+      eveningModeStart: migrated.wellness?.eveningModeStart ?? "20:00",
+      eveningModeEnd: migrated.wellness?.eveningModeEnd ?? "06:00",
+      showDailySummary: migrated.wellness?.showDailySummary ?? true
+    };
+  }
+
+  migrated.preferencesVersion = 6;
   return migrated;
 }
 

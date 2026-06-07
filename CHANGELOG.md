@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.6.0] - 2026-06-07
+
+### Added
+
+- **阅读焦点** — 小说 / EPUB 阅读器新增默认关闭的阅读焦点模式，可从工具栏或设置开启，自动高亮视口中心附近段落。
+- **焦点选择 helper** — 新增可单元测试的中心段落选择逻辑，覆盖无候选、中心选择和不可聚焦候选跳过。
+
+### Changed
+
+- **静谧纸感 UI** — paper / quiet 阅读预设更柔和，正文纸张、低噪玻璃工具栏和焦点段落高亮更适合长时间阅读。
+- **偏好迁移同步** — `readingFocus` 默认关闭写入 Electron 与 renderer 偏好默认值，不改变老用户既有阅读习惯。
+
+### Validation
+
+- `npm run test:unit`
+- `npm run typecheck`
+- `npm run build`
+
 ## [1.5.0] - 2026-05-29
 
 ### Added

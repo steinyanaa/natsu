@@ -99,6 +99,7 @@ export interface ReaderPreferences {
   justify: boolean;
   hyphenate: boolean;
   dropCap: boolean;
+  readingFocus: boolean;
   comicFit: ComicFitMode;
   comicLayout: ComicLayout;
   readingDirection: ReadingDirection;

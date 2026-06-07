@@ -12,6 +12,7 @@ import { imageUrlsFromHtml } from "./htmlMedia";
 import type { AnchorJumpRequest, JumpRequest } from "./types";
 import { editableEventTarget, nowProgress, readerFontStack } from "./utils";
 import { estimateChapterHeight } from "./chapterHeight";
+import { pickFocusedBlock, type FocusBlockCandidate } from "./focusBlock";
 import { useDictionary } from "./useDictionary";
 import { usePageTurn } from "./usePageTurn";
 import { useEpubChapter } from "./useEpubChapter";
@@ -112,6 +113,8 @@ export function TextPane({
   const preloadedImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const hoverNoteTimerRef = useRef<number | undefined>(undefined);
   const animatedChaptersRef = useRef<Set<string>>(new Set());
+  const focusIdCounterRef = useRef(0);
+  const focusedBlockIdRef = useRef<string | undefined>(undefined);
   const isEpub = parser === "epub";
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [chapterHeights, setChapterHeights] = useState<Record<string, number>>({});
@@ -172,6 +175,7 @@ export function TextPane({
   const mangaRtl = isMangaEpub && preferences.readingDirection === "rtl";
   const mangaCoverSolo = isMangaEpub && (preferences.comicCoverSolo ?? true);
   const effectiveReaderMode = isMangaEpub ? "scroll" : preferences.readerMode;
+  const readingFocusEnabled = (preferences.readingFocus ?? false) && !isMangaEpub;
 
   const chapterSpreads = useMemo<number[][]>(() => {
     if (mangaLayout !== "double") {
@@ -196,6 +200,96 @@ export function TextPane({
     }
     return result;
   }, [mangaLayout, mangaCoverSolo, chapters]);
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+
+    const clearFocusAttributes = () => {
+      for (const node of scroller.querySelectorAll<HTMLElement>("[data-reading-focus-block]")) {
+        node.removeAttribute("data-reading-focus-block");
+        node.removeAttribute("data-reading-focus-current");
+      }
+      focusedBlockIdRef.current = undefined;
+    };
+
+    if (!readingFocusEnabled) {
+      clearFocusAttributes();
+      return;
+    }
+
+    let raf = 0;
+
+    const updateFocusedBlock = () => {
+      raf = 0;
+      const scrollerRect = scroller.getBoundingClientRect();
+      const candidates: FocusBlockCandidate[] = [];
+      const nodes = scroller.querySelectorAll<HTMLElement>(
+        ".text-chapter[data-rendered='true']:not(.epub-fixed-chapter):not(.epub-vertical-chapter) :is(p, li, blockquote)"
+      );
+
+      for (const node of nodes) {
+        const rect = node.getBoundingClientRect();
+        const horizontallyVisible = rect.right > scrollerRect.left && rect.left < scrollerRect.right;
+        const verticallyVisible = rect.bottom > scrollerRect.top && rect.top < scrollerRect.bottom;
+        if (!horizontallyVisible || !verticallyVisible || rect.height < 12) {
+          continue;
+        }
+
+        if (!node.dataset.readingFocusBlock) {
+          focusIdCounterRef.current += 1;
+          node.dataset.readingFocusBlock = `focus-${focusIdCounterRef.current}`;
+        }
+
+        candidates.push({
+          id: node.dataset.readingFocusBlock,
+          top: rect.top - scrollerRect.top,
+          bottom: rect.bottom - scrollerRect.top
+        });
+      }
+
+      const nextFocusedId = pickFocusedBlock(candidates, { top: 0, height: scrollerRect.height });
+      if (nextFocusedId === focusedBlockIdRef.current) {
+        return;
+      }
+
+      if (focusedBlockIdRef.current) {
+        const current = scroller.querySelector<HTMLElement>(
+          `[data-reading-focus-block="${CSS.escape(focusedBlockIdRef.current)}"]`
+        );
+        current?.removeAttribute("data-reading-focus-current");
+      }
+
+      focusedBlockIdRef.current = nextFocusedId;
+
+      if (nextFocusedId) {
+        const next = scroller.querySelector<HTMLElement>(
+          `[data-reading-focus-block="${CSS.escape(nextFocusedId)}"]`
+        );
+        next?.setAttribute("data-reading-focus-current", "true");
+      }
+    };
+
+    const scheduleFocusedBlockUpdate = () => {
+      if (raf) {
+        return;
+      }
+      raf = window.requestAnimationFrame(updateFocusedBlock);
+    };
+
+    scheduleFocusedBlockUpdate();
+    scroller.addEventListener("scroll", scheduleFocusedBlockUpdate, { passive: true });
+    window.addEventListener("resize", scheduleFocusedBlockUpdate);
+
+    return () => {
+      if (raf) {
+        window.cancelAnimationFrame(raf);
+      }
+      scroller.removeEventListener("scroll", scheduleFocusedBlockUpdate);
+      window.removeEventListener("resize", scheduleFocusedBlockUpdate);
+      clearFocusAttributes();
+    };
+  }, [activeChapterIndex, chapters.length, effectiveReaderMode, readingFocusEnabled]);
 
   const chapterCharOffsets = useMemo(() => {
     let offset = 0;
@@ -1147,7 +1241,7 @@ export function TextPane({
   return (
     <div
       ref={scrollerRef}
-      className={`text-reader ${effectiveReaderMode} ${isEpub ? "epub-text-reader" : ""} ${preferences.autoAlign ? "auto-align" : "justify-align"} ${preferences.imageMode === "fit-screen" ? "fit-screen-images" : "manual-images"} ${pinnedNotes.length ? "notes-open" : ""} ${preferences.justify ? "justify" : ""} ${preferences.justify && preferences.hyphenate ? "hyphenate" : ""}${isMangaEpub ? ` manga-epub manga-layout-${mangaLayout}` : ""}${isMangaEpub && !preferences.mangaSnapToPage ? " manga-no-snap" : ""}${mangaRtl ? " manga-rtl" : ""}`}
+      className={`text-reader ${effectiveReaderMode} ${isEpub ? "epub-text-reader" : ""} ${preferences.autoAlign ? "auto-align" : "justify-align"} ${preferences.imageMode === "fit-screen" ? "fit-screen-images" : "manual-images"} ${pinnedNotes.length ? "notes-open" : ""} ${preferences.justify ? "justify" : ""} ${preferences.justify && preferences.hyphenate ? "hyphenate" : ""}${readingFocusEnabled ? " reading-focus-active" : ""}${isMangaEpub ? ` manga-epub manga-layout-${mangaLayout}` : ""}${isMangaEpub && !preferences.mangaSnapToPage ? " manga-no-snap" : ""}${mangaRtl ? " manga-rtl" : ""}`}
       style={
         {
           "--reader-font-size": `${preferences.fontSize}px`,

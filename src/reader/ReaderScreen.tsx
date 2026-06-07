@@ -79,6 +79,7 @@ export function ReaderScreen({
   const lastSavedPercentRef = useRef(book.progress?.percent ?? progress.percent);
   const lastRevealRef = useRef<number>(0);
   const readerPanelOpen = tocOpen || settingsOpen;
+  const supportsReadingFocus = ["epub", "txt", "mobi", "azw3"].includes(book.format);
 
   const { controlsVisible, cursorHidden, revealChrome, hideChrome } = useReaderChrome(readerPanelOpen);
 
@@ -558,6 +559,16 @@ export function ReaderScreen({
           aria-label="自动滚动"
         >
           {autoScroll.running ? <Pause size={18} /> : <Play size={18} />}
+        </button>
+        <button
+          className={`icon-button pressable${preferences.readingFocus ? " active" : ""}`}
+          onClick={() => onPreferencesChange({ readingFocus: !preferences.readingFocus })}
+          title={preferences.readingFocus ? "关闭阅读焦点" : "开启阅读焦点"}
+          aria-label="阅读焦点"
+          aria-pressed={preferences.readingFocus}
+          disabled={!supportsReadingFocus}
+        >
+          <span className="reader-focus-icon" aria-hidden="true">◎</span>
         </button>
         <button className="icon-button pressable bookmark-pop" onClick={addBookmark} title={t("addBookmark")}>
           {book.bookmarks.length ? <BookmarkCheck size={18} /> : <Bookmark size={18} />}

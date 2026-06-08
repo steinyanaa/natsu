@@ -2,6 +2,7 @@ import { Search, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type * as React from "react";
 import type { ParsedTextDocument } from "../types";
+import { activeSearchResultId, searchResultCountLabel, searchResultOptionId } from "./searchPanelA11y";
 
 interface SearchResult {
   chapterId: string;
@@ -128,11 +129,19 @@ export function SearchPanel({
     onClose();
   };
 
+  const activeResultId = activeSearchResultId(results.length, activeIndex);
+
   if (!open) return null;
 
   return (
     <div className="search-panel-overlay" onClick={onClose}>
-      <div className="search-panel" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="search-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="全书搜索"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="search-panel-input-row">
           <Search size={16} className="search-icon" />
           <input
@@ -140,6 +149,11 @@ export function SearchPanel({
             className="search-panel-input"
             value={query}
             placeholder="在本书中搜索…"
+            role="combobox"
+            aria-label="在本书中搜索"
+            aria-controls="search-results"
+            aria-expanded={results.length > 0}
+            aria-activedescendant={activeResultId}
             onChange={(e) => search(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Escape") onClose();
@@ -148,15 +162,21 @@ export function SearchPanel({
               if (e.key === "ArrowUp") setActiveIndex((i) => Math.max(i - 1, 0));
             }}
           />
-          <span className="search-count">{results.length > 0 ? `${results.length} 个结果` : ""}</span>
-          <button className="icon-button pressable" onClick={onClose}><X size={16} /></button>
+          <span className="search-count" role="status" aria-live="polite">
+            {searchResultCountLabel(results.length)}
+          </span>
+          <button className="icon-button pressable" type="button" aria-label="关闭搜索" onClick={onClose}><X size={16} /></button>
         </div>
         {results.length > 0 && (
-          <div className="search-results">
+          <div id="search-results" className="search-results" role="listbox">
             {results.map((result, i) => (
               <button
+                id={searchResultOptionId(i)}
                 key={`${result.chapterId}-${result.matchOffset}`}
                 className={`search-result-item ${i === activeIndex ? "active" : ""}`}
+                type="button"
+                role="option"
+                aria-selected={i === activeIndex}
                 onClick={() => jump(result)}
               >
                 <span className="search-result-chapter">{result.chapterTitle}</span>

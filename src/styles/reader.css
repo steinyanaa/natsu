@@ -2036,6 +2036,35 @@
   line-height: 1.55;
 }
 
+.text-input-dialog {
+  max-width: min(480px, 92vw);
+}
+
+.dialog-text-input {
+  width: 100%;
+  border: 1px solid color-mix(in oklab, var(--reader-sepia, #8a6a44) 24%, transparent);
+  border-radius: 16px;
+  padding: 11px 13px;
+  background: color-mix(in oklab, var(--reader-paper, #fff8ec) 84%, white 16%);
+  color: var(--reader-ink, var(--md-sys-color-on-surface));
+  font: inherit;
+  line-height: 1.55;
+  outline: none;
+  resize: vertical;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 45%);
+}
+
+.dialog-text-input.multiline {
+  min-height: 118px;
+}
+
+.dialog-text-input:focus {
+  border-color: color-mix(in oklab, var(--md-sys-color-primary) 72%, var(--reader-sepia, #8a6a44));
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--md-sys-color-primary) 16%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 50%);
+}
+
 .dialog-actions {
   display: flex;
   gap: 8px;

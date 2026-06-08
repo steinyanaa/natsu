@@ -1,6 +1,7 @@
 import { ArrowLeft, Bookmark, BookmarkCheck, PanelLeft, Pause, Play, SlidersHorizontal, Volume2 } from "lucide-react";
 import { Suspense, lazy, useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { SegmentedControl } from "../components/SegmentedControl";
+import { TextInputDialog } from "../components/TextInputDialog";
 import { createTranslator } from "../i18n";
 import { BookmarkManager } from "./BookmarkManager";
 import { KeymapHint } from "./KeymapHint";
@@ -73,6 +74,7 @@ export function ReaderScreen({
   const [showSummary, setShowSummary] = useState(false);
   const [goalStats, setGoalStats] = useState<GoalStats | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [bookmarkRenameTarget, setBookmarkRenameTarget] = useState<BookmarkRecord | undefined>();
   const shellRef = useRef<HTMLElement | null>(null);
   const sessionStartRef = useRef(Date.now());
   const saveTimer = useRef<number | undefined>(undefined);
@@ -205,9 +207,22 @@ export function ReaderScreen({
   }, []);
 
   const renameBookmark = useCallback(
-    async (bookmark: BookmarkRecord) => {
-      const label = window.prompt(t("rename"), bookmark.label)?.trim();
+    (bookmark: BookmarkRecord) => {
+      setBookmarkRenameTarget(bookmark);
+    },
+    []
+  );
+
+  const saveBookmarkRename = useCallback(
+    async (value: string) => {
+      const bookmark = bookmarkRenameTarget;
+      if (!bookmark) {
+        return;
+      }
+
+      const label = value.trim();
       if (!label) {
+        setBookmarkRenameTarget(undefined);
         return;
       }
 
@@ -215,8 +230,9 @@ export function ReaderScreen({
       if (updated) {
         onBookUpdated(updated);
       }
+      setBookmarkRenameTarget(undefined);
     },
-    [book.id, onBookUpdated, t]
+    [book.id, bookmarkRenameTarget, onBookUpdated]
   );
 
   const removeBookmarks = useCallback(
@@ -733,6 +749,17 @@ export function ReaderScreen({
           onClose={() => setExportOpen(false)}
         />
       )}
+
+      {bookmarkRenameTarget ? (
+        <TextInputDialog
+          title={t("rename")}
+          initialValue={bookmarkRenameTarget.label}
+          confirmLabel={t("saveChanges")}
+          cancelLabel={t("cancel")}
+          onConfirm={saveBookmarkRename}
+          onCancel={() => setBookmarkRenameTarget(undefined)}
+        />
+      ) : null}
     </main>
   );
 }

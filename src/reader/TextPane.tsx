@@ -1,6 +1,7 @@
 import type * as React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createTranslator } from "../i18n";
+import { TextInputDialog } from "../components/TextInputDialog";
 import type { BookRecord, Highlight, ParsedTextDocument, ReaderPreferences, ReaderProgress, TocItem } from "../types";
 import { resolveExistingTargetId, targetIdFromHashHref } from "./navigation";
 import { PageCurl } from "./PageCurl";
@@ -36,6 +37,8 @@ interface PinnedNote {
   html?: string;
   refId?: string;
 }
+
+type PendingNoteHighlight = Omit<Highlight, "id" | "note" | "createdAt">;
 
 function openExternalUrl(href: string): void {
   const externalHref = href.startsWith("//")
@@ -119,6 +122,7 @@ export function TextPane({
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [chapterHeights, setChapterHeights] = useState<Record<string, number>>({});
   const [noteOverlay, setNoteOverlay] = useState<NoteOverlay | undefined>();
+  const [pendingNoteHighlight, setPendingNoteHighlight] = useState<PendingNoteHighlight | undefined>();
   const [noteTargetChapterIndex, setNoteTargetChapterIndex] = useState<number | undefined>();
   const [pinnedNotes, setPinnedNotes] = useState<PinnedNote[]>([]);
   const { selectionMenu, setSelectionMenu, selectionText, setSelectionText, dictWord, setDictWord } = useDictionary(scrollerRef, book.highlights ?? [], preferences.dictionaryEnabled ?? true);
@@ -1003,23 +1007,29 @@ export function TextPane({
   }, []);
 
   const handleNoteRequest = useCallback(() => {
-    const note = window.prompt("批注");
-    if (note === null) return;
     const sel = window.getSelection();
     if (!sel || !selectionMenu) return;
     const data = selectionToHighlightData(sel, selectionMenu.chapterId);
     if (!data) return;
+    sel.removeAllRanges();
+    setSelectionMenu(undefined);
+    setPendingNoteHighlight({ ...data, color: "yellow" });
+  }, [selectionMenu]);
+
+  const savePendingNote = useCallback((note: string) => {
+    if (!pendingNoteHighlight) {
+      return;
+    }
+
     const highlight: Highlight = {
       id: crypto.randomUUID(),
-      ...data,
-      color: "yellow",
+      ...pendingNoteHighlight,
       note: note.trim() || undefined,
       createdAt: new Date().toISOString(),
     };
     onHighlightSave?.(highlight);
-    sel.removeAllRanges();
-    setSelectionMenu(undefined);
-  }, [selectionMenu, onHighlightSave]);
+    setPendingNoteHighlight(undefined);
+  }, [onHighlightSave, pendingNoteHighlight]);
 
   const handleDocumentClick = useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
@@ -1432,6 +1442,17 @@ export function TextPane({
             ))}
           </div>
         </aside>
+      ) : null}
+      {pendingNoteHighlight ? (
+        <TextInputDialog
+          title={t("notes")}
+          body={selectionText}
+          multiline
+          confirmLabel={t("saveChanges")}
+          cancelLabel={t("cancel")}
+          onConfirm={savePendingNote}
+          onCancel={() => setPendingNoteHighlight(undefined)}
+        />
       ) : null}
     </div>
   );

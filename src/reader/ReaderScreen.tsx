@@ -24,6 +24,7 @@ import { DailySummaryCard } from "../wellness/DailySummaryCard";
 import { ExportSheet } from "../export/ExportSheet";
 import { exportMarkdown, exportAnkiTsv } from "../export/annotationExporter";
 import { captureRemovedBookmarks } from "./bookmarkUndo";
+import { shouldRevealChromeOnFocus } from "./readerChromeA11y";
 
 const CHARS_PER_MINUTE = 300;
 
@@ -394,6 +395,12 @@ export function ReaderScreen({
     [controlsVisible, hideChrome, preferences.tapToTurn, readerPanelOpen, revealChrome, scrollReaderByKey]
   );
 
+  const handleToolbarFocus = useCallback(() => {
+    if (shouldRevealChromeOnFocus(controlsVisible, readerPanelOpen)) {
+      revealChrome();
+    }
+  }, [controlsVisible, readerPanelOpen, revealChrome]);
+
   useEffect(() => {
     let lastTarget: HTMLElement | undefined;
     let lastTop = 0;
@@ -554,7 +561,7 @@ export function ReaderScreen({
           style={{ opacity: 1 - preferences.brightness }}
         />
       )}
-      <header className="reader-toolbar">
+      <header className="reader-toolbar" aria-label="阅读工具栏" onFocusCapture={handleToolbarFocus}>
         <button className="soft-button pressable" onClick={handleBack}>
           <ArrowLeft size={18} />
           <span>{t("back")}</span>

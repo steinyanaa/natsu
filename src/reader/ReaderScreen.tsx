@@ -23,12 +23,15 @@ import { useReadingSession } from "../wellness/useReadingSession";
 import { DailySummaryCard } from "../wellness/DailySummaryCard";
 import { ExportSheet } from "../export/ExportSheet";
 import { exportMarkdown, exportAnkiTsv } from "../export/annotationExporter";
+import { readerNotesExportFileName } from "../export/exportFilename";
 import { captureRemovedBookmarks } from "./bookmarkUndo";
 import { shouldRevealChromeOnFocus } from "./readerChromeA11y";
 import { readerToastA11y } from "./readerToastA11y";
 import { readerKeyboardScrollDirection } from "./readerKeyboardNavigation";
-
-const CHARS_PER_MINUTE = 300;
+import { shouldPersistProgress, shouldUpdateProgressState } from "./readerProgressPersistence";
+import { shouldPersistReadingSession } from "./readingSessionPersistence";
+import { formatChapterEta } from "./chapterEta";
+import { shouldRevealChromeFromPointer } from "./readerChromePointer";
 
 type ReaderPanelTab = "contents" | "bookmarks" | "notes";
 interface ReaderToast {
@@ -134,11 +137,7 @@ export function ReaderScreen({
     (nextProgress: ReaderProgress) => {
       latestProgressRef.current = nextProgress;
       setProgress((current) => {
-        if (
-          Math.abs(current.percent - nextProgress.percent) < 0.0015 &&
-          current.current === nextProgress.current &&
-          current.total === nextProgress.total
-        ) {
+        if (!shouldUpdateProgressState(current, nextProgress)) {
           return current;
         }
         return nextProgress;
@@ -146,7 +145,7 @@ export function ReaderScreen({
       window.clearTimeout(saveTimer.current);
       saveTimer.current = window.setTimeout(async () => {
         const pending = latestProgressRef.current;
-        if (Math.abs(lastSavedPercentRef.current - pending.percent) < 0.0015) {
+        if (!shouldPersistProgress(lastSavedPercentRef.current, pending)) {
           return;
         }
         lastSavedPercentRef.current = pending.percent;
@@ -166,13 +165,13 @@ export function ReaderScreen({
     return () => {
       window.clearTimeout(saveTimer.current);
       const pending = latestProgressRef.current;
-      if (Math.abs(lastSavedPercentRef.current - pending.percent) >= 0.0015) {
+      if (shouldPersistProgress(lastSavedPercentRef.current, pending)) {
         void window.readerApi.saveProgress(bookId, pending);
       }
       // 保存本次阅读 session（至少读了 30 秒）
       const end = new Date().toISOString();
       const elapsedMs = Date.now() - sessionStartRef.current;
-      if (elapsedMs >= 30_000) {
+      if (shouldPersistReadingSession(elapsedMs)) {
         void window.readerApi.saveReadingSession(bookId, {
           bookId,
           start,
@@ -299,19 +298,7 @@ export function ReaderScreen({
   }, []);
 
   const handleChapterInfo = useCallback((charCount: number, chapterPercent: number) => {
-    if (charCount <= 0) {
-      setChapterEta("");
-      return;
-    }
-
-    const remaining = charCount * (1 - chapterPercent);
-    const minutes = Math.ceil(remaining / CHARS_PER_MINUTE);
-
-    if (minutes < 1) {
-      setChapterEta("< 1 分钟");
-    } else {
-      setChapterEta(`本章剩余 ${minutes} 分钟`);
-    }
+    setChapterEta(formatChapterEta(charCount, chapterPercent));
   }, []);
 
   const findReaderScroller = useCallback((): HTMLElement | undefined => {
@@ -543,12 +530,10 @@ export function ReaderScreen({
       data-color-preset={preferences.readerColorPreset === "default" ? undefined : preferences.readerColorPreset}
       data-page-margin={preferences.pageMargin === "normal" ? undefined : preferences.pageMargin}
       onPointerMove={(event) => {
-        if (event.clientY <= 104) {
-          const now = Date.now();
-          if (now - lastRevealRef.current >= 200) {
-            lastRevealRef.current = now;
-            revealChrome();
-          }
+        const now = Date.now();
+        if (shouldRevealChromeFromPointer(event.clientY, lastRevealRef.current, now)) {
+          lastRevealRef.current = now;
+          revealChrome();
         }
       }}
       onClick={handleStageClick}
@@ -786,10 +771,7 @@ export function ReaderScreen({
             const content = format === "markdown"
               ? exportMarkdown(book)
               : exportAnkiTsv(book);
-            const safeTitle = book.title.replace(/[\\/:*?"<>|]/g, "_");
-            const fileName = format === "markdown"
-              ? `${safeTitle}-notes.md`
-              : `${safeTitle}-anki.tsv`;
+            const fileName = readerNotesExportFileName(book.title, format);
             try {
               await window.readerApi.saveFile(content, fileName);
             } catch {

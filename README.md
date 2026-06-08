@@ -21,14 +21,16 @@
 
 ## Latest release / 最新版本
 
-**v1.6.0** makes long-form novel / EPUB reading calmer and easier to follow:
+**v1.6.1** is a reader stability, accessibility, and architecture polish release:
 
-- **静谧纸感阅读** — paper / quiet 预设采用更柔和的暖纸张、低对比正文和低噪玻璃工具栏。
-- **阅读焦点** — 新增默认关闭的阅读焦点开关，可在工具栏或设置中启用，自动高亮视口中心附近段落。
-- **焦点逻辑可测试** — 中心段落选择抽为纯逻辑 helper，覆盖无候选、中心选择和固定布局跳过等边界。
-- **偏好迁移同步** — `readingFocus` 默认关闭写入偏好迁移，老用户升级后阅读习惯保持不变。
+- **阅读稳定性包** — React 错误边界、EPUB 清洗降级、PDF 单页渲染失败占位，减少坏书/坏页导致的白屏。
+- **阅读焦点性能优化** — 阅读焦点候选段落缓存到 hook 中，滚动时只做中心点计算，降低长文滚动 DOM 扫描。
+- **无原生 prompt 体验** — 批注和书签重命名统一使用内置纸感输入弹窗，支持多行批注快捷提交。
+- **键盘与读屏体验** — 搜索、书签、设置开关、分段控件、toast、工具栏焦点均补充可访问语义。
+- **自动滚动与 RTL 修复** — 分页文本支持横向自动滚动，用户输入会停止自动滚动，RTL 模式下左右键翻页自动镜像。
+- **架构整理** — 搜索、进度落盘、章节 ETA、阅读 chrome、导出文件名等逻辑抽为可单元测试 helper。
 
-Earlier, **v1.5.0** added PDF / comic first-page covers, lazy covers, cover-derived reader themes, and auto-scroll reading.
+Earlier, **v1.6.0** introduced the quiet paper reading preset and optional reading focus mode.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
@@ -70,8 +72,9 @@ Go to [Releases](https://github.com/steinyanaa/natsu/releases) and download the 
 - Tap-zone navigation: left/right sides turn pages, center toggles controls.
 - Keyboard shortcuts for page turning, search, brightness, immersive mode, and help (`?`).
 - Full-book search, bookmarks, persistent highlights, annotations, and notes panel.
+- Accessible full-book search dialog with stable keyboard navigation and live result count.
 - **Reading focus / 阅读焦点** — optional center-paragraph focus mode for long-form text and EPUB reading.
-- **Reading focus / 阅读焦点** — optional center-paragraph focus mode for long-form text and EPUB reading.
+- Reader recovery panel, safer EPUB/PDF fallbacks, and undoable bookmark deletion.
 - TTS read-aloud bar with speed and voice selection.
 - **Page-turn animations** — slide, fade, **卷曲 (page curl)**, or none; respects system reduced-motion.
 - **Anthropic Sans font option** — Inter Variable placeholder (OFL licensed), selectable in Settings → 字体.

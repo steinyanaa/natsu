@@ -3,49 +3,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type * as React from "react";
 import type { ParsedTextDocument } from "../types";
 import { activeSearchResultId, searchResultCountLabel, searchResultOptionId } from "./searchPanelA11y";
+import { createSearchWorkerCode, type SearchResult } from "./searchChapters";
 import { resolveSearchPanelKey } from "./searchPanelKeyboard";
 
-interface SearchResult {
-  chapterId: string;
-  chapterTitle: string;
-  chapterIndex: number;
-  snippet: string;       // 前后60字符
-  matchOffset: number;   // 在 snippet 中高亮词的位置
-  matchLength: number;
-}
-
 function createSearchWorker(): Worker {
-  const code = `
-    self.onmessage = function(e) {
-      const { query, chapters, id } = e.data;
-      const normalized = query.normalize("NFKC").toLowerCase();
-      const found = [];
-      for (let ci = 0; ci < chapters.length; ci++) {
-        const chapter = chapters[ci];
-        const text = (chapter.plainText || "").normalize("NFKC");
-        let pos = 0;
-        let count = 0;
-        while (count < 3) {
-          const idx = text.toLowerCase().indexOf(normalized, pos);
-          if (idx < 0) break;
-          const start = Math.max(0, idx - 60);
-          const end = Math.min(text.length, idx + normalized.length + 60);
-          found.push({
-            chapterId: chapter.id,
-            chapterTitle: chapter.title || ("第 " + (ci + 1) + " 章"),
-            chapterIndex: ci,
-            snippet: text.slice(start, end),
-            matchOffset: idx - start,
-            matchLength: normalized.length,
-          });
-          pos = idx + normalized.length;
-          count++;
-        }
-        if (found.length >= 60) break;
-      }
-      self.postMessage({ id, results: found });
-    };
-  `;
+  const code = createSearchWorkerCode();
   const blob = new Blob([code], { type: "application/javascript" });
   const url = URL.createObjectURL(blob);
   const worker = new Worker(url);

@@ -1,5 +1,35 @@
 # Changelog
 
+## [1.6.1] - 2026-06-08
+
+### Added
+
+- **阅读恢复入口** — 阅读器外层新增错误边界，异常时提供重试当前书和返回书架入口，避免整页白屏。
+- **书签删除撤销** — 删除书签后显示可撤销 toast，降低误删成本。
+- **内置输入弹窗** — 批注和书签重命名改用统一 `TextInputDialog`，多行批注支持 Ctrl/Cmd+Enter 快捷提交。
+- **优化报告** — 新增 `docs/OPTIMIZATION_REPORT_v1.6.1.md`，汇总 v1.6.1 的体验、稳定性与架构调整。
+
+### Changed
+
+- **阅读焦点性能** — `useReadingFocus` 缓存候选段落，滚动时避免全量 DOM 扫描。
+- **搜索架构整理** — 全书搜索匹配算法抽为 `searchChapters(...)` 纯逻辑，并由 worker 复用同一实现。
+- **ReaderScreen 瘦身** — 进度落盘、阅读 session 阈值、章节 ETA、chrome 指针唤出、导出文件名清洗拆为独立 helper。
+- **可访问性统一** — 搜索面板、toast、书签选择、分段控件、设置开关、隐藏工具栏焦点等补充 ARIA/键盘语义。
+- **CI 验证门禁** — `npm run build:ci` 串联 typecheck、unit tests 和 production build；`dist` 打包前自动执行门禁。
+
+### Fixed
+
+- **EPUB 降级** — 清理危险/交互节点、移除 CSS `@import`、隔离外部资源 URL、移除活动 SVG 内容。
+- **PDF 页面稳定性** — 单页渲染失败显示占位，不影响后续页面；取消渲染不误报为错误。
+- **自动滚动** — 分页文本支持横向滚动，用户输入自动停止，速度偏好夹取到安全范围。
+- **RTL 键盘翻页** — RTL 阅读方向下左右方向键自动镜像。
+- **搜索键盘导航** — 结果为空时方向键不会把 active index 推到 `-1`，Enter/Escape/上下键统一处理。
+
+### Validation
+
+- `npm run build:ci`
+- `npm run dist`
+
 ## [1.6.0] - 2026-06-07
 
 ### Added

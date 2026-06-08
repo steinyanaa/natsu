@@ -1,3 +1,5 @@
+import { toggleSettingAriaLabel } from "./settingsControlA11y";
+
 export function ChoiceList({
   value,
   options,
@@ -40,6 +42,8 @@ export function ToggleSetting({
         type="button"
         role="switch"
         aria-checked={checked}
+        aria-label={toggleSettingAriaLabel(label, checked)}
+        title={toggleSettingAriaLabel(label, checked)}
         onClick={() => onChange(!checked)}
       >
         <i className="toggle-thumb" />

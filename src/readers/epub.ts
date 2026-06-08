@@ -113,8 +113,8 @@ export function sanitizeReaderHtmlSource(html: string): string {
     )
     .replace(/<meta\b(?=[^>]*http-equiv\s*=\s*["']?refresh\b)[^>]*>/gi, "")
     .replace(/<\/?form\b[^>]*>/gi, "")
-    .replace(/<(script|iframe|object|embed|button|textarea|select)\b[^>]*>[\s\S]*?<\/\1>/gi, "")
-    .replace(/<(script|iframe|object|embed|button|textarea|select|input)\b[^>]*\/?>/gi, "");
+    .replace(/<(script|iframe|object|embed|button|textarea|select|foreignObject)\b[^>]*>[\s\S]*?<\/\1>/gi, "")
+    .replace(/<(script|iframe|object|embed|button|textarea|select|input|animate|animateTransform|animateMotion|set|foreignObject)\b[^>]*\/?>/gi, "");
 }
 
 export function rewriteReaderCssUrls(style: string, basePath: string, resources: Map<string, string>): string {
@@ -254,7 +254,9 @@ function removeUnsupportedReaderNodes(document: Document) {
     node.replaceWith(fragment);
   });
 
-  document.querySelectorAll("script, iframe, object, embed, input, button, textarea, select").forEach((node) => node.remove());
+  document
+    .querySelectorAll("script, iframe, object, embed, input, button, textarea, select, animate, animateTransform, animateMotion, set, foreignObject")
+    .forEach((node) => node.remove());
 }
 
 function cleanDocument(document: Document, chapterPath: string, resources: Map<string, string>) {

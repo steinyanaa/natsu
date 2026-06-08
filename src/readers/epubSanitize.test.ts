@@ -45,6 +45,20 @@ describe("sanitizeReaderHtmlSource", () => {
     expect(result).not.toContain("@import");
     expect(result).toContain("p { color: red; }");
   });
+
+  it("removes active svg animation and foreignObject content", () => {
+    const result = sanitizeReaderHtmlSource(`
+      <svg>
+        <text>safe label</text>
+        <animate attributeName="x" from="0" to="1" />
+        <set attributeName="visibility" to="hidden" />
+        <foreignObject><iframe src="https://example.com"></iframe></foreignObject>
+      </svg>
+    `);
+
+    expect(result).toContain("safe label");
+    expect(result).not.toMatch(/<animate|<set|<foreignObject|<iframe/i);
+  });
 });
 
 describe("stripCssImports", () => {

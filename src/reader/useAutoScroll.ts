@@ -7,6 +7,14 @@ export interface AutoScrollTarget {
   scrollTop: number;
 }
 
+export function sanitizeAutoScrollSpeed(speedPxPerSec: number): number {
+  if (!Number.isFinite(speedPxPerSec)) {
+    return 40;
+  }
+
+  return Math.min(200, Math.max(10, speedPxPerSec));
+}
+
 export function advanceScroll(
   acc: number,
   speedPxPerSec: number,
@@ -51,7 +59,7 @@ export function useAutoScroll(
 ) {
   const [running, setRunning] = useState(false);
   const speedRef = useRef(speedPxPerSec);
-  speedRef.current = speedPxPerSec;
+  speedRef.current = sanitizeAutoScrollSpeed(speedPxPerSec);
 
   const toggle = useCallback(() => setRunning((value) => !value), []);
   const stop = useCallback(() => setRunning(false), []);

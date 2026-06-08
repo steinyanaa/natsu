@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advanceScroll, applyAutoScrollStep, isAutoScrollInterruptEvent, resolveAutoScrollAxis } from "./useAutoScroll";
+import { advanceScroll, applyAutoScrollStep, isAutoScrollInterruptEvent, resolveAutoScrollAxis, sanitizeAutoScrollSpeed } from "./useAutoScroll";
 
 describe("advanceScroll", () => {
   it("advances whole pixels for a large enough frame", () => {
@@ -81,5 +81,18 @@ describe("isAutoScrollInterruptEvent", () => {
   it("ignores passive events that should not stop reading", () => {
     expect(isAutoScrollInterruptEvent("mousemove")).toBe(false);
     expect(isAutoScrollInterruptEvent("resize")).toBe(false);
+  });
+});
+
+describe("sanitizeAutoScrollSpeed", () => {
+  it("keeps auto-scroll speed within the readable preference range", () => {
+    expect(sanitizeAutoScrollSpeed(4)).toBe(10);
+    expect(sanitizeAutoScrollSpeed(40)).toBe(40);
+    expect(sanitizeAutoScrollSpeed(260)).toBe(200);
+  });
+
+  it("falls back to a comfortable speed for invalid values", () => {
+    expect(sanitizeAutoScrollSpeed(Number.NaN)).toBe(40);
+    expect(sanitizeAutoScrollSpeed(Number.POSITIVE_INFINITY)).toBe(40);
   });
 });

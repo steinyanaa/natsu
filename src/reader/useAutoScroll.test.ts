@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advanceScroll, applyAutoScrollStep, resolveAutoScrollAxis } from "./useAutoScroll";
+import { advanceScroll, applyAutoScrollStep, isAutoScrollInterruptEvent, resolveAutoScrollAxis } from "./useAutoScroll";
 
 describe("advanceScroll", () => {
   it("advances whole pixels for a large enough frame", () => {
@@ -67,5 +67,19 @@ describe("applyAutoScrollStep", () => {
     };
 
     expect(applyAutoScrollStep(scroller, 6, "x")).toBe(false);
+  });
+});
+
+describe("isAutoScrollInterruptEvent", () => {
+  it("stops on direct user navigation input", () => {
+    expect(isAutoScrollInterruptEvent("wheel")).toBe(true);
+    expect(isAutoScrollInterruptEvent("keydown")).toBe(true);
+    expect(isAutoScrollInterruptEvent("pointerdown")).toBe(true);
+    expect(isAutoScrollInterruptEvent("touchstart")).toBe(true);
+  });
+
+  it("ignores passive events that should not stop reading", () => {
+    expect(isAutoScrollInterruptEvent("mousemove")).toBe(false);
+    expect(isAutoScrollInterruptEvent("resize")).toBe(false);
   });
 });

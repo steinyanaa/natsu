@@ -41,6 +41,10 @@ export function applyAutoScrollStep(
   return scroller.scrollTop !== before;
 }
 
+export function isAutoScrollInterruptEvent(type: string): boolean {
+  return type === "wheel" || type === "keydown" || type === "pointerdown" || type === "touchstart";
+}
+
 export function useAutoScroll(
   getScroller: () => HTMLElement | undefined,
   speedPxPerSec: number
@@ -74,11 +78,21 @@ export function useAutoScroll(
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
-    const onWheel = () => setRunning(false);
-    window.addEventListener("wheel", onWheel, { passive: true });
+    const stopOnUserInput = (event: Event) => {
+      if (isAutoScrollInterruptEvent(event.type)) {
+        setRunning(false);
+      }
+    };
+    window.addEventListener("wheel", stopOnUserInput, { passive: true });
+    window.addEventListener("keydown", stopOnUserInput);
+    window.addEventListener("pointerdown", stopOnUserInput, { passive: true });
+    window.addEventListener("touchstart", stopOnUserInput, { passive: true });
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("wheel", stopOnUserInput);
+      window.removeEventListener("keydown", stopOnUserInput);
+      window.removeEventListener("pointerdown", stopOnUserInput);
+      window.removeEventListener("touchstart", stopOnUserInput);
     };
   }, [running, getScroller]);
 

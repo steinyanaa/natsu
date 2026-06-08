@@ -23,10 +23,16 @@ import { useReadingSession } from "../wellness/useReadingSession";
 import { DailySummaryCard } from "../wellness/DailySummaryCard";
 import { ExportSheet } from "../export/ExportSheet";
 import { exportMarkdown, exportAnkiTsv } from "../export/annotationExporter";
+import { captureRemovedBookmarks } from "./bookmarkUndo";
 
 const CHARS_PER_MINUTE = 300;
 
 type ReaderPanelTab = "contents" | "bookmarks" | "notes";
+interface ReaderToast {
+  message: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}
 const loadSettingsPanel = () => import("../settings/SettingsPanel");
 const SettingsPanel = lazy(() =>
   loadSettingsPanel().then((module) => ({ default: module.SettingsPanel }))
@@ -61,7 +67,7 @@ export function ReaderScreen({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toc, setToc] = useState<TocItem[]>([]);
   const [selectedBookmarks, setSelectedBookmarks] = useState<Set<string>>(new Set());
-  const [toast, setToast] = useState("");
+  const [toast, setToast] = useState<ReaderToast | undefined>();
   const [jumpRequest, setJumpRequest] = useState<JumpRequest>();
   const [anchorJumpRequest, setAnchorJumpRequest] = useState<AnchorJumpRequest>();
   const [chapterEta, setChapterEta] = useState("");
@@ -186,8 +192,8 @@ export function ReaderScreen({
       onBookUpdated(updated);
       setPanelTab("bookmarks");
       setTocOpen(true);
-      setToast(t("bookmarkAdded"));
-      window.setTimeout(() => setToast(""), 1600);
+      setToast({ message: t("bookmarkAdded") });
+      window.setTimeout(() => setToast(undefined), 1600);
     }
   }, [book.id, onBookUpdated, progress, t]);
 
@@ -241,13 +247,34 @@ export function ReaderScreen({
         return;
       }
 
+      const removed = captureRemovedBookmarks(book.bookmarks, bookmarkIds);
       const updated = await window.readerApi.removeBookmarks(book.id, bookmarkIds);
       if (updated) {
         onBookUpdated(updated);
         setSelectedBookmarks(new Set());
+        if (removed.length) {
+          setToast({
+            message: `已删除 ${removed.length} 个书签`,
+            actionLabel: "撤销",
+            onAction: () => {
+              setToast(undefined);
+              void (async () => {
+                let next = updated;
+                for (const bookmark of removed) {
+                  const restored = await window.readerApi.saveBookmark(book.id, bookmark);
+                  if (restored) {
+                    next = restored;
+                  }
+                }
+                onBookUpdated(next);
+              })();
+            }
+          });
+          window.setTimeout(() => setToast(undefined), 5000);
+        }
       }
     },
-    [book.id, onBookUpdated]
+    [book.bookmarks, book.id, onBookUpdated]
   );
 
   const saveHighlight = useCallback(async (highlight: Highlight) => {
@@ -682,7 +709,16 @@ export function ReaderScreen({
         />
       )}
 
-      {toast ? <div className="reader-toast">{toast}</div> : null}
+      {toast ? (
+        <div className={`reader-toast${toast.onAction ? " actionable" : ""}`}>
+          <span>{toast.message}</span>
+          {toast.actionLabel && toast.onAction ? (
+            <button type="button" className="reader-toast-action" onClick={toast.onAction}>
+              {toast.actionLabel}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <SearchPanel
         chapters={chapters}

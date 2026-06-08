@@ -332,6 +332,9 @@
   left: 50%;
   bottom: 26px;
   z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   padding: 10px 16px;
   border-radius: 999px;
   color: var(--md-sys-color-on-primary);
@@ -341,6 +344,24 @@
   font-weight: 900;
   transform: translateX(-50%);
   animation: toast-pop 1600ms var(--ease-drop) both;
+}
+
+.reader-toast.actionable {
+  animation-duration: 5000ms;
+}
+
+.reader-toast-action {
+  border: 1px solid color-mix(in oklab, currentColor 52%, transparent);
+  border-radius: 999px;
+  padding: 4px 10px;
+  color: inherit;
+  font: inherit;
+  background: rgb(255 255 255 / 16%);
+}
+
+.reader-toast-action:hover,
+.reader-toast-action:focus-visible {
+  background: rgb(255 255 255 / 26%);
 }
 
 .epub-note-overlay {

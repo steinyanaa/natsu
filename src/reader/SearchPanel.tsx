@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type * as React from "react";
 import type { ParsedTextDocument } from "../types";
 import { activeSearchResultId, searchResultCountLabel, searchResultOptionId } from "./searchPanelA11y";
+import { resolveSearchPanelKey } from "./searchPanelKeyboard";
 
 interface SearchResult {
   chapterId: string;
@@ -156,10 +157,22 @@ export function SearchPanel({
             aria-activedescendant={activeResultId}
             onChange={(e) => search(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Escape") onClose();
-              if (e.key === "Enter" && results[activeIndex]) jump(results[activeIndex]);
-              if (e.key === "ArrowDown") setActiveIndex((i) => Math.min(i + 1, results.length - 1));
-              if (e.key === "ArrowUp") setActiveIndex((i) => Math.max(i - 1, 0));
+              const action = resolveSearchPanelKey(e.key, results.length, activeIndex);
+              if (!action) {
+                return;
+              }
+
+              if (action.preventDefault) {
+                e.preventDefault();
+              }
+
+              if (action.type === "close") {
+                onClose();
+              } else if (action.type === "jump") {
+                jump(results[action.nextIndex]);
+              } else {
+                setActiveIndex(action.nextIndex);
+              }
             }}
           />
           <span className="search-count" role="status" aria-live="polite">

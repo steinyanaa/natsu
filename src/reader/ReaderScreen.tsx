@@ -25,6 +25,7 @@ import { ExportSheet } from "../export/ExportSheet";
 import { exportMarkdown, exportAnkiTsv } from "../export/annotationExporter";
 import { captureRemovedBookmarks } from "./bookmarkUndo";
 import { shouldRevealChromeOnFocus } from "./readerChromeA11y";
+import { readerToastA11y } from "./readerToastA11y";
 
 const CHARS_PER_MINUTE = 300;
 
@@ -537,6 +538,7 @@ export function ReaderScreen({
     onSwipeLeft: () => scrollReaderByKey(swipeRtl ? -1 : 1, false),
     onSwipeRight: () => scrollReaderByKey(swipeRtl ? 1 : -1, false)
   });
+  const toastA11y = toast ? readerToastA11y(toast.actionLabel) : undefined;
 
   return (
     <main
@@ -716,11 +718,21 @@ export function ReaderScreen({
         />
       )}
 
-      {toast ? (
-        <div className={`reader-toast${toast.onAction ? " actionable" : ""}`}>
+      {toast && toastA11y ? (
+        <div
+          className={`reader-toast${toast.onAction ? " actionable" : ""}`}
+          role={toastA11y.role}
+          aria-live={toastA11y.ariaLive}
+          aria-atomic={toastA11y.ariaAtomic}
+        >
           <span>{toast.message}</span>
           {toast.actionLabel && toast.onAction ? (
-            <button type="button" className="reader-toast-action" onClick={toast.onAction}>
+            <button
+              type="button"
+              className="reader-toast-action"
+              aria-label={toastA11y.actionAriaLabel}
+              onClick={toast.onAction}
+            >
               {toast.actionLabel}
             </button>
           ) : null}

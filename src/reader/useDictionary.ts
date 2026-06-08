@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import type * as React from "react";
+import { clampSelectionMenuPosition, readerContainsSelectionNode } from "./selectionMenuState";
 
 export function useDictionary(
   scrollerRef: React.RefObject<HTMLDivElement | null>,
   _highlights: unknown[],
-  _dictionaryEnabled: boolean
+  dictionaryEnabled: boolean
 ) {
   const [selectionMenu, setSelectionMenu] = useState<{ x: number; y: number; chapterId: string } | undefined>();
   const [selectionText, setSelectionText] = useState("");
@@ -23,19 +24,28 @@ export function useDictionary(
           setSelectionText("");
           return;
         }
+
         const range = sel.getRangeAt(0);
+        if (!readerContainsSelectionNode(scrollerRef.current, range.commonAncestorContainer)) {
+          setSelectionMenu(undefined);
+          setSelectionText("");
+          return;
+        }
+
         const chapterEl = range.commonAncestorContainer instanceof HTMLElement
           ? range.commonAncestorContainer.closest<HTMLElement>(".text-chapter")
           : range.commonAncestorContainer.parentElement?.closest<HTMLElement>(".text-chapter");
         if (!chapterEl) {
           setSelectionMenu(undefined);
+          setSelectionText("");
           return;
         }
         const rect = range.getBoundingClientRect();
-        setSelectionText(sel.toString());
+        const position = clampSelectionMenuPosition(rect, { width: window.innerWidth });
+        setSelectionText(sel.toString().trim());
         setSelectionMenu({
-          x: Math.max(8, Math.min(rect.left + rect.width / 2 - 80, window.innerWidth - 200)),
-          y: Math.max(8, rect.top - 56),
+          x: position.x,
+          y: position.y,
           chapterId: chapterEl.id,
         });
       });
@@ -45,10 +55,13 @@ export function useDictionary(
       window.document.removeEventListener("selectionchange", handleSelectionChange);
       if (rafId !== undefined) window.cancelAnimationFrame(rafId);
     };
-  }, []);
+  }, [scrollerRef]);
 
-  // scrollerRef is accepted as a parameter for future use (e.g. scoped selection detection)
-  void scrollerRef;
+  useEffect(() => {
+    if (!dictionaryEnabled) {
+      setDictWord(undefined);
+    }
+  }, [dictionaryEnabled]);
 
   return { selectionMenu, setSelectionMenu, selectionText, setSelectionText, dictWord, setDictWord };
 }

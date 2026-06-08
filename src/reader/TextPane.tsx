@@ -1308,10 +1308,14 @@ export function TextPane({
           onHighlight={handleHighlight}
           onCopy={handleCopy}
           onNote={handleNoteRequest}
-          onLookup={(word) => {
-            setDictWord({ word, x: selectionMenu.x, y: selectionMenu.y - 160 });
-            setSelectionMenu(undefined);
-          }}
+          onLookup={
+            preferences.dictionaryEnabled ?? true
+              ? (word) => {
+                  setDictWord({ word, x: selectionMenu.x, y: selectionMenu.y - 160 });
+                  setSelectionMenu(undefined);
+                }
+              : undefined
+          }
         />
       )}
       {dictWord && (

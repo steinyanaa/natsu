@@ -1714,8 +1714,8 @@
   z-index: 100;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
+  gap: 6px;
+  padding: 8px 12px;
   background: var(--glass-bg);
   backdrop-filter: blur(20px) saturate(160%);
   border: 1px solid color-mix(in oklab, var(--md-sys-color-outline-variant) 60%, transparent);
@@ -1734,13 +1734,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   color: var(--md-sys-color-on-surface);
   transition: background var(--motion-fast) var(--ease-soft);
 }
-.selection-menu-btn:hover {
+.selection-menu-btn:hover,
+.selection-menu-btn:focus-visible {
   background: color-mix(in oklab, var(--md-sys-color-primary) 12%, transparent);
 }
 
@@ -1750,15 +1751,16 @@
 }
 
 .selection-color-dot {
-  width: 22px;
-  height: 22px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   border: 2px solid transparent;
   transition: transform var(--motion-fast) var(--ease-spring),
               border-color var(--motion-fast) var(--ease-soft);
 }
-.selection-color-dot:hover {
-  transform: scale(1.2);
+.selection-color-dot:hover,
+.selection-color-dot:focus-visible {
+  transform: scale(1.08);
   border-color: rgb(0 0 0 / 20%);
 }
 

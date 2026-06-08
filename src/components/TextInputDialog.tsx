@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
+import { shouldSubmitTextInputDialog } from "./textInputDialogKeys";
 
 export function TextInputDialog({
   title,
@@ -23,6 +24,7 @@ export function TextInputDialog({
 }) {
   const [value, setValue] = useState(initialValue);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const submit = () => onConfirm(value);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -47,7 +49,7 @@ export function TextInputDialog({
         onClick={(event) => event.stopPropagation()}
         onSubmit={(event) => {
           event.preventDefault();
-          onConfirm(value);
+          submit();
         }}
       >
         <h3>{title}</h3>
@@ -60,6 +62,17 @@ export function TextInputDialog({
             placeholder={placeholder}
             rows={5}
             onChange={(event) => setValue(event.currentTarget.value)}
+            onKeyDown={(event) => {
+              if (shouldSubmitTextInputDialog({
+                key: event.key,
+                multiline: true,
+                ctrlKey: event.ctrlKey,
+                metaKey: event.metaKey
+              })) {
+                event.preventDefault();
+                submit();
+              }
+            }}
           />
         ) : (
           <input

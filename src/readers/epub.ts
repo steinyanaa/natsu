@@ -117,14 +117,14 @@ export function sanitizeReaderHtmlSource(html: string): string {
     .replace(/<(script|iframe|object|embed|button|textarea|select|input)\b[^>]*\/?>/gi, "");
 }
 
-function rewriteCssUrls(style: string, basePath: string, resources: Map<string, string>): string {
+export function rewriteReaderCssUrls(style: string, basePath: string, resources: Map<string, string>): string {
   return stripCssImports(style).replace(/url\((['"]?)(.*?)\1\)/gi, (match, quote: string, href: string) => {
     if (!href || isExternalResource(href)) {
-      return match;
+      return 'url("")';
     }
 
     const mapped = resources.get(resolvePath(basePath, href));
-    return mapped ? `url("${mapped}")` : match;
+    return mapped ? `url("${mapped}")` : 'url("")';
   });
 }
 
@@ -268,7 +268,7 @@ function cleanDocument(document: Document, chapterPath: string, resources: Map<s
 
     const style = node.getAttribute("style");
     if (style) {
-      node.setAttribute("style", rewriteCssUrls(style, chapterPath, resources));
+      node.setAttribute("style", rewriteReaderCssUrls(style, chapterPath, resources));
     }
   });
 
@@ -412,12 +412,12 @@ function frameHtmlForChapter(
     const stylesheetPath = resolvePath(chapterPath, href);
     const stylesheet = stylesheets.get(stylesheetPath);
     const style = parsed.createElement("style");
-    style.textContent = stylesheet ? rewriteCssUrls(stylesheet, stylesheetPath, resources) : "";
+    style.textContent = stylesheet ? rewriteReaderCssUrls(stylesheet, stylesheetPath, resources) : "";
     node.replaceWith(style);
   });
 
   parsed.querySelectorAll("style").forEach((node) => {
-    node.textContent = rewriteCssUrls(node.textContent ?? "", chapterPath, resources);
+    node.textContent = rewriteReaderCssUrls(node.textContent ?? "", chapterPath, resources);
   });
 
   const head = parsed.head || parsed.documentElement.insertBefore(parsed.createElement("head"), parsed.body);
@@ -444,7 +444,7 @@ function epubBodyAttributes(parsed: Document, chapterPath: string, resources: Ma
   const dir = body.getAttribute("dir") || html.getAttribute("dir");
   const style = [html.getAttribute("style"), body.getAttribute("style")]
     .filter(Boolean)
-    .map((value) => rewriteCssUrls(value as string, chapterPath, resources))
+    .map((value) => rewriteReaderCssUrls(value as string, chapterPath, resources))
     .join("; ");
   const attributes = ["class=\"epub-chapter-body"];
 
@@ -546,7 +546,7 @@ function sanitizeChapter(
     const stylesheet = stylesheets.get(stylesheetPath);
 
     if (stylesheet) {
-      const rewritten = rewriteCssUrls(stripCssImports(stylesheet), stylesheetPath, resources);
+      const rewritten = rewriteReaderCssUrls(stripCssImports(stylesheet), stylesheetPath, resources);
       scopedStyles.push(scopeCss(rewritten, scopeSelector));
       for (const name of extractFontFamilyNames(stylesheet)) {
         if (!embeddedFonts.includes(name)) embeddedFonts.push(name);
@@ -559,7 +559,7 @@ function sanitizeChapter(
     const css = node.textContent ?? "";
 
     if (css.trim()) {
-      scopedStyles.push(scopeCss(rewriteCssUrls(css, chapterPath, resources), scopeSelector));
+      scopedStyles.push(scopeCss(rewriteReaderCssUrls(css, chapterPath, resources), scopeSelector));
       for (const name of extractFontFamilyNames(css)) {
         if (!embeddedFonts.includes(name)) embeddedFonts.push(name);
       }

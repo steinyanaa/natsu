@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advanceScroll } from "./useAutoScroll";
+import { advanceScroll, applyAutoScrollStep, resolveAutoScrollAxis } from "./useAutoScroll";
 
 describe("advanceScroll", () => {
   it("advances whole pixels for a large enough frame", () => {
@@ -17,5 +17,55 @@ describe("advanceScroll", () => {
     const result = advanceScroll(0.9, 30, 0.05);
     expect(result.whole).toBe(2);
     expect(result.remainder).toBeCloseTo(0.4, 5);
+  });
+});
+
+describe("resolveAutoScrollAxis", () => {
+  it("uses horizontal scrolling for paged text readers", () => {
+    const scroller = {
+      classList: {
+        contains: (name: string) => name === "text-reader" || name === "paged"
+      }
+    } as unknown as HTMLElement;
+
+    expect(resolveAutoScrollAxis(scroller)).toBe("x");
+  });
+
+  it("uses vertical scrolling for ordinary scrollers", () => {
+    const scroller = {
+      classList: {
+        contains: () => false
+      }
+    } as unknown as HTMLElement;
+
+    expect(resolveAutoScrollAxis(scroller)).toBe("y");
+  });
+});
+
+describe("applyAutoScrollStep", () => {
+  it("advances scrollLeft in horizontal mode", () => {
+    const scroller = { scrollLeft: 10, scrollTop: 20 };
+
+    expect(applyAutoScrollStep(scroller, 6, "x")).toBe(true);
+    expect(scroller.scrollLeft).toBe(16);
+    expect(scroller.scrollTop).toBe(20);
+  });
+
+  it("advances scrollTop in vertical mode", () => {
+    const scroller = { scrollLeft: 10, scrollTop: 20 };
+
+    expect(applyAutoScrollStep(scroller, 6, "y")).toBe(true);
+    expect(scroller.scrollLeft).toBe(10);
+    expect(scroller.scrollTop).toBe(26);
+  });
+
+  it("reports no movement when the browser clamps at the edge", () => {
+    const scroller = {
+      get scrollLeft() { return 10; },
+      set scrollLeft(_value: number) { /* edge clamp */ },
+      scrollTop: 0
+    };
+
+    expect(applyAutoScrollStep(scroller, 6, "x")).toBe(false);
   });
 });

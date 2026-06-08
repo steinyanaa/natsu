@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+export type AutoScrollAxis = "x" | "y";
+
+export interface AutoScrollTarget {
+  scrollLeft: number;
+  scrollTop: number;
+}
+
 export function advanceScroll(
   acc: number,
   speedPxPerSec: number,
@@ -8,6 +15,30 @@ export function advanceScroll(
   const total = acc + speedPxPerSec * dtSeconds;
   const whole = Math.floor(total);
   return { whole, remainder: total - whole };
+}
+
+export function resolveAutoScrollAxis(scroller: Pick<HTMLElement, "classList">): AutoScrollAxis {
+  return scroller.classList.contains("text-reader") && scroller.classList.contains("paged") ? "x" : "y";
+}
+
+export function applyAutoScrollStep(
+  scroller: AutoScrollTarget,
+  whole: number,
+  axis: AutoScrollAxis
+): boolean {
+  if (whole < 1) {
+    return true;
+  }
+
+  if (axis === "x") {
+    const before = scroller.scrollLeft;
+    scroller.scrollLeft = before + whole;
+    return scroller.scrollLeft !== before;
+  }
+
+  const before = scroller.scrollTop;
+  scroller.scrollTop = before + whole;
+  return scroller.scrollTop !== before;
 }
 
 export function useAutoScroll(
@@ -35,9 +66,10 @@ export function useAutoScroll(
       const { whole, remainder } = advanceScroll(acc, speedRef.current, dt);
       acc = remainder;
       if (whole >= 1) {
-        const before = scroller.scrollTop;
-        scroller.scrollTop = before + whole;
-        if (scroller.scrollTop === before) { setRunning(false); return; }
+        if (!applyAutoScrollStep(scroller, whole, resolveAutoScrollAxis(scroller))) {
+          setRunning(false);
+          return;
+        }
       }
       raf = requestAnimationFrame(step);
     };

@@ -26,6 +26,7 @@ import { exportMarkdown, exportAnkiTsv } from "../export/annotationExporter";
 import { captureRemovedBookmarks } from "./bookmarkUndo";
 import { shouldRevealChromeOnFocus } from "./readerChromeA11y";
 import { readerToastA11y } from "./readerToastA11y";
+import { readerKeyboardScrollDirection } from "./readerKeyboardNavigation";
 
 const CHARS_PER_MINUTE = 300;
 
@@ -477,15 +478,10 @@ export function ReaderScreen({
       return;
     }
 
-    if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+    const keyboardScrollDirection = readerKeyboardScrollDirection(event.key, preferences.readingDirection);
+    if (keyboardScrollDirection) {
       event.preventDefault();
-      scrollReaderByKey(1, event.repeat);
-      return;
-    }
-
-    if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-      event.preventDefault();
-      scrollReaderByKey(-1, event.repeat);
+      scrollReaderByKey(keyboardScrollDirection, event.repeat);
       return;
     }
 
@@ -524,7 +520,7 @@ export function ReaderScreen({
     }
 
     revealChrome();
-  }, [autoScroll, onPreferencesChange, preferences.autoScrollSpeed, preferences.brightness, preferences.immersive, revealChrome, scrollReaderByKey]);
+  }, [autoScroll, onPreferencesChange, preferences.autoScrollSpeed, preferences.brightness, preferences.immersive, preferences.readingDirection, revealChrome, scrollReaderByKey]);
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);

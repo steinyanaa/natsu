@@ -235,6 +235,19 @@
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.bookmark-selection-summary {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--reader-muted);
+  background: color-mix(in oklab, var(--reader-accent) 9%, transparent);
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .soft-button:disabled {

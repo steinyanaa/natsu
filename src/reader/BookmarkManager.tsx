@@ -1,6 +1,7 @@
 import { Pencil, X } from "lucide-react";
 import { createTranslator } from "../i18n";
 import type { BookRecord, Bookmark as BookmarkRecord } from "../types";
+import { bookmarkSelectionLabel, selectedBookmarksSummary } from "./bookmarkA11y";
 
 function percentLabel(progress?: BookmarkRecord["progress"]): string {
   if (!progress) {
@@ -37,18 +38,26 @@ export function BookmarkManager({
     }
     onSelectChange(next);
   };
+  const selectionSummary = selectedBookmarksSummary(selected.size);
 
   return (
     <div className="bookmark-manager">
       <div className="bookmark-actions-bar">
+        {selectionSummary ? (
+          <span className="bookmark-selection-summary" role="status">
+            {selectionSummary}
+          </span>
+        ) : null}
         <button
           className="soft-button pressable compact-action"
+          type="button"
           onClick={() => onSelectChange(allSelected ? new Set() : new Set(book.bookmarks.map((item) => item.id)))}
         >
           {allSelected ? t("clearSelection") : t("selectAll")}
         </button>
         <button
           className="soft-button pressable compact-action"
+          type="button"
           disabled={!selected.size}
           onClick={() => onRemove([...selected])}
         >
@@ -62,20 +71,33 @@ export function BookmarkManager({
               <input
                 type="checkbox"
                 checked={selected.has(bookmark.id)}
+                aria-label={bookmarkSelectionLabel(bookmark.label, selected.has(bookmark.id))}
                 onChange={() => toggleBookmark(bookmark.id)}
               />
               <span />
             </label>
-            <button className="bookmark-main" onClick={() => onJump(bookmark)}>
+            <button className="bookmark-main" type="button" onClick={() => onJump(bookmark)}>
               <strong>{bookmark.label}</strong>
               <span>
                 {percentLabel(bookmark.progress)} 路 {new Date(bookmark.createdAt).toLocaleString()}
               </span>
             </button>
-            <button className="icon-button pressable mini-icon" title={t("rename")} onClick={() => onRename(bookmark)}>
+            <button
+              className="icon-button pressable mini-icon"
+              type="button"
+              title={t("rename")}
+              aria-label={`${t("rename")} ${bookmark.label}`}
+              onClick={() => onRename(bookmark)}
+            >
               <Pencil size={14} />
             </button>
-            <button className="icon-button pressable mini-icon" title={t("remove")} onClick={() => onRemove([bookmark.id])}>
+            <button
+              className="icon-button pressable mini-icon"
+              type="button"
+              title={t("remove")}
+              aria-label={`${t("remove")} ${bookmark.label}`}
+              onClick={() => onRemove([bookmark.id])}
+            >
               <X size={15} />
             </button>
           </article>

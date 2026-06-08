@@ -1119,6 +1119,10 @@
   width: 100%;
 }
 
+.pdf-page {
+  position: relative;
+}
+
 .comic-spread-slot {
   will-change: transform;
   contain: layout style;
@@ -1207,6 +1211,38 @@
   border-radius: 6px;
   box-shadow: var(--shadow-tight);
   background: white;
+}
+
+.pdf-page-failed canvas {
+  min-width: min(72vw, 680px);
+  min-height: 52vh;
+  opacity: .18;
+}
+
+.pdf-page-error {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in oklab, var(--reader-sepia) 22%, transparent);
+  border-radius: 18px;
+  background: color-mix(in oklab, var(--reader-paper) 86%, white 14%);
+  box-shadow: var(--shadow-tight);
+  color: var(--reader-ink);
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+
+.pdf-page-error strong {
+  font-size: 14px;
+}
+
+.pdf-page-error span {
+  color: var(--reader-muted);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .pdf-page figcaption {
@@ -1306,6 +1342,58 @@
   font-weight: 800;
   line-height: 1.6;
   text-align: center;
+}
+
+.reader-error-panel {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  padding: 28px;
+}
+
+.reader-error-card {
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+  width: min(520px, 100%);
+  padding: 28px;
+  border: 1px solid color-mix(in oklab, var(--reader-sepia) 18%, transparent);
+  border-radius: 28px;
+  background:
+    linear-gradient(145deg, color-mix(in oklab, white 50%, transparent), transparent 62%),
+    color-mix(in oklab, var(--reader-paper) 90%, var(--reader-warm) 10%);
+  box-shadow: var(--shadow-soft);
+  color: var(--reader-ink);
+  text-align: center;
+}
+
+.reader-error-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--reader-warm) 48%, white);
+  color: var(--reader-ink);
+  font-weight: 950;
+}
+
+.reader-error-card h2 {
+  margin: 0;
+  font-size: clamp(20px, 3vw, 28px);
+}
+
+.reader-error-card p {
+  margin: 0;
+  color: var(--reader-muted);
+  line-height: 1.6;
+}
+
+.reader-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
 }
 
 @media (max-width: 980px) {

@@ -102,8 +102,23 @@ function rewriteSrcset(srcset: string, basePath: string, resources: Map<string, 
     .join(", ");
 }
 
+export function stripCssImports(css: string): string {
+  return css.replace(/@import\s+(?:url\([^)]*\)|["'][^"']+["']|[^;]+)(?:\s+[^;]+)?;/gi, "");
+}
+
+export function sanitizeReaderHtmlSource(html: string): string {
+  return html
+    .replace(/<style\b([^>]*)>([\s\S]*?)<\/style>/gi, (_match, attributes: string, css: string) =>
+      `<style${attributes}>${stripCssImports(css)}</style>`
+    )
+    .replace(/<meta\b(?=[^>]*http-equiv\s*=\s*["']?refresh\b)[^>]*>/gi, "")
+    .replace(/<\/?form\b[^>]*>/gi, "")
+    .replace(/<(script|iframe|object|embed|button|textarea|select)\b[^>]*>[\s\S]*?<\/\1>/gi, "")
+    .replace(/<(script|iframe|object|embed|button|textarea|select|input)\b[^>]*\/?>/gi, "");
+}
+
 function rewriteCssUrls(style: string, basePath: string, resources: Map<string, string>): string {
-  return style.replace(/url\((['"]?)(.*?)\1\)/gi, (match, quote: string, href: string) => {
+  return stripCssImports(style).replace(/url\((['"]?)(.*?)\1\)/gi, (match, quote: string, href: string) => {
     if (!href || isExternalResource(href)) {
       return match;
     }
@@ -113,22 +128,25 @@ function rewriteCssUrls(style: string, basePath: string, resources: Map<string, 
   });
 }
 
-function rewriteResourceAttribute(
-  element: Element,
-  attributeName: string,
+export function resolveReaderMediaUrl(
+  href: string | null | undefined,
   basePath: string,
   resources: Map<string, string>
-) {
-  const href = element.getAttribute(attributeName);
-
+): string | undefined {
   if (!href || isExternalResource(href)) {
-    return;
+    return undefined;
   }
 
-  const mapped = resources.get(resolvePath(basePath, href));
+  return resources.get(resolvePath(basePath, href));
+}
+
+function rewriteResourceAttribute(element: Element, attributeName: string, basePath: string, resources: Map<string, string>) {
+  const mapped = resolveReaderMediaUrl(element.getAttribute(attributeName), basePath, resources);
 
   if (mapped) {
     element.setAttribute(attributeName, mapped);
+  } else {
+    element.removeAttribute(attributeName);
   }
 }
 
@@ -221,8 +239,26 @@ function scopeCss(css: string, scopeSelector: string): string {
   });
 }
 
+function removeUnsupportedReaderNodes(document: Document) {
+  document.querySelectorAll("meta[http-equiv]").forEach((node) => {
+    if ((node.getAttribute("http-equiv") ?? "").toLowerCase() === "refresh") {
+      node.remove();
+    }
+  });
+
+  document.querySelectorAll("form").forEach((node) => {
+    const fragment = document.createDocumentFragment();
+    while (node.firstChild) {
+      fragment.appendChild(node.firstChild);
+    }
+    node.replaceWith(fragment);
+  });
+
+  document.querySelectorAll("script, iframe, object, embed, input, button, textarea, select").forEach((node) => node.remove());
+}
+
 function cleanDocument(document: Document, chapterPath: string, resources: Map<string, string>) {
-  document.querySelectorAll("script, iframe, object").forEach((node) => node.remove());
+  removeUnsupportedReaderNodes(document);
   document.querySelectorAll("*").forEach((node) => {
     [...node.attributes].forEach((attribute) => {
       if (attribute.name.toLowerCase().startsWith("on")) {
@@ -360,7 +396,7 @@ function frameHtmlForChapter(
   resources: Map<string, string>,
   stylesheets: Map<string, string>
 ): string {
-  const parsed = new DOMParser().parseFromString(html, "text/html");
+  const parsed = new DOMParser().parseFromString(sanitizeReaderHtmlSource(html), "text/html");
   cleanDocument(parsed, chapterPath, resources);
   rewriteInternalAnchors(parsed, chapterPath);
 
@@ -488,7 +524,8 @@ function sanitizeChapter(
   stylesheets: Map<string, string>,
   spineProperties: string
 ): ChapterSanitizeResult {
-  const parsed = new DOMParser().parseFromString(html, "text/html");
+  const safeHtml = sanitizeReaderHtmlSource(html);
+  const parsed = new DOMParser().parseFromString(safeHtml, "text/html");
   const scopeSelector = `#${chapterDomId(chapterPath)} .epub-chapter-body`;
   const scopedStyles: string[] = [];
   const embeddedFonts: string[] = [];
@@ -509,7 +546,7 @@ function sanitizeChapter(
     const stylesheet = stylesheets.get(stylesheetPath);
 
     if (stylesheet) {
-      const rewritten = rewriteCssUrls(stylesheet, stylesheetPath, resources);
+      const rewritten = rewriteCssUrls(stripCssImports(stylesheet), stylesheetPath, resources);
       scopedStyles.push(scopeCss(rewritten, scopeSelector));
       for (const name of extractFontFamilyNames(stylesheet)) {
         if (!embeddedFonts.includes(name)) embeddedFonts.push(name);
@@ -541,7 +578,7 @@ function sanitizeChapter(
     title,
     html: `${scopedStyles.map((style) => `<style>${style}</style>`).join("")}<div ${epubBodyAttributes(parsed, chapterPath, resources)}>${parsed.body.innerHTML || "<p></p>"}</div>`,
     text: parsed.body.textContent ?? "",
-    frameHtml: layout === "fixed" ? frameHtmlForChapter(html, chapterPath, resources, stylesheets) : undefined,
+    frameHtml: layout === "fixed" ? frameHtmlForChapter(safeHtml, chapterPath, resources, stylesheets) : undefined,
     layout,
     viewport: viewport ?? (layout === "fixed" ? { width: 768, height: 1024 } : undefined),
     embeddedFonts

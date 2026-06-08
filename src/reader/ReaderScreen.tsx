@@ -7,6 +7,7 @@ import { KeymapHint } from "./KeymapHint";
 import { NotesPanel } from "./NotesPanel";
 import { ReaderScrubber } from "./ReaderScrubber";
 import { ReaderStage } from "./ReaderStage";
+import { ReaderErrorBoundary } from "./ReaderErrorBoundary";
 import { SearchPanel } from "./SearchPanel";
 import { TTSBar } from "./TTSBar";
 import { TocTree } from "./TocTree";
@@ -637,20 +638,22 @@ export function ReaderScreen({
           )}
         </aside>
 
-        <ReaderStage
-          book={book}
-          preferences={preferences}
-          t={t}
-          jumpRequest={jumpRequest}
-          anchorJumpRequest={anchorJumpRequest}
-          onProgress={saveProgress}
-          onToc={setToc}
-          onChapterInfo={handleChapterInfo}
-          onChapters={setChapters}
-          highlights={book.highlights}
-          onHighlightSave={saveHighlight}
-          onHighlightRemove={removeHighlights}
-        />
+        <ReaderErrorBoundary resetKey={`${book.id}:${book.fileUrl}`} t={t} onBack={onBack}>
+          <ReaderStage
+            book={book}
+            preferences={preferences}
+            t={t}
+            jumpRequest={jumpRequest}
+            anchorJumpRequest={anchorJumpRequest}
+            onProgress={saveProgress}
+            onToc={setToc}
+            onChapterInfo={handleChapterInfo}
+            onChapters={setChapters}
+            highlights={book.highlights}
+            onHighlightSave={saveHighlight}
+            onHighlightRemove={removeHighlights}
+          />
+        </ReaderErrorBoundary>
       </section>
 
       {chapters.length > 1 && progress.kind !== "page" && (

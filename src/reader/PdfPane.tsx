@@ -6,6 +6,7 @@ import type { JumpRequest } from "./types";
 import { nowProgress } from "./utils";
 import { ErrorState, LoadingState } from "./ReaderState";
 import { useRenderQueue, type RenderQueue } from "./useRenderQueue";
+import { isPdfRenderCancellation, nextPdfPageRenderState, type PdfPageRenderState } from "./pdfRenderState";
 import * as pdfjs from "pdfjs-dist";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -17,6 +18,32 @@ interface PageScrollAnchor {
   pageIndex?: number;
   pageOffset?: number;
   percent: number;
+}
+
+interface PdfViewport {
+  width: number;
+  height: number;
+}
+
+interface PdfRenderTask {
+  promise: Promise<unknown>;
+  cancel: () => void;
+}
+
+interface PdfPageProxy {
+  getViewport: (options: { scale: number }) => PdfViewport;
+  render: (options: { canvasContext: CanvasRenderingContext2D; canvas: HTMLCanvasElement; viewport: PdfViewport }) => PdfRenderTask;
+}
+
+interface PdfDocumentProxy {
+  numPages: number;
+  getPage: (pageNumber: number) => Promise<PdfPageProxy>;
+  destroy?: () => Promise<void> | void;
+}
+
+interface PdfLoadingTask {
+  promise: Promise<PdfDocumentProxy>;
+  destroy?: () => Promise<void> | void;
 }
 
 export function PdfPane({
@@ -32,7 +59,7 @@ export function PdfPane({
   jumpRequest?: JumpRequest;
   onProgress: (progress: ReaderProgress) => void;
 }) {
-  const [pdf, setPdf] = useState<any>();
+  const [pdf, setPdf] = useState<PdfDocumentProxy>();
   const [pageCount, setPageCount] = useState(0);
   const [manualScale, setManualScale] = useState(1.05);
   const [autoScale, setAutoScale] = useState(1.05);
@@ -128,8 +155,8 @@ export function PdfPane({
 
   useEffect(() => {
     let cancelled = false;
-    let loadingTask: any;
-    let loadedPdf: any;
+    let loadingTask: PdfLoadingTask | undefined;
+    let loadedPdf: PdfDocumentProxy | undefined;
 
     async function load() {
       setError("");
@@ -139,7 +166,7 @@ export function PdfPane({
 
       try {
         const buffer = await fetch(book.fileUrl).then((response) => response.arrayBuffer());
-        loadingTask = pdfjs.getDocument({ data: buffer });
+        loadingTask = pdfjs.getDocument({ data: buffer }) as unknown as PdfLoadingTask;
         loadedPdf = await loadingTask.promise;
 
         if (!cancelled) {
@@ -305,7 +332,14 @@ export function PdfPane({
       <div ref={scrollerRef} className={`pdf-pages fit-${fit}`} onScroll={scheduleProgressUpdate}>
         {Array.from({ length: pageCount }, (_, index) =>
           index >= visibleStart && index <= visibleEnd ? (
-            <PdfPage key={index + 1} pdf={pdf} pageNumber={index + 1} scale={scale} renderQueue={renderQueue} />
+            <PdfPage
+              key={index + 1}
+              pdf={pdf}
+              pageNumber={index + 1}
+              scale={scale}
+              renderQueue={renderQueue}
+              errorLabel={t("pdfPageRenderFailed")}
+            />
           ) : (
             <figure
               key={index + 1}
@@ -326,44 +360,59 @@ function PdfPage({
   pdf,
   pageNumber,
   scale,
-  renderQueue
+  renderQueue,
+  errorLabel
 }: {
-  pdf: any;
+  pdf: PdfDocumentProxy;
   pageNumber: number;
   scale: number;
   renderQueue: RenderQueue;
+  errorLabel: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const renderVersionRef = useRef(0);
+  const [renderState, setRenderState] = useState<PdfPageRenderState>({ status: "idle" });
 
   useEffect(() => {
     const version = renderVersionRef.current + 1;
     renderVersionRef.current = version;
-    let renderTask: any;
+    setRenderState({ status: "rendering" });
+    let renderTask: PdfRenderTask | undefined;
 
     const queuedTask = renderQueue.enqueue(async (signal) => {
-      const page = await pdf.getPage(pageNumber);
-      if (signal.aborted || renderVersionRef.current !== version || !canvasRef.current) return;
+      try {
+        const page = await pdf.getPage(pageNumber);
+        if (signal.aborted || renderVersionRef.current !== version || !canvasRef.current) return;
 
-      const viewport = page.getViewport({ scale });
-      const ratio = window.devicePixelRatio || 1;
-      const canvas = canvasRef.current;
-      const context = canvas.getContext("2d");
+        const viewport = page.getViewport({ scale });
+        const ratio = window.devicePixelRatio || 1;
+        const canvas = canvasRef.current;
+        const context = canvas.getContext("2d");
 
-      if (!context || signal.aborted || renderVersionRef.current !== version) return;
+        if (!context || signal.aborted || renderVersionRef.current !== version) return;
 
-      canvas.width = Math.floor(viewport.width * ratio);
-      canvas.height = Math.floor(viewport.height * ratio);
-      canvas.style.width = `${viewport.width}px`;
-      canvas.style.height = `${viewport.height}px`;
-      context.setTransform(ratio, 0, 0, ratio, 0, 0);
-      context.clearRect(0, 0, viewport.width, viewport.height);
+        canvas.width = Math.floor(viewport.width * ratio);
+        canvas.height = Math.floor(viewport.height * ratio);
+        canvas.style.width = `${viewport.width}px`;
+        canvas.style.height = `${viewport.height}px`;
+        context.setTransform(ratio, 0, 0, ratio, 0, 0);
+        context.clearRect(0, 0, viewport.width, viewport.height);
 
-      renderTask = page.render({ canvasContext: context, viewport });
-      await renderTask.promise.catch(() => undefined);
+        renderTask = page.render({ canvasContext: context, canvas, viewport });
+        await renderTask.promise;
 
-      if (signal.aborted || renderVersionRef.current !== version) {
-        renderTask?.cancel();
+        if (signal.aborted || renderVersionRef.current !== version) {
+          renderTask?.cancel();
+          return;
+        }
+
+        setRenderState({ status: "ready" });
+      } catch (error) {
+        if (signal.aborted || renderVersionRef.current !== version || isPdfRenderCancellation(error)) {
+          return;
+        }
+
+        setRenderState((current) => nextPdfPageRenderState(current, error));
       }
     });
 
@@ -377,8 +426,14 @@ function PdfPage({
   }, [pageNumber, pdf, renderQueue, scale]);
 
   return (
-    <figure className="pdf-page">
+    <figure className={`pdf-page${renderState.status === "error" ? " pdf-page-failed" : ""}`}>
       <canvas ref={canvasRef} />
+      {renderState.status === "error" ? (
+        <div className="pdf-page-error" role="note">
+          <strong>{errorLabel}</strong>
+          <span>{pageNumber}</span>
+        </div>
+      ) : null}
       <figcaption>{pageNumber}</figcaption>
     </figure>
   );

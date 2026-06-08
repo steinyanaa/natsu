@@ -1,6 +1,5 @@
 import type { BookFormat } from "../types";
 import { extractEpubCover } from "./epub";
-import { openRarComic, openZipComic } from "./comic";
 
 export type CoverPath = "epub" | "pdf" | "comic";
 
@@ -59,6 +58,7 @@ async function generatePdfCover(data: ArrayBuffer): Promise<Blob | undefined> {
 }
 
 async function generateComicCover(format: BookFormat, file: Blob): Promise<Blob | undefined> {
+  const { openRarComic, openZipComic } = await import("./comic");
   const source =
     format === "cbr" || format === "rar"
       ? await openRarComic(await file.arrayBuffer())

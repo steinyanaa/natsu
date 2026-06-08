@@ -139,7 +139,11 @@ export type TranslationKey =
   | "weeklySpeed"
   | "charsPerMin"
   | "readingTrend"
-  | "heatmapTitle";
+  | "heatmapTitle"
+  | "readerCrashed"
+  | "retryReader"
+  | "returnToLibrary"
+  | "pdfPageRenderFailed";
 
 const zh: Record<TranslationKey, string> = {
   appName: "Natsu",
@@ -281,6 +285,10 @@ const zh: Record<TranslationKey, string> = {
   charsPerMin: "字/分钟",
   readingTrend: "近 30 天",
   heatmapTitle: "阅读热力",
+  readerCrashed: "阅读器刚刚走神了",
+  retryReader: "重试当前书",
+  returnToLibrary: "返回书架",
+  pdfPageRenderFailed: "这一页暂时无法渲染",
 };
 
 const ja: Record<TranslationKey, string> = {
@@ -423,6 +431,10 @@ const ja: Record<TranslationKey, string> = {
   charsPerMin: "文字/分",
   readingTrend: "過去30日",
   heatmapTitle: "読書ヒートマップ",
+  readerCrashed: "リーダーで問題が発生しました",
+  retryReader: "この本を再試行",
+  returnToLibrary: "本棚に戻る",
+  pdfPageRenderFailed: "このページを表示できません",
 };
 
 const en: Record<TranslationKey, string> = {
@@ -565,6 +577,10 @@ const en: Record<TranslationKey, string> = {
   charsPerMin: "chars/min",
   readingTrend: "Last 30 Days",
   heatmapTitle: "Reading Heat Map",
+  readerCrashed: "The reader hit a snag",
+  retryReader: "Retry this book",
+  returnToLibrary: "Return to library",
+  pdfPageRenderFailed: "This page could not be rendered",
 };
 
 const dictionaries = {

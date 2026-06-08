@@ -9,6 +9,7 @@ import { readerFontStack } from "../reader/utils";
 import { themeOptions } from "../themes";
 import { defaultCustomSource, parseSourcePack } from "./sourcePack";
 import { ChoiceList, CodeTextSetting, ColorSetting, RangeSetting, TextSetting, ToggleSetting } from "./SettingsControls";
+import { settingsPanelDialogAttributes, shouldCloseSettingsPanelOnKey } from "./settingsPanelA11y";
 import type {
   OnlineSource,
   OnlineSourceKind,
@@ -68,6 +69,24 @@ export function SettingsPanel({
   const [sourceTestQuery, setSourceTestQuery] = useState("村上春树");
   const [sourceTestReport, setSourceTestReport] = useState<OnlineSourceTestReport | undefined>();
   const [sourceTestLoadingId, setSourceTestLoadingId] = useState<string | undefined>();
+  const closeButtonRef = React.useRef<HTMLButtonElement | null>(null);
+
+  React.useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    closeButtonRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (shouldCloseSettingsPanelOnKey(event.key, open)) {
+        event.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, open]);
 
   const updateSource = (sourceId: string, patch: Partial<OnlineSource>) => {
     onChange({
@@ -178,13 +197,16 @@ export function SettingsPanel({
         aria-hidden={!open}
         onClick={onClose}
       />
-      <aside className={`settings-panel ${open ? "open" : ""}`} aria-hidden={!open}>
+      <aside
+        className={`settings-panel ${open ? "open" : ""}`}
+        {...settingsPanelDialogAttributes(open, "settings-panel-title")}
+      >
       <div className="panel-header">
         <div>
           <p className="eyebrow">{t("appearance")}</p>
-          <h2>{t("settings")}</h2>
+          <h2 id="settings-panel-title">{t("settings")}</h2>
         </div>
-        <button className="icon-button pressable" onClick={onClose} aria-label={t("back")}>
+        <button ref={closeButtonRef} className="icon-button pressable" onClick={onClose} aria-label={t("back")}>
           <ChevronRight size={19} />
         </button>
       </div>

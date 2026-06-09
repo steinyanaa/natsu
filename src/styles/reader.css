@@ -1707,6 +1707,15 @@
   max-width: 640px;
 }
 
+/* The pinned-notes panel is a fixed 340px overlay on the left, so the reader
+   must keep that much left padding no matter the page-margin preset. Without
+   this, the narrow/wide rules above (higher specificity than `.notes-open`)
+   win and the panel covers the text. */
+.reader-shell[data-page-margin="narrow"] .text-reader.notes-open,
+.reader-shell[data-page-margin="wide"] .text-reader.notes-open {
+  padding-left: calc(min(340px, 86vw) + clamp(24px, 7vw, 96px));
+}
+
 /* ── 阅读纸色预设选择器 ── */
 .reader-preset-row {
   display: flex;

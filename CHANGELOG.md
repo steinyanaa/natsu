@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.6.2] - 2026-06-09
+
+### Fixed
+
+- **翻页/滚动失效 + 加载变慢** — v1.6.1 新增的阅读器错误边界在滚动容器外多包了一层 `<div>`，使其顶替了 `.reader-workspace` 网格项；网格项默认 `min-height: auto` 会被内容撑到全高，导致 `.text-reader` 失去滚动溢出 → 无法翻页/滚动，且全高布局让渲染更重。错误边界改用带 key 的 `Fragment`，不再插入布局节点。
+- **注释面板遮挡正文** — 固定在左栏的注释面板宽 340px，但 `data-page-margin="narrow"|"wide"` 的内边距规则优先级高于 `.text-reader.notes-open`，覆盖了正文的让位，导致窄/宽页边距下正文被面板盖住。新增更高优先级规则，注释打开时各页边距都保留足够左侧让位。
+
+### Changed
+
+- **大书加载提速** — `useEpubChapter` 改用 `AbortController`，被取代的加载在解析前中止；React StrictMode（开发模式）下不再把整本书并发 fetch + 解析两遍，大文件打开更快、内存占用减半。
+
+### Validation
+
+- `npm run build:ci`（typecheck + 209 unit tests + production build），并在真机用实际书库验证翻页、加载与注释让位。
+
 ## [1.6.1] - 2026-06-08
 
 ### Added

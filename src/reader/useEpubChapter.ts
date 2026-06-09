@@ -18,13 +18,24 @@ export function useEpubChapter(
   useEffect(() => {
     let cancelled = false;
     let ownedUrls: string[] = [];
+    const controller = new AbortController();
 
     async function load() {
       setDocument(undefined);
       setError("");
 
       try {
-        const buffer = await fetch(book.fileUrl).then((response) => response.arrayBuffer());
+        const buffer = await fetch(book.fileUrl, { signal: controller.signal }).then((response) =>
+          response.arrayBuffer()
+        );
+
+        // Bail out before the expensive parse if this load was superseded
+        // (e.g. React StrictMode's double-invoke, or a fast book switch).
+        // Without this, large books are fetched and parsed twice concurrently.
+        if (cancelled) {
+          return;
+        }
+
         const parsed =
           parser === "txt"
             ? parseTxtDocument(buffer, book.title)
@@ -40,11 +51,13 @@ export function useEpubChapter(
 
         setDocument(parsed);
         onLoaded(parsed);
-      } catch {
-        if (!cancelled) {
-          setError(t("unsupported"));
-          onError(t("unsupported"));
+      } catch (error) {
+        // Aborted/superseded loads are expected — don't surface them as errors.
+        if (cancelled || (error instanceof DOMException && error.name === "AbortError")) {
+          return;
         }
+        setError(t("unsupported"));
+        onError(t("unsupported"));
       }
     }
 
@@ -52,6 +65,7 @@ export function useEpubChapter(
 
     return () => {
       cancelled = true;
+      controller.abort();
       ownedUrls.forEach((url) => URL.revokeObjectURL(url));
     };
     // onLoaded/onError intentionally excluded — callers wrap them in useCallback with stable refs

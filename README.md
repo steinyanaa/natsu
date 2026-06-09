@@ -21,16 +21,13 @@
 
 ## Latest release / 最新版本
 
-**v1.6.1** is a reader stability, accessibility, and architecture polish release:
+**v1.6.2** is a hotfix release for reader paging, loading, and the notes panel:
 
-- **阅读稳定性包** — React 错误边界、EPUB 清洗降级、PDF 单页渲染失败占位，减少坏书/坏页导致的白屏。
-- **阅读焦点性能优化** — 阅读焦点候选段落缓存到 hook 中，滚动时只做中心点计算，降低长文滚动 DOM 扫描。
-- **无原生 prompt 体验** — 批注和书签重命名统一使用内置纸感输入弹窗，支持多行批注快捷提交。
-- **键盘与读屏体验** — 搜索、书签、设置开关、分段控件、toast、工具栏焦点均补充可访问语义。
-- **自动滚动与 RTL 修复** — 分页文本支持横向自动滚动，用户输入会停止自动滚动，RTL 模式下左右键翻页自动镜像。
-- **架构整理** — 搜索、进度落盘、章节 ETA、阅读 chrome、导出文件名等逻辑抽为可单元测试 helper。
+- **修复无法翻页/滚动** — v1.6.1 的错误边界在滚动容器外多包了一层 `<div>`，破坏了阅读区的网格滚动布局；改用 `Fragment` 后翻页与滚动恢复正常。
+- **修复注释遮挡正文** — 窄/宽页边距下，固定左栏的注释面板会盖住正文；现在注释打开时正文按面板宽度整体右移让位。
+- **大书加载提速** — 打开大体积 EPUB 不再在开发模式下被重复 fetch + 解析两遍，加载更快、内存占用更低。
 
-Earlier, **v1.6.0** introduced the quiet paper reading preset and optional reading focus mode.
+Earlier, **v1.6.1** was a reader stability, accessibility, and architecture polish release (React 错误边界、EPUB 清洗降级、PDF 单页占位、阅读焦点性能、内置输入弹窗、可访问性统一)。
 
 See [CHANGELOG.md](CHANGELOG.md) for the full history.
 

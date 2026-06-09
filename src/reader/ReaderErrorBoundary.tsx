@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { Component } from "react";
+import { Component, Fragment } from "react";
 import type { createTranslator } from "../i18n";
 
 type Translator = ReturnType<typeof createTranslator>;
@@ -47,7 +47,12 @@ export class ReaderErrorBoundary extends Component<
 
   render() {
     if (!this.state.error) {
-      return <div key={`${this.props.resetKey}-${this.state.resetCounter}`}>{this.props.children}</div>;
+      // A keyed Fragment (not a wrapping <div>) preserves remount-on-reset
+      // without inserting an element. A real <div> here would become the
+      // `.reader-workspace` grid item instead of `.text-reader`, and since grid
+      // items default to `min-height: auto` it would expand to full content
+      // height — breaking the scroll viewport so paging/scrolling stops working.
+      return <Fragment key={`${this.props.resetKey}-${this.state.resetCounter}`}>{this.props.children}</Fragment>;
     }
 
     const text = readerBoundaryFallbackText(this.props.t);

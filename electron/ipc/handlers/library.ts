@@ -15,6 +15,7 @@ import {
   importOneBook,
   queueProgressUpdate
 } from "../../services/library.js";
+import { recordOrphan } from "../../services/orphans.js";
 import type {
   BookRecord,
   Bookmark,
@@ -152,8 +153,15 @@ export function registerLibraryHandlers(): void {
     const book = books.find((item) => item.id === id);
 
     if (book) {
-      await fs.rm(book.filePath, { force: true });
-      await fs.rm(coverPathFor(book.id), { force: true });
+      try {
+        await fs.rm(book.filePath);
+      } catch {
+        // File may be locked (e.g. still open in a reader). Record it so a
+        // later startup sweep can retry deletion instead of leaving an orphan.
+        await recordOrphan(book.filePath);
+      }
+      // Cover deletion failing is non-fatal — ignore.
+      await fs.rm(coverPathFor(book.id), { force: true }).catch(() => {});
     }
 
     getStore().set(
@@ -170,8 +178,13 @@ export function registerLibraryHandlers(): void {
     const books = getStore().get("books", []);
     for (const book of books) {
       if (idSet.has(book.id)) {
-        await fs.rm(book.filePath, { force: true });
-        await fs.rm(coverPathFor(book.id), { force: true });
+        try {
+          await fs.rm(book.filePath);
+        } catch {
+          await recordOrphan(book.filePath);
+        }
+        // Cover deletion failing is non-fatal — ignore.
+        await fs.rm(coverPathFor(book.id), { force: true }).catch(() => {});
       }
     }
     getStore().set("books", books.filter((b) => !idSet.has(b.id)));

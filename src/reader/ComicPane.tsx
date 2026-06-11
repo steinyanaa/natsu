@@ -1,9 +1,11 @@
 import { Minus, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createTranslator } from "../i18n";
-import { readRarComic, readZipComic, type ComicPage } from "../readers/comic";
+import { openRarComic, openZipComic, type ComicSource } from "../readers/comic";
 import type { BookRecord, ComicFitMode, ReaderPreferences, ReaderProgress } from "../types";
 import { computeSpreads } from "./comicLayout";
+import { planComicWindow } from "./comicLoadWindow";
+import { anchorSpread, cumulativeOffsets, findSpreadRange } from "./pagedVirtual";
 import { ErrorState, LoadingState } from "./ReaderState";
 import type { JumpRequest } from "./types";
 import { nowProgress } from "./utils";
@@ -13,6 +15,11 @@ interface PageScrollAnchor {
   pageOffset?: number;
   percent: number;
 }
+
+const RENDER_WINDOW = 4;
+const PRELOAD_WINDOW = 6;
+const RETAIN_PAGES = 24;
+const MAX_EXTRACT_PER_TICK = 8;
 
 export function ComicPane({
   book,
@@ -27,115 +34,163 @@ export function ComicPane({
   jumpRequest?: JumpRequest;
   onProgress: (progress: ReaderProgress) => void;
 }) {
-  const [pages, setPages] = useState<ComicPage[]>([]);
+  const [pageCount, setPageCount] = useState(0);
+  const [pageUrls, setPageUrls] = useState<string[]>([]);
   const [manualScale, setManualScale] = useState(1);
+  const [error, setError] = useState("");
+  const [viewport, setViewport] = useState({ top: 0, height: 900 });
+  // Bumped whenever a spread's measured height changes, to recompute offsets.
+  const [measureTick, setMeasureTick] = useState(0);
+
   const fit: ComicFitMode = preferences.comicFit ?? "width";
   const layout = preferences.comicLayout ?? "single";
   const rtl = preferences.readingDirection === "rtl";
   const coverSolo = preferences.comicCoverSolo ?? true;
   const scale = fit === "manual" ? manualScale : 1;
+
   const spreads = useMemo<number[][]>(
-    () => computeSpreads(pages.length, layout, coverSolo),
-    [pages.length, layout, coverSolo]
+    () => computeSpreads(pageCount, layout, coverSolo),
+    [pageCount, layout, coverSolo]
   );
-  const [error, setError] = useState("");
-  const [viewport, setViewport] = useState({ top: 0, height: 900 });
-  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const spreadOfPage = useMemo<number[]>(() => {
+    const map = new Array<number>(pageCount).fill(0);
+    spreads.forEach((spread, s) => spread.forEach((p) => (map[p] = s)));
+    return map;
+  }, [spreads, pageCount]);
+
+  const sourceRef = useRef<ComicSource | null>(null);
+  const requestedRef = useRef<Set<number>>(new Set());
+  const extractedRef = useRef<Set<number>>(new Set());
+  const heightsRef = useRef<number[]>([]);
+  const topPadRef = useRef<number>(layout === "webtoon" ? 0 : 82);
+  const figureRefs = useRef<Map<number, HTMLElement>>(new Map());
+  const measureRafRef = useRef<number | undefined>(undefined);
   const progressRafRef = useRef<number | undefined>(undefined);
   const stableScrollAnchorRef = useRef<PageScrollAnchor | undefined>(undefined);
   const resizeScrollAnchorRef = useRef<PageScrollAnchor | undefined>(undefined);
-  const preloadedImagesRef = useRef<Map<string, { image: HTMLImageElement; index: number }>>(new Map());
-  const estimatedSpreadHeight =
-    fit === "height"
-      ? Math.max(360, viewport.height - 20)
-      : layout === "webtoon"
-      ? Math.round(viewport.height * 0.9 + 12)
-      : layout === "double"
-      ? Math.round(640 * scale + 28)
-      : Math.round(1120 * scale + 28);
-  const renderWindow = 4;
-  const preloadWindow = 6;
-  const preloadRetainWindow = 18;
-  const visibleStart = Math.max(0, Math.floor(viewport.top / estimatedSpreadHeight) - renderWindow);
-  const visibleEnd = Math.min(
-    Math.max(0, spreads.length - 1),
-    Math.ceil((viewport.top + viewport.height) / estimatedSpreadHeight) + renderWindow
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+
+  const gap = layout === "webtoon" ? 0 : 28;
+  const estimateExtent = useMemo(() => {
+    if (fit === "height") return Math.max(360, viewport.height - 20);
+    if (layout === "webtoon") return Math.round(viewport.height * 0.9 + gap);
+    if (layout === "double") return Math.round(640 * scale + gap);
+    return Math.round(1120 * scale + gap);
+  }, [fit, layout, scale, viewport.height, gap]);
+
+  // Reset measured heights when the layout/scale model changes — old
+  // measurements no longer describe the new spread geometry.
+  useEffect(() => {
+    heightsRef.current = [];
+    setMeasureTick((tick) => tick + 1);
+  }, [layout, fit, scale, coverSolo]);
+
+  // Per-spread "slot extent" (height incl. trailing gap): measured when seen,
+  // estimated otherwise. Offsets drive both the visible range and the anchor
+  // without ever touching the DOM.
+  const offsets = useMemo(() => {
+    const extents = spreads.map((_, i) => heightsRef.current[i] ?? estimateExtent);
+    return cumulativeOffsets(extents);
+    // measureTick participates so freshly measured heights recompute offsets.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spreads, estimateExtent, measureTick]);
+
+  const topPad = topPadRef.current;
+  const [visibleStart, visibleEnd] = findSpreadRange(
+    offsets,
+    viewport.top - topPad,
+    viewport.top + viewport.height - topPad,
+    RENDER_WINDOW
   );
+  const currentSpread = anchorSpread(offsets, viewport.top + viewport.height * 0.35 - topPad);
 
   const readScrollAnchor = useCallback((): PageScrollAnchor | undefined => {
     const scroller = scrollerRef.current;
-    if (!scroller) {
-      return undefined;
-    }
-
+    if (!scroller) return undefined;
     const max = scroller.scrollHeight - scroller.clientHeight;
     const current = scroller.scrollTop;
-    const scrollerRect = scroller.getBoundingClientRect();
-    const visiblePage = [...scroller.querySelectorAll<HTMLElement>(".comic-spread-slot")]
-      .map((page, index) => ({
-        page,
-        index,
-        distance: Math.abs(page.getBoundingClientRect().top - scrollerRect.top)
-      }))
-      .sort((a, b) => a.distance - b.distance)[0];
-
+    const s = anchorSpread(offsets, current - topPadRef.current);
     return {
-      pageIndex: visiblePage?.index,
-      pageOffset: visiblePage ? Math.max(0, current - visiblePage.page.offsetTop) : undefined,
+      pageIndex: spreads[s]?.[0],
+      pageOffset: Math.max(0, current - topPadRef.current - offsets[s]),
       percent: max <= 0 ? 0 : current / max
     };
-  }, []);
+  }, [offsets, spreads]);
 
-  const restoreScrollAnchor = useCallback((anchor?: PageScrollAnchor) => {
-    const scroller = scrollerRef.current;
-    if (!scroller || !anchor) {
-      return false;
+  const restoreScrollAnchor = useCallback(
+    (anchor?: PageScrollAnchor) => {
+      const scroller = scrollerRef.current;
+      if (!scroller || !anchor) return false;
+      const max = scroller.scrollHeight - scroller.clientHeight;
+      if (anchor.pageIndex !== undefined && spreadOfPage[anchor.pageIndex] !== undefined) {
+        const s = spreadOfPage[anchor.pageIndex];
+        scroller.scrollTop = topPadRef.current + offsets[s] + (anchor.pageOffset ?? 0);
+      } else {
+        scroller.scrollTop = anchor.percent * max;
+      }
+      return true;
+    },
+    [offsets, spreadOfPage]
+  );
+
+  const measureSpread = useCallback((spreadIndex: number) => {
+    const el = figureRefs.current.get(spreadIndex);
+    if (!el) return;
+    if (spreadIndex === 0) topPadRef.current = el.offsetTop;
+    const extent = el.offsetHeight + (layout === "webtoon" ? 0 : 28);
+    const prev = heightsRef.current[spreadIndex];
+    if (prev === undefined || Math.abs(prev - extent) > 1) {
+      heightsRef.current[spreadIndex] = extent;
+      if (measureRafRef.current === undefined) {
+        measureRafRef.current = window.requestAnimationFrame(() => {
+          measureRafRef.current = undefined;
+          setMeasureTick((tick) => tick + 1);
+        });
+      }
     }
+  }, [layout]);
 
-    const page =
-      anchor.pageIndex !== undefined
-        ? scroller.querySelectorAll<HTMLElement>(".comic-spread-slot")[anchor.pageIndex]
-        : undefined;
-    scroller.scrollTop = page
-      ? page.offsetTop + (anchor.pageOffset ?? 0)
-      : anchor.percent * (scroller.scrollHeight - scroller.clientHeight);
-    return true;
-  }, []);
-
-  const clearPreloadedImages = useCallback(() => {
-    for (const { image } of preloadedImagesRef.current.values()) {
-      image.src = "";
-    }
-    preloadedImagesRef.current.clear();
-  }, []);
-
+  // ── Lazy archive open ──────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
-    let ownedPages: ComicPage[] = [];
+
+    const reset = () => {
+      requestedRef.current.clear();
+      extractedRef.current.clear();
+      heightsRef.current = [];
+      figureRefs.current.clear();
+      stableScrollAnchorRef.current = undefined;
+      resizeScrollAnchorRef.current = undefined;
+    };
 
     async function load() {
       setError("");
-      setPages([]);
-      stableScrollAnchorRef.current = undefined;
-      resizeScrollAnchorRef.current = undefined;
-      clearPreloadedImages();
+      setPageCount(0);
+      setPageUrls([]);
+      reset();
 
       try {
+        let source: ComicSource;
         if (book.format === "zip" || book.format === "cbz") {
           const blob = await fetch(book.fileUrl).then((response) => response.blob());
-          ownedPages = await readZipComic(blob);
+          if (cancelled) return;
+          source = await openZipComic(blob);
         } else {
           const buffer = await fetch(book.fileUrl).then((response) => response.arrayBuffer());
-          ownedPages = await readRarComic(buffer);
+          if (cancelled) return;
+          source = await openRarComic(buffer);
         }
 
-        if (!cancelled) {
-          setPages(ownedPages);
+        if (cancelled) {
+          source.dispose();
+          return;
         }
+
+        sourceRef.current = source;
+        setPageCount(source.pages.length);
+        setPageUrls(new Array(source.pages.length).fill(""));
       } catch {
-        if (!cancelled) {
-          setError(t("unsupported"));
-        }
+        if (!cancelled) setError(t("unsupported"));
       }
     }
 
@@ -143,92 +198,66 @@ export function ComicPane({
 
     return () => {
       cancelled = true;
-      clearPreloadedImages();
-      ownedPages.forEach((page) => URL.revokeObjectURL(page.url));
+      sourceRef.current?.dispose();
+      sourceRef.current = null;
+      reset();
     };
-  }, [book.fileUrl, book.format, clearPreloadedImages, t]);
+  }, [book.fileUrl, book.format, t]);
 
+  // ── Extract / release window ────────────────────────────────────────────────
   useEffect(() => {
-    if (!pages.length) {
-      clearPreloadedImages();
-      return;
+    const source = sourceRef.current;
+    if (!source || !pageCount) return;
+
+    const plan = planComicWindow({
+      spreads,
+      currentSpread,
+      visibleStart,
+      visibleEnd,
+      preloadWindow: PRELOAD_WINDOW,
+      retainPages: RETAIN_PAGES,
+      extracted: extractedRef.current
+    });
+
+    for (const index of plan.release) {
+      source.releasePage(index);
+      extractedRef.current.delete(index);
+      requestedRef.current.delete(index);
+      setPageUrls((prev) => {
+        if (!prev[index]) return prev;
+        const next = prev.slice();
+        next[index] = "";
+        return next;
+      });
     }
 
-    const currentSpread = Math.min(
-      Math.max(0, spreads.length - 1),
-      Math.max(0, Math.floor((viewport.top + viewport.height * 0.35) / estimatedSpreadHeight))
-    );
-    const currentIndex = spreads[currentSpread]?.[0] ?? 0;
-    const preloadCandidates: number[] = [];
-    const queued = new Set<number>();
-    const queuePreload = (index: number) => {
-      if (index < 0 || index >= pages.length || queued.has(index)) {
-        return;
-      }
-
-      queued.add(index);
-      preloadCandidates.push(index);
-    };
-
-    for (let s = visibleStart; s <= visibleEnd; s += 1) {
-      for (const pi of spreads[s] ?? []) queuePreload(pi);
+    let fired = 0;
+    for (const index of plan.extract) {
+      if (requestedRef.current.has(index)) continue;
+      if (fired >= MAX_EXTRACT_PER_TICK) break;
+      fired += 1;
+      requestedRef.current.add(index);
+      void source
+        .extractPage(index)
+        .then((url) => {
+          if (sourceRef.current !== source || !url) return;
+          extractedRef.current.add(index);
+          setPageUrls((prev) => {
+            if (prev[index] === url) return prev;
+            const next = prev.slice();
+            next[index] = url;
+            return next;
+          });
+        })
+        .catch(() => {
+          requestedRef.current.delete(index);
+        });
     }
+  }, [pageCount, spreads, currentSpread, visibleStart, visibleEnd]);
 
-    for (let distance = 1; distance <= preloadWindow; distance += 1) {
-      const ahead = spreads[currentSpread + distance];
-      const back = spreads[currentSpread - distance];
-      if (ahead) for (const pi of ahead) queuePreload(pi);
-      if (back) for (const pi of back) queuePreload(pi);
-    }
-
-    for (const index of preloadCandidates) {
-      const page = pages[index];
-      const existing = preloadedImagesRef.current.get(page.url);
-
-      if (existing) {
-        existing.index = index;
-        continue;
-      }
-
-      const image = new Image();
-      image.decoding = "async";
-      image.src = page.url;
-      preloadedImagesRef.current.set(page.url, { image, index });
-
-      // LRU 驱逐：超过上限时移除距当前页最远的条目
-      const maxCacheSize = preloadRetainWindow * 2;
-      if (preloadedImagesRef.current.size > maxCacheSize) {
-        let farthestKey = "";
-        let farthestDist = -1;
-        for (const [key, entry] of preloadedImagesRef.current) {
-          const dist = Math.abs(entry.index - currentIndex);
-          if (dist > farthestDist) {
-            farthestDist = dist;
-            farthestKey = key;
-          }
-        }
-        if (farthestKey) {
-          const evicted = preloadedImagesRef.current.get(farthestKey);
-          if (evicted) evicted.image.src = "";
-          preloadedImagesRef.current.delete(farthestKey);
-        }
-      }
-    }
-
-    for (const [url, preload] of preloadedImagesRef.current) {
-      if (Math.abs(preload.index - currentIndex) > preloadRetainWindow) {
-        preload.image.src = "";
-        preloadedImagesRef.current.delete(url);
-      }
-    }
-  }, [clearPreloadedImages, estimatedSpreadHeight, pages, spreads, viewport.height, viewport.top, visibleEnd, visibleStart]);
-
+  // ── Restore on jump ─────────────────────────────────────────────────────────
   useEffect(() => {
-    const scroller = scrollerRef.current;
-    if (!pages.length || !scroller || !jumpRequest) {
-      return;
-    }
-
+    if (!pageCount || !scrollerRef.current || !jumpRequest) return;
     const frame = requestAnimationFrame(() => {
       restoreScrollAnchor({
         pageIndex: jumpRequest.progress.pageIndex,
@@ -236,9 +265,8 @@ export function ComicPane({
         percent: jumpRequest.progress.percent
       });
     });
-
     return () => cancelAnimationFrame(frame);
-  }, [jumpRequest, pages.length, restoreScrollAnchor]);
+  }, [jumpRequest, pageCount, restoreScrollAnchor]);
 
   const updateProgress = useCallback(() => {
     const scroller = scrollerRef.current;
@@ -261,6 +289,7 @@ export function ComicPane({
     );
   }, [onProgress, readScrollAnchor]);
 
+  // ── Container resize (sidebar / settings / window) ──────────────────────────
   useEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
@@ -293,11 +322,12 @@ export function ComicPane({
       }, 180);
     };
 
+    const observer = new ResizeObserver(handleResize);
+    observer.observe(scroller);
     updateViewport();
-    window.addEventListener("resize", handleResize);
 
     return () => {
-      window.removeEventListener("resize", handleResize);
+      observer.disconnect();
       window.clearTimeout(resizeTimer);
       window.clearTimeout(settleTimer);
       window.cancelAnimationFrame(restoreFrame);
@@ -306,18 +336,13 @@ export function ComicPane({
     book.progress?.pageIndex,
     book.progress?.pageOffset,
     book.progress?.percent,
-    pages.length,
     readScrollAnchor,
     restoreScrollAnchor,
-    scale,
     updateProgress
   ]);
 
   const scheduleProgressUpdate = useCallback(() => {
-    if (progressRafRef.current !== undefined) {
-      return;
-    }
-
+    if (progressRafRef.current !== undefined) return;
     progressRafRef.current = window.requestAnimationFrame(() => {
       progressRafRef.current = undefined;
       updateProgress();
@@ -326,9 +351,8 @@ export function ComicPane({
 
   useEffect(() => {
     return () => {
-      if (progressRafRef.current !== undefined) {
-        window.cancelAnimationFrame(progressRafRef.current);
-      }
+      if (progressRafRef.current !== undefined) window.cancelAnimationFrame(progressRafRef.current);
+      if (measureRafRef.current !== undefined) window.cancelAnimationFrame(measureRafRef.current);
     };
   }, []);
 
@@ -344,7 +368,7 @@ export function ComicPane({
     return <ErrorState title={error} />;
   }
 
-  if (!pages.length) {
+  if (!pageCount) {
     return <LoadingState label={t("loading")} />;
   }
 
@@ -378,21 +402,36 @@ export function ComicPane({
         {spreads.map((spread, sIndex) => {
           const visible = sIndex >= visibleStart && sIndex <= visibleEnd;
           const firstPage = spread[0];
+          const minHeight = heightsRef.current[sIndex] ?? estimateExtent;
           return (
             <figure
               key={`spread-${firstPage}`}
+              ref={(el) => {
+                if (el) figureRefs.current.set(sIndex, el);
+                else figureRefs.current.delete(sIndex);
+              }}
               className={`comic-spread-slot${spread.length > 1 ? " double" : ""}`}
-              style={{ minHeight: visible ? undefined : estimatedSpreadHeight }}
+              style={{ minHeight: visible ? undefined : minHeight }}
             >
               {visible ? (
-                spread.map((pi) => (
-                  <img
-                    key={pages[pi].url}
-                    src={pages[pi].url}
-                    alt={`${t("page")} ${pi + 1}`}
-                    style={fit === "manual" ? { width: `${Math.round(scale * 100)}%` } : undefined}
-                  />
-                ))
+                spread.map((pi) =>
+                  pageUrls[pi] ? (
+                    <img
+                      key={pi}
+                      src={pageUrls[pi]}
+                      alt={`${t("page")} ${pi + 1}`}
+                      onLoad={() => measureSpread(sIndex)}
+                      style={fit === "manual" ? { width: `${Math.round(scale * 100)}%` } : undefined}
+                    />
+                  ) : (
+                    <div
+                      key={pi}
+                      className="comic-page-loading"
+                      style={{ minHeight: estimateExtent }}
+                      aria-label={`${t("page")} ${pi + 1}`}
+                    />
+                  )
+                )
               ) : (
                 <div className="virtual-page-placeholder" aria-label={`${t("page")} ${firstPage + 1}`} />
               )}

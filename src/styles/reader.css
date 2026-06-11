@@ -1158,8 +1158,34 @@
 }
 
 .comic-spread-slot {
-  will-change: transform;
+  /* No `will-change`: promoting hundreds of slots to their own compositor
+     layers costs more memory/GPU than it saves. `contain` is enough to keep
+     off-screen slot layout from invalidating the whole list. */
   contain: layout style;
+}
+
+/* Per-page skeleton shown while a page is still being extracted from the
+   archive (lazy decode). Keeps the slot from collapsing and signals progress. */
+.comic-page-loading {
+  width: 100%;
+  border-radius: 12px;
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--md-sys-color-surface-variant, #cdd) 60%, transparent) 30%,
+    color-mix(in srgb, var(--md-sys-color-surface-variant, #cdd) 92%, transparent) 50%,
+    color-mix(in srgb, var(--md-sys-color-surface-variant, #cdd) 60%, transparent) 70%
+  );
+  background-size: 200% 100%;
+  animation: comic-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes comic-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comic-page-loading { animation: none; }
 }
 
 .comic-spread-slot.double {

@@ -12,6 +12,8 @@ export interface ComicSource {
   pages: ComicPage[];
   /** Extract a single page and update its url in-place; returns the blob URL */
   extractPage(index: number): Promise<string>;
+  /** Revoke a single page's blob URL so it can be re-extracted later */
+  releasePage(index: number): void;
   /** Release all resources */
   dispose(): void;
 }
@@ -62,15 +64,25 @@ export async function openZipComic(blob: Blob): Promise<ComicSource> {
     return promise;
   };
 
+  const releasePage = (index: number) => {
+    const page = pages[index];
+    if (page?.url) {
+      URL.revokeObjectURL(page.url);
+      page.url = "";
+    }
+    extracting.delete(index);
+  };
+
   const dispose = () => {
     void reader.close();
     for (const page of pages) {
       if (page.url) URL.revokeObjectURL(page.url);
     }
     pages.forEach((p) => { p.url = ""; });
+    extracting.clear();
   };
 
-  return { pages, extractPage, dispose };
+  return { pages, extractPage, releasePage, dispose };
 }
 
 // ─── RAR ─────────────────────────────────────────────────────────────────────
@@ -123,26 +135,22 @@ export async function openRarComic(buffer: ArrayBuffer): Promise<ComicSource> {
     return promise;
   };
 
+  const releasePage = (index: number) => {
+    const page = pages[index];
+    if (page?.url) {
+      URL.revokeObjectURL(page.url);
+      page.url = "";
+    }
+    extracting.delete(index);
+  };
+
   const dispose = () => {
     for (const page of pages) {
       if (page.url) URL.revokeObjectURL(page.url);
     }
     pages.forEach((p) => { p.url = ""; });
+    extracting.clear();
   };
 
-  return { pages, extractPage, dispose };
-}
-
-// ─── Legacy compat (kept for any external callers) ────────────────────────────
-export async function readZipComic(blob: Blob): Promise<ComicPage[]> {
-  const src = await openZipComic(blob);
-  // Extract all pages eagerly (original behaviour)
-  await Promise.all(src.pages.map((_, i) => src.extractPage(i)));
-  return src.pages;
-}
-
-export async function readRarComic(buffer: ArrayBuffer): Promise<ComicPage[]> {
-  const src = await openRarComic(buffer);
-  await Promise.all(src.pages.map((_, i) => src.extractPage(i)));
-  return src.pages;
+  return { pages, extractPage, releasePage, dispose };
 }

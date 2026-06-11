@@ -6,6 +6,7 @@ import type { BookRecord, ComicFitMode, ReaderPreferences, ReaderProgress } from
 import { computeSpreads } from "./comicLayout";
 import { planComicWindow } from "./comicLoadWindow";
 import { anchorSpread, cumulativeOffsets, findSpreadRange } from "./pagedVirtual";
+import { PageHud } from "./PageHud";
 import { ErrorState, LoadingState } from "./ReaderState";
 import type { JumpRequest } from "./types";
 import { nowProgress } from "./utils";
@@ -439,6 +440,7 @@ export function ComicPane({
           );
         })}
       </div>
+      <PageHud current={(spreads[currentSpread]?.[0] ?? 0) + 1} total={pageCount} />
     </div>
   );
 }

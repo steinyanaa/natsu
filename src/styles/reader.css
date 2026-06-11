@@ -1188,6 +1188,48 @@
   .comic-page-loading { animation: none; }
 }
 
+/* Transient "12 / 240" page indicator for paged readers. */
+.page-hud {
+  position: absolute;
+  bottom: 84px;
+  left: 50%;
+  transform: translate(-50%, 8px);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--md-sys-color-inverse-surface, #2c2c2c) 88%, transparent);
+  color: var(--md-sys-color-inverse-on-surface, #f3f3f3);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 6;
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
+.page-hud.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.page-hud-current {
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.page-hud-sep,
+.page-hud-total {
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-hud { transition: opacity 0.28s ease; }
+}
+
 .comic-spread-slot.double {
   display: flex;
   flex-direction: row;

@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.7.0] - 2026-06-13
+
+漫画与 PDF 阅读丝滑度专项 + 存储瘦身。
+
+### Added
+
+- **漫画逐页 snap 与整屏翻页** — 单页 / 双页布局滚动吸附到页顶（`proximity`，不与虚拟占位高度打架；条漫保持连续）；键盘 / 点击 / 滑动翻页改为前进一整屏，而非旧的 108px 微移。复用既有「按键翻页后自动对齐」开关。
+- **跨页大图识别** — 解码时检测横向页（宽 > 高 × 1.2），双页布局下让其独占一个对开位，跨页插画不再被劈成两半。
+- **漫画夜间滤镜** — 暖色 / 调暗 / 反色三档（反色用 `hue-rotate` 保留彩色画面），夜读白底漫画不刺眼；设置 → 漫画夜间滤镜。
+- **漫画页码 seek 条 + 缩略图预览** — 漫画 / 图像阅读器新增底部跳页条（此前只有章节制读者有进度条）：拖动跳到任意页，悬停 / 拖动时显示光标所在页的缩略图预览（按需懒加载、独立小缓存，不影响整页解码流水线）。
+- **翻页页码 HUD** — 翻页时短暂浮现 `12 / 240` 胶囊指示并淡出。
+- **主进程崩溃日志** — 新增零依赖日志器与 `render-process-gone` / `uncaughtException` / `unhandledRejection` 监听，落盘 `userData/logs/main.log`。
+
+### Changed
+
+- **漫画懒解压流水线** — `ComicPane` 不再在显示第一页前把整本压缩包全部解压；改为只解码渲染 / 预读窗口内的页，滑远的页释放（撤销 blob URL）。打开 500 页 CBZ 从「等全本」变成「等首屏」，内存随视口而非书长。
+- **真实高度虚拟化** — 用每页实测高度的累积偏移模型（二分查找）替换单一常量估高（滚动条跳动根源）与每帧 `querySelectorAll` + `getBoundingClientRect` 的 O(n) 锚点扫描；看过的页不再跳。删除每个 slot 的 `will-change: transform`（数百个无谓合成层），改用 `ResizeObserver` 让侧栏 / 设置开合也能重新适配。
+- **PDF 流式加载** — 自定义协议支持 HTTP Range（206 / 416），`PdfPane` 改用 `getDocument({ url, rangeChunkSize, disableAutoFetch })` 按需取页，几百 MB 的 PDF 不再整本进内存。
+- **存储瘦身** — `readingSessions` 从单体 `books[]` store 拆到独立 `natsu-sessions` store，保存阅读 session 不再重写整个书库；幂等、非破坏的启动迁移，`bookToClient` 合并回数据，渲染端契约不变。
+
+### Validation
+
+- `npm run typecheck`（双 tsconfig）+ `npm run test:unit`（255 单测，新增 pagedVirtual / comicLoadWindow / comicLayout 跨页 / comicThumbnail / sessions 合并 / 迁移用例）+ `npm run build` 全绿。
+
 ## [1.6.2] - 2026-06-09
 
 ### Fixed

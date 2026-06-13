@@ -15,6 +15,13 @@ import {
   importOneBook,
   queueProgressUpdate
 } from "../../services/library.js";
+import {
+  appendSession,
+  getAllSessions,
+  getSessions,
+  mergeSessions,
+  setSessions
+} from "../../services/sessions.js";
 import { recordOrphan } from "../../services/orphans.js";
 import type {
   BookRecord,
@@ -211,12 +218,12 @@ export function registerLibraryHandlers(): void {
     return book ? bookToClient(book) : undefined;
   });
 
-  // 保存阅读 session
+  // 保存阅读 session —— 写入独立的 sessions store，不再重写整个 books[]
   ipcMain.handle(IPC_CHANNELS.librarySaveReadingSession, (_event, bookId: string, session: ReadingSession) => {
-    const book = updateBook(bookId, (current) => ({
-      ...current,
-      readingSessions: [...(current.readingSessions ?? []), session].slice(-500)
-    }));
+    appendSession(bookId, session);
+    const book = getStore().get("books", []).find((b) => b.id === bookId);
+    // bookToClient merges sessions back from the sessions store, so the client
+    // record still carries the just-appended session.
     return book ? bookToClient(book) : undefined;
   });
 
@@ -230,7 +237,10 @@ export function registerLibraryHandlers(): void {
     if (result.canceled || !result.filePath) return false;
     const books = getStore().get("books", []).map((b) => {
       const { filePath: _fp, ...rest } = b;
-      return rest;
+      // Sessions live in the dedicated store now; re-attach them on export so
+      // the backup file keeps its existing { books: [{ readingSessions }] }
+      // shape and stays importable by older/this version alike.
+      return { ...rest, readingSessions: getSessions(b.id) };
     });
     const preferences = getStore().get("preferences");
     await fs.writeFile(result.filePath, JSON.stringify({ version: 1, books, preferences }, null, 2), "utf-8");
@@ -288,15 +298,14 @@ export function registerLibraryHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.libraryGetGoalStats, () => {
     const preferences = getStore().get("preferences");
     const dailyGoalMinutes = preferences.dailyGoalMinutes ?? 30;
-    const books = getStore().get("books", []);
     const today = new Date().toISOString().slice(0, 10);
     const now = Date.now();
 
     let todayMinutes = 0;
     const dayMinutes = new Map<string, number>();
 
-    for (const book of books) {
-      for (const session of book.readingSessions ?? []) {
+    for (const sessions of getAllSessions().values()) {
+      for (const session of sessions) {
         const dayKey = session.start.slice(0, 10);
         const mins = (new Date(session.end).getTime() - new Date(session.start).getTime()) / 60000;
         dayMinutes.set(dayKey, (dayMinutes.get(dayKey) ?? 0) + mins);
@@ -330,10 +339,9 @@ export function registerLibraryHandlers(): void {
   });
 
   ipcMain.handle(IPC_CHANNELS.libraryGetSessionsByDate, () => {
-    const books = getStore().get("books", []);
     const dayMap = new Map<string, number>();
-    for (const book of books) {
-      for (const session of book.readingSessions ?? []) {
+    for (const sessions of getAllSessions().values()) {
+      for (const session of sessions) {
         const day = session.start.slice(0, 10);
         const mins = (new Date(session.end).getTime() - new Date(session.start).getTime()) / 60000;
         if (isNaN(mins) || mins < 0) continue;
@@ -367,18 +375,20 @@ export function registerLibraryHandlers(): void {
       if (!imported.hash || !imported.id) continue;
       const match = existingByHash.get(imported.hash);
       if (match) {
-        // 合并书签、高亮、阅读 sessions
+        // 合并书签、高亮、进度（books[] 不再持有 readingSessions）
         const merged: BookRecord = {
           ...match,
           bookmarks: imported.bookmarks ?? match.bookmarks,
           highlights: imported.highlights ?? match.highlights,
-          readingSessions: [
-            ...(match.readingSessions ?? []),
-            ...(imported.readingSessions ?? [])
-          ].slice(-500),
           progress: imported.progress ?? match.progress
         };
         existingByHash.set(match.hash, merged);
+
+        // 阅读 sessions 路由到独立的 sessions store（合并 + 去重 + 截断）。
+        if (imported.readingSessions && imported.readingSessions.length) {
+          const next = mergeSessions(getSessions(match.id), imported.readingSessions);
+          setSessions(match.id, next);
+        }
       }
     }
     getStore().set("books", [...existingByHash.values()]);

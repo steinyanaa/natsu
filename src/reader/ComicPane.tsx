@@ -47,11 +47,15 @@ export function ComicPane({
   const layout = preferences.comicLayout ?? "single";
   const rtl = preferences.readingDirection === "rtl";
   const coverSolo = preferences.comicCoverSolo ?? true;
+  const nightFilter = preferences.comicNightFilter ?? "off";
+  const snap = (preferences.mangaSnapToPage ?? true) && layout !== "webtoon" && fit !== "manual";
   const scale = fit === "manual" ? manualScale : 1;
 
+  // Landscape pages discovered as images decode — kept solo in double layout.
+  const [widePages, setWidePages] = useState<ReadonlySet<number>>(() => new Set());
   const spreads = useMemo<number[][]>(
-    () => computeSpreads(pageCount, layout, coverSolo),
-    [pageCount, layout, coverSolo]
+    () => computeSpreads(pageCount, layout, coverSolo, layout === "double" ? widePages : undefined),
+    [pageCount, layout, coverSolo, widePages]
   );
   const spreadOfPage = useMemo<number[]>(() => {
     const map = new Array<number>(pageCount).fill(0);
@@ -151,6 +155,23 @@ export function ComicPane({
     }
   }, [layout]);
 
+  const handleImageLoad = useCallback(
+    (pageIndex: number, spreadIndex: number, img: HTMLImageElement) => {
+      // A clearly landscape page is a cross-page spread — flag it so double
+      // layout pulls it into its own slot instead of splitting the artwork.
+      if (img.naturalWidth > img.naturalHeight * 1.2) {
+        setWidePages((prev) => {
+          if (prev.has(pageIndex)) return prev;
+          const next = new Set(prev);
+          next.add(pageIndex);
+          return next;
+        });
+      }
+      measureSpread(spreadIndex);
+    },
+    [measureSpread]
+  );
+
   // ── Lazy archive open ──────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
@@ -168,6 +189,7 @@ export function ComicPane({
       setError("");
       setPageCount(0);
       setPageUrls([]);
+      setWidePages(new Set());
       reset();
 
       try {
@@ -398,7 +420,9 @@ export function ComicPane({
       </div>
       <div
         ref={scrollerRef}
-        className={`comic-pages fit-${fit} layout-${layout}${rtl ? " dir-rtl" : ""}`}
+        className={`comic-pages fit-${fit} layout-${layout}${rtl ? " dir-rtl" : ""}${
+          snap ? " comic-snap" : ""
+        }${nightFilter !== "off" ? ` comic-night-${nightFilter}` : ""}`}
       >
         {spreads.map((spread, sIndex) => {
           const visible = sIndex >= visibleStart && sIndex <= visibleEnd;
@@ -421,7 +445,7 @@ export function ComicPane({
                       key={pi}
                       src={pageUrls[pi]}
                       alt={`${t("page")} ${pi + 1}`}
-                      onLoad={() => measureSpread(sIndex)}
+                      onLoad={(e) => handleImageLoad(pi, sIndex, e.currentTarget)}
                       style={fit === "manual" ? { width: `${Math.round(scale * 100)}%` } : undefined}
                     />
                   ) : (

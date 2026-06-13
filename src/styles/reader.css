@@ -1285,6 +1285,38 @@
   max-height: calc(100vh - 120px);
 }
 
+/* A6: snap each page/spread to the top so keyboard/tap paging lands cleanly.
+   `proximity` (not `mandatory`) so it never fights the virtual placeholder
+   heights as off-screen pages resolve. Webtoon stays continuous. */
+.comic-pages.comic-snap.layout-single,
+.comic-pages.comic-snap.layout-double {
+  scroll-snap-type: y proximity;
+}
+
+.comic-pages.comic-snap.layout-single .comic-spread-slot,
+.comic-pages.comic-snap.layout-double .comic-spread-slot {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* D5: night-reading filters for comic/PDF pages. White manga pages are
+   harsh in the dark; these soften or invert them without touching chrome. */
+.comic-pages.comic-night-sepia img,
+.comic-pages.comic-night-sepia canvas {
+  filter: sepia(0.4) brightness(0.88) contrast(0.96);
+}
+
+.comic-pages.comic-night-dim img,
+.comic-pages.comic-night-dim canvas {
+  filter: brightness(0.72) contrast(0.94);
+}
+
+/* hue-rotate keeps coloured art roughly true while flipping white↔black. */
+.comic-pages.comic-night-invert img,
+.comic-pages.comic-night-invert canvas {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95);
+}
+
 .comic-pages.fit-height .comic-spread-slot.double > img,
 .comic-pages.fit-page .comic-spread-slot.double > img {
   max-width: calc(50% - 2px);

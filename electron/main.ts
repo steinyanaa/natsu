@@ -2,7 +2,8 @@ import { app, BrowserWindow, protocol } from "electron";
 import { createWindow } from "./window/createWindow.js";
 import { handleBookProtocol } from "./services/protocol.js";
 import { flushProgressUpdates } from "./services/library.js";
-import { initStore } from "./services/store.js";
+import { initStore, migrateSessionsOutOfBooks } from "./services/store.js";
+import { initSessionStore } from "./services/sessions.js";
 import { registerIpc } from "./ipc/register.js";
 import { sweepOrphans } from "./services/orphans.js";
 import { log } from "./services/logger.js";
@@ -48,6 +49,16 @@ protocol.registerSchemesAsPrivileged([
 
 app.whenReady().then(async () => {
   initStore();
+  initSessionStore();
+
+  // Move reading sessions out of the monolithic books[] store into their own
+  // store. Idempotent + non-destructive; best-effort so a failure here never
+  // blocks startup.
+  try {
+    migrateSessionsOutOfBooks();
+  } catch (error) {
+    console.error("Failed to migrate reading sessions out of books[]:", error);
+  }
 
   // Retry deleting any previously locked book files. Best-effort, never throws.
   void sweepOrphans();

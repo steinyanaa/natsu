@@ -105,6 +105,8 @@ export interface ReaderPreferences {
   readingDirection: ReadingDirection;
   comicCoverSolo: boolean;
   mangaSnapToPage: boolean;
+  /** Night-reading filter for comic/PDF pages. Undefined = off. */
+  comicNightFilter?: "off" | "sepia" | "dim" | "invert";
   immersive: boolean;
   preferencesVersion: number;
   dailyGoalMinutes: number;

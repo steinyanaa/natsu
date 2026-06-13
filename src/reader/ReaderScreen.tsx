@@ -325,7 +325,13 @@ export function ReaderScreen({
 
       const isHorizontalPaged = scroller.classList.contains("text-reader") && scroller.classList.contains("paged");
       const isMangaSnapDisabled = scroller.classList.contains("manga-no-snap");
-      const distance = isMangaSnapDisabled ? Math.max(320, scroller.clientHeight - 80) : repeated ? 58 : 108;
+      const isComicSnap = scroller.classList.contains("comic-pages") && scroller.classList.contains("comic-snap");
+      const distance =
+        isComicSnap || isMangaSnapDisabled
+          ? Math.max(320, scroller.clientHeight - 72)
+          : repeated
+          ? 58
+          : 108;
       const options: ScrollToOptions = {
         behavior:
           isMangaSnapDisabled || repeated || preferences.reduceMotion || preferences.motion === "reduced"

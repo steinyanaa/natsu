@@ -600,6 +600,20 @@ export function SettingsPanel({
         checked={preferences.comicCoverSolo}
         onChange={(comicCoverSolo) => onChange({ comicCoverSolo })}
       />
+      <SettingGroup label="漫画夜间滤镜">
+        <SegmentedControl
+          value={preferences.comicNightFilter ?? "off"}
+          options={[
+            ["off", "关"],
+            ["sepia", "暖色"],
+            ["dim", "调暗"],
+            ["invert", "反色"]
+          ]}
+          onChange={(comicNightFilter) =>
+            onChange({ comicNightFilter: comicNightFilter as ReaderPreferences["comicNightFilter"] })
+          }
+        />
+      </SettingGroup>
       <ToggleSetting
         label="沉浸模式（隐藏所有界面）"
         checked={preferences.immersive}

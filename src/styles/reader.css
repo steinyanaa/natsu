@@ -1299,6 +1299,108 @@
   scroll-snap-stop: always;
 }
 
+/* D1: comic page seek bar with lazy thumbnail preview. Tied to the reader's
+   existing chrome reveal — visible only while controls are shown. */
+.comic-scrubber {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  padding: 12px 24px 18px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+  z-index: 7;
+}
+
+.reader-shell.controls-visible .comic-scrubber {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.comic-scrubber-track {
+  position: relative;
+  width: min(880px, 92%);
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--md-sys-color-on-surface, #444) 22%, transparent);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.comic-scrubber-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: var(--md-sys-color-primary, #35a7d8);
+}
+
+.comic-scrubber-handle {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--md-sys-color-primary, #35a7d8);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+}
+
+.comic-scrubber-preview {
+  position: absolute;
+  bottom: 22px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.comic-scrubber-thumb {
+  width: 124px;
+  min-height: 80px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--md-sys-color-surface-variant, #cdd) 70%, transparent);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.36);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.comic-scrubber-thumb img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.comic-scrubber-thumb-pending {
+  width: 124px;
+  height: 168px;
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--md-sys-color-surface-variant, #cdd) 60%, transparent) 30%,
+    color-mix(in srgb, var(--md-sys-color-surface-variant, #cdd) 92%, transparent) 50%,
+    color-mix(in srgb, var(--md-sys-color-surface-variant, #cdd) 60%, transparent) 70%
+  );
+  background-size: 200% 100%;
+  animation: comic-shimmer 1.4s ease-in-out infinite;
+}
+
+.comic-scrubber-pagenum {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--md-sys-color-inverse-surface, #2c2c2c) 86%, transparent);
+  color: var(--md-sys-color-inverse-on-surface, #f3f3f3);
+}
+
 /* D5: night-reading filters for comic/PDF pages. White manga pages are
    harsh in the dark; these soften or invert them without touching chrome. */
 .comic-pages.comic-night-sepia img,

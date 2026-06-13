@@ -12,6 +12,12 @@ export interface ComicSource {
   pages: ComicPage[];
   /** Extract a single page and update its url in-place; returns the blob URL */
   extractPage(index: number): Promise<string>;
+  /**
+   * Read a page's raw bytes as a Blob WITHOUT touching the page-render cache.
+   * Used to build downscaled thumbnails that stay independent of the
+   * extract/release lifecycle (so revoking a page never breaks a thumbnail).
+   */
+  getPageBlob(index: number): Promise<Blob | null>;
   /** Revoke a single page's blob URL so it can be re-extracted later */
   releasePage(index: number): void;
   /** Release all resources */
@@ -64,6 +70,12 @@ export async function openZipComic(blob: Blob): Promise<ComicSource> {
     return promise;
   };
 
+  const getPageBlob = (index: number): Promise<Blob | null> => {
+    const entry = imageEntries[index];
+    if (!entry) return Promise.resolve(null);
+    return entry.getData(new BlobWriter(mimeFromName(entry.filename)));
+  };
+
   const releasePage = (index: number) => {
     const page = pages[index];
     if (page?.url) {
@@ -82,7 +94,7 @@ export async function openZipComic(blob: Blob): Promise<ComicSource> {
     extracting.clear();
   };
 
-  return { pages, extractPage, releasePage, dispose };
+  return { pages, extractPage, getPageBlob, releasePage, dispose };
 }
 
 // ─── RAR ─────────────────────────────────────────────────────────────────────
@@ -135,6 +147,24 @@ export async function openRarComic(buffer: ArrayBuffer): Promise<ComicSource> {
     return promise;
   };
 
+  const getPageBlob = (index: number): Promise<Blob | null> => {
+    const header = fileHeaders[index];
+    if (!header) return Promise.resolve(null);
+    const result = extractor.extract({ files: [header.name] });
+    for (const file of result.files) {
+      if (file.extraction && imagePattern.test(file.fileHeader.name)) {
+        const bytes = new Uint8Array(file.extraction);
+        return Promise.resolve(
+          new Blob(
+            [bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)],
+            { type: mimeFromName(file.fileHeader.name) }
+          )
+        );
+      }
+    }
+    return Promise.resolve(null);
+  };
+
   const releasePage = (index: number) => {
     const page = pages[index];
     if (page?.url) {
@@ -152,5 +182,5 @@ export async function openRarComic(buffer: ArrayBuffer): Promise<ComicSource> {
     extracting.clear();
   };
 
-  return { pages, extractPage, releasePage, dispose };
+  return { pages, extractPage, getPageBlob, releasePage, dispose };
 }

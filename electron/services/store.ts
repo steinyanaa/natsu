@@ -5,8 +5,14 @@ import type {
   OnlineSource,
   BookRecord,
   ClientBookRecord,
+  ReadingSession,
   StoreShape
 } from "../ipc/types.js";
+import {
+  getSessions,
+  mergeSessions,
+  setSessions
+} from "./sessions.js";
 
 let storeInstance: Store<StoreShape> | undefined;
 
@@ -285,9 +291,24 @@ export function seedFromHash(hash: string): number {
 export function bookToClient(book: BookRecord): ClientBookRecord {
   const { filePath: _filePath, ...publicBook } = book;
 
+  // Sessions now live in their own store. Merge them back onto the client
+  // record so the renderer contract (book.readingSessions) is unchanged. Guard
+  // against the session store not being initialized (e.g. unit tests / early
+  // startup) by falling back to whatever is still on the book record.
+  let readingSessions: ReadingSession[] = publicBook.readingSessions ?? [];
+  try {
+    const stored = getSessions(book.id);
+    if (stored.length) {
+      readingSessions = mergeSessions(readingSessions, stored);
+    }
+  } catch {
+    // Session store not ready — keep the in-record sessions as-is.
+  }
+
   return {
     ...publicBook,
     highlights: publicBook.highlights ?? [],
+    readingSessions,
     fileUrl: `manga-reader://book/${encodeURIComponent(book.id)}`
   };
 }
@@ -310,4 +331,43 @@ export function updateBook(id: string, updater: (book: BookRecord) => BookRecord
   }
 
   return changed;
+}
+
+/**
+ * One-time, idempotent migration: move any `readingSessions` still embedded in
+ * `books[]` into the dedicated sessions store, then clear them on the book.
+ *
+ * Idempotent: a second run finds every `book.readingSessions` empty, makes no
+ * changes, and persists nothing.
+ *
+ * Non-destructive: sessions are MERGED into the sessions store (dedup by
+ * start+end, cap 500) before the book copy is cleared — data is copied, never
+ * dropped. The merge means re-importing or re-running cannot duplicate entries.
+ *
+ * Requires both initStore() and initSessionStore() to have run first.
+ * Returns the number of books migrated (0 means nothing to do).
+ */
+export function migrateSessionsOutOfBooks(): number {
+  const books = getStore().get("books", []);
+  let migratedCount = 0;
+  let touched = false;
+
+  const nextBooks = books.map((book) => {
+    const sessions = book.readingSessions;
+    if (!sessions || sessions.length === 0) {
+      return book;
+    }
+
+    const merged = mergeSessions(getSessions(book.id), sessions);
+    setSessions(book.id, merged);
+    migratedCount += 1;
+    touched = true;
+    return { ...book, readingSessions: [] };
+  });
+
+  if (touched) {
+    getStore().set("books", nextBooks);
+  }
+
+  return migratedCount;
 }

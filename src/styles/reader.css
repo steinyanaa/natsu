@@ -1158,8 +1158,76 @@
 }
 
 .comic-spread-slot {
-  will-change: transform;
+  /* No `will-change`: promoting hundreds of slots to their own compositor
+     layers costs more memory/GPU than it saves. `contain` is enough to keep
+     off-screen slot layout from invalidating the whole list. */
   contain: layout style;
+}
+
+/* Per-page skeleton shown while a page is still being extracted from the
+   archive (lazy decode). Keeps the slot from collapsing and signals progress. */
+.comic-page-loading {
+  width: 100%;
+  border-radius: 12px;
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--md-sys-color-surface-variant, #cdd) 60%, transparent) 30%,
+    color-mix(in srgb, var(--md-sys-color-surface-variant, #cdd) 92%, transparent) 50%,
+    color-mix(in srgb, var(--md-sys-color-surface-variant, #cdd) 60%, transparent) 70%
+  );
+  background-size: 200% 100%;
+  animation: comic-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes comic-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comic-page-loading { animation: none; }
+}
+
+/* Transient "12 / 240" page indicator for paged readers. */
+.page-hud {
+  position: absolute;
+  bottom: 84px;
+  left: 50%;
+  transform: translate(-50%, 8px);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--md-sys-color-inverse-surface, #2c2c2c) 88%, transparent);
+  color: var(--md-sys-color-inverse-on-surface, #f3f3f3);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 6;
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
+.page-hud.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.page-hud-current {
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.page-hud-sep,
+.page-hud-total {
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-hud { transition: opacity 0.28s ease; }
 }
 
 .comic-spread-slot.double {
@@ -1215,6 +1283,140 @@
   width: auto;
   max-width: 100%;
   max-height: calc(100vh - 120px);
+}
+
+/* A6: snap each page/spread to the top so keyboard/tap paging lands cleanly.
+   `proximity` (not `mandatory`) so it never fights the virtual placeholder
+   heights as off-screen pages resolve. Webtoon stays continuous. */
+.comic-pages.comic-snap.layout-single,
+.comic-pages.comic-snap.layout-double {
+  scroll-snap-type: y proximity;
+}
+
+.comic-pages.comic-snap.layout-single .comic-spread-slot,
+.comic-pages.comic-snap.layout-double .comic-spread-slot {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* D1: comic page seek bar with lazy thumbnail preview. Tied to the reader's
+   existing chrome reveal — visible only while controls are shown. */
+.comic-scrubber {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  padding: 12px 24px 18px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+  z-index: 7;
+}
+
+.reader-shell.controls-visible .comic-scrubber {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.comic-scrubber-track {
+  position: relative;
+  width: min(880px, 92%);
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--md-sys-color-on-surface, #444) 22%, transparent);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.comic-scrubber-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: var(--md-sys-color-primary, #35a7d8);
+}
+
+.comic-scrubber-handle {
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--md-sys-color-primary, #35a7d8);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.4);
+}
+
+.comic-scrubber-preview {
+  position: absolute;
+  bottom: 22px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.comic-scrubber-thumb {
+  width: 124px;
+  min-height: 80px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--md-sys-color-surface-variant, #cdd) 70%, transparent);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.36);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.comic-scrubber-thumb img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.comic-scrubber-thumb-pending {
+  width: 124px;
+  height: 168px;
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--md-sys-color-surface-variant, #cdd) 60%, transparent) 30%,
+    color-mix(in srgb, var(--md-sys-color-surface-variant, #cdd) 92%, transparent) 50%,
+    color-mix(in srgb, var(--md-sys-color-surface-variant, #cdd) 60%, transparent) 70%
+  );
+  background-size: 200% 100%;
+  animation: comic-shimmer 1.4s ease-in-out infinite;
+}
+
+.comic-scrubber-pagenum {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--md-sys-color-inverse-surface, #2c2c2c) 86%, transparent);
+  color: var(--md-sys-color-inverse-on-surface, #f3f3f3);
+}
+
+/* D5: night-reading filters for comic/PDF pages. White manga pages are
+   harsh in the dark; these soften or invert them without touching chrome. */
+.comic-pages.comic-night-sepia img,
+.comic-pages.comic-night-sepia canvas {
+  filter: sepia(0.4) brightness(0.88) contrast(0.96);
+}
+
+.comic-pages.comic-night-dim img,
+.comic-pages.comic-night-dim canvas {
+  filter: brightness(0.72) contrast(0.94);
+}
+
+/* hue-rotate keeps coloured art roughly true while flipping white↔black. */
+.comic-pages.comic-night-invert img,
+.comic-pages.comic-night-invert canvas {
+  filter: invert(1) hue-rotate(180deg) brightness(0.95);
 }
 
 .comic-pages.fit-height .comic-spread-slot.double > img,

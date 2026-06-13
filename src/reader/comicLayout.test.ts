@@ -35,4 +35,25 @@ describe("computeSpreads", () => {
     expect(computeSpreads(1, "double", true)).toEqual([[0]]);
     expect(computeSpreads(1, "double", false)).toEqual([[0]]);
   });
+
+  it("keeps a wide (landscape) page solo and resumes pairing after it", () => {
+    // page 3 is a cross-page spread → it stands alone, pairing realigns around it
+    const wide = new Set([3]);
+    expect(computeSpreads(6, "double", false, wide)).toEqual([[0, 1], [2], [3], [4, 5]]);
+  });
+
+  it("keeps a wide page solo with a solo cover", () => {
+    const wide = new Set([2]);
+    expect(computeSpreads(5, "double", true, wide)).toEqual([[0], [1], [2], [3, 4]]);
+  });
+
+  it("ignores the wide set for non-double layouts", () => {
+    const wide = new Set([1]);
+    expect(computeSpreads(3, "single", true, wide)).toEqual([[0], [1], [2]]);
+  });
+
+  it("handles consecutive wide pages", () => {
+    const wide = new Set([1, 2]);
+    expect(computeSpreads(4, "double", false, wide)).toEqual([[0], [1], [2], [3]]);
+  });
 });

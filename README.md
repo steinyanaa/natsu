@@ -21,13 +21,16 @@
 
 ## Latest release / 最新版本
 
-**v1.6.2** is a hotfix release for reader paging, loading, and the notes panel:
+**v1.7.0** is a manga & PDF smoothness release, plus a storage slim-down:
 
-- **修复无法翻页/滚动** — v1.6.1 的错误边界在滚动容器外多包了一层 `<div>`，破坏了阅读区的网格滚动布局；改用 `Fragment` 后翻页与滚动恢复正常。
-- **修复注释遮挡正文** — 窄/宽页边距下，固定左栏的注释面板会盖住正文；现在注释打开时正文按面板宽度整体右移让位。
-- **大书加载提速** — 打开大体积 EPUB 不再在开发模式下被重复 fetch + 解析两遍，加载更快、内存占用更低。
+- **漫画懒解压 + 真实高度虚拟化** — 打开漫画不再等整本压缩包解压完才显示第一页；只解码视口附近的页、滑远的页释放，打开 500 页 CBZ 从「等全本」变「等首屏」，滚动用实测高度的偏移模型，看过的页不再跳。
+- **PDF 流式加载** — 自定义协议支持 HTTP Range，几百 MB 的 PDF 按需取页、不再整本进内存。
+- **漫画逐页 snap + 整屏翻页 + 跨页大图识别** — 单/双页吸附到页顶，翻页前进一整屏；横向跨页插画在双页布局下自动独占一页。
+- **漫画夜间滤镜** — 暖色 / 调暗 / 反色三档，夜读白底漫画不刺眼。
+- **页码 seek 条 + 缩略图预览** — 漫画底部跳页条，拖动跳页、悬停显示该页缩略图（懒加载）；翻页时浮现 `12 / 240` 页码 HUD。
+- **存储瘦身** — 阅读 session 拆到独立 store，保存不再重写整个书库（幂等迁移，数据不变）。
 
-Earlier, **v1.6.1** was a reader stability, accessibility, and architecture polish release (React 错误边界、EPUB 清洗降级、PDF 单页占位、阅读焦点性能、内置输入弹窗、可访问性统一)。
+Earlier, **v1.6.2** was a hotfix release for reader paging, loading, and the notes panel.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
@@ -50,8 +53,8 @@ Go to [Releases](https://github.com/steinyanaa/natsu/releases) and download the 
 | EPUB | Reflow text and fixed-layout manga pages / 回流文本与固定版式漫画 |
 | MOBI / AZW3 | Kindle-style e-books / Kindle 电子书格式 |
 | TXT | Plain text novels / 纯文本小说 |
-| PDF | Virtual page rendering / 虚拟页渲染 |
-| CBZ / CBR / ZIP / RAR | Manga archives / 漫画压缩包 |
+| PDF | Streamed virtual-page rendering (HTTP Range) / 流式虚拟页渲染（按需取页） |
+| CBZ / CBR / ZIP / RAR | Manga archives, lazy page decode / 漫画压缩包，逐页懒解压 |
 
 ### Library management / 书架管理
 
@@ -104,11 +107,14 @@ Go to [Releases](https://github.com/steinyanaa/natsu/releases) and download the 
 
 ### Manga and EPUB manga / 漫画与 EPUB 漫画
 
-- Single-page, double-page, and webtoon layouts.
-- Reading direction switch for left-to-right and right-to-left manga.
-- Double-page cover solo option for correct spread pairing.
+- **Lazy page decode / 逐页懒解压** — only pages near the viewport are extracted from the archive; far pages are released. Opening a 500-page CBZ shows the first screen immediately instead of waiting for the whole book, and memory tracks the viewport, not the book length.
+- **Real-height virtualization / 真实高度虚拟化** — measured per-page heights feed an offset model (binary-searched), so the scrollbar and seen pages no longer jump as images load.
+- **Page snapping & full-screen turns / 逐页吸附与整屏翻页** — single/double layouts snap to page tops; keyboard, tap, and swipe advance a full screenful. Gated by the snap-to-page toggle; webtoon stays continuous.
+- **Cross-page spread detection / 跨页大图识别** — landscape pages are detected on decode and kept solo in double layout, so two-page artwork is never split.
+- **Page seek bar with thumbnail preview / 页码跳页条 + 缩略图预览** — drag the bottom bar to jump to any page; hovering shows a lazily-decoded thumbnail of that page. A `current / total` page HUD flashes briefly on each turn.
+- **Night filters / 夜间滤镜** — sepia, dim, or invert for comic & PDF pages (invert keeps coloured art roughly true via hue-rotate).
+- Single-page, double-page, and webtoon layouts; left-to-right / right-to-left reading direction; double-page cover-solo for correct spread pairing.
 - Fixed double-page EPUB manga: paired pages share equal height, rendering together in one spread.
-- Optional snap-to-page behavior for keyboard page turning.
 - Webtoon mode removes chapter gaps and image baseline whitespace.
 
 ---

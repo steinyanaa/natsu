@@ -165,8 +165,12 @@ export function PdfPane({
       resizeScrollAnchorRef.current = undefined;
 
       try {
-        const buffer = await fetch(book.fileUrl).then((response) => response.arrayBuffer());
-        loadingTask = pdfjs.getDocument({ data: buffer }) as unknown as PdfLoadingTask;
+        loadingTask = pdfjs.getDocument({
+          url: book.fileUrl,
+          rangeChunkSize: 65536,
+          disableAutoFetch: true,
+          disableStream: false
+        }) as unknown as PdfLoadingTask;
         loadedPdf = await loadingTask.promise;
 
         if (!cancelled) {

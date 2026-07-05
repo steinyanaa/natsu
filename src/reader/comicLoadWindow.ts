@@ -12,6 +12,8 @@ export interface ComicWindowParams {
   spreads: number[][];
   /** Index of the spread currently under the viewport anchor. */
   currentSpread: number;
+  /** Optional spread to decode first during fast jumps/page turns. */
+  prioritizedSpread?: number;
   /** First spread inside the render window. */
   visibleStart: number;
   /** Last spread inside the render window. */
@@ -32,7 +34,7 @@ export interface ComicWindowPlan {
 }
 
 export function planComicWindow(params: ComicWindowParams): ComicWindowPlan {
-  const { spreads, currentSpread, visibleStart, visibleEnd, preloadWindow, retainPages } = params;
+  const { spreads, currentSpread, prioritizedSpread, visibleStart, visibleEnd, preloadWindow, retainPages } = params;
   const spreadCount = spreads.length;
   if (spreadCount === 0) {
     return { extract: [], release: [] };
@@ -58,6 +60,9 @@ export function planComicWindow(params: ComicWindowParams): ComicWindowPlan {
 
   const vStart = clampSpread(visibleStart);
   const vEnd = clampSpread(visibleEnd);
+  if (prioritizedSpread !== undefined) {
+    want(clampSpread(prioritizedSpread));
+  }
   for (let s = vStart; s <= vEnd; s += 1) want(s);
 
   const center = clampSpread(currentSpread);

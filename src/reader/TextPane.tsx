@@ -1153,7 +1153,7 @@ export function TextPane({
   }
 
   if (!epubDoc) {
-    return <LoadingState label={t("loading")} />;
+    return <LoadingState label={isEpub ? "解析章节" : t("loading")} />;
   }
 
   const activeChapter = epubDoc.chapters[activeChapterIndex];

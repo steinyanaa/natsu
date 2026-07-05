@@ -388,6 +388,29 @@ export function SettingsPanel({
         />
       </SettingGroup>
 
+      <SettingGroup label="Reading feel">
+        <ChoiceList
+          value={preferences.pageTurnDistance ?? "normal"}
+          options={[
+            ["compact", "Compact"],
+            ["normal", "Normal"],
+            ["full", "Full screen"]
+          ]}
+          onChange={(pageTurnDistance) =>
+            onChange({ pageTurnDistance: pageTurnDistance as ReaderPreferences["pageTurnDistance"] })
+          }
+        />
+        <RangeSetting
+          label="Toolbar hide"
+          value={preferences.readerChromeDelayMs ?? 2400}
+          min={1200}
+          max={6000}
+          step={200}
+          unit=" ms"
+          onChange={(readerChromeDelayMs) => onChange({ readerChromeDelayMs })}
+        />
+      </SettingGroup>
+
       <TextSetting
         label="在线书源 JSON 端点"
         value=""
@@ -581,6 +604,18 @@ export function SettingsPanel({
           label="按键翻页后自动对齐到下一页"
           checked={preferences.mangaSnapToPage}
           onChange={(mangaSnapToPage) => onChange({ mangaSnapToPage })}
+        />
+
+        <ChoiceList
+          value={preferences.preloadIntensity ?? "balanced"}
+          options={[
+            ["low", "Low memory"],
+            ["balanced", "Balanced"],
+            ["high", "Smoother"]
+          ]}
+          onChange={(preloadIntensity) =>
+            onChange({ preloadIntensity: preloadIntensity as ReaderPreferences["preloadIntensity"] })
+          }
         />
       </SettingGroup>
       <SettingGroup label="阅读方向">

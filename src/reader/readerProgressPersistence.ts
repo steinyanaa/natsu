@@ -10,7 +10,12 @@ export function shouldUpdateProgressState(
   return (
     Math.abs(current.percent - next.percent) >= epsilon ||
     current.current !== next.current ||
-    current.total !== next.total
+    current.total !== next.total ||
+    current.kind !== next.kind ||
+    current.chapterId !== next.chapterId ||
+    current.chapterOffset !== next.chapterOffset ||
+    current.pageIndex !== next.pageIndex ||
+    current.pageOffset !== next.pageOffset
   );
 }
 

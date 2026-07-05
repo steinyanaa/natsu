@@ -19,6 +19,24 @@ describe("reader progress persistence", () => {
     expect(shouldUpdateProgressState(progress(0.5, 1), progress(0.501, 2))).toBe(true);
   });
 
+  it("updates when the stable anchor changes even if percent is unchanged", () => {
+    const currentPage: ReaderProgress = {
+      ...progress(0.5, 100, 1000),
+      kind: "page",
+      pageIndex: 4,
+      pageOffset: 12
+    };
+    expect(shouldUpdateProgressState(currentPage, { ...currentPage, pageIndex: 5 })).toBe(true);
+
+    const currentChapter: ReaderProgress = {
+      ...progress(0.5, 100, 1000),
+      kind: "epub",
+      chapterId: "a",
+      chapterOffset: 20
+    };
+    expect(shouldUpdateProgressState(currentChapter, { ...currentChapter, chapterId: "b" })).toBe(true);
+  });
+
   it("persists only meaningful percent movement", () => {
     expect(shouldPersistProgress(0.5, progress(0.501))).toBe(false);
     expect(shouldPersistProgress(0.5, progress(0.503))).toBe(true);

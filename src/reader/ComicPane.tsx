@@ -12,17 +12,13 @@ import { useComicThumbnails } from "./useComicThumbnails";
 import { ErrorState, LoadingState } from "./ReaderState";
 import type { JumpRequest } from "./types";
 import { nowProgress } from "./utils";
+import { useAdaptivePreload } from "./useAdaptivePreload";
 
 interface PageScrollAnchor {
   pageIndex?: number;
   pageOffset?: number;
   percent: number;
 }
-
-const RENDER_WINDOW = 4;
-const PRELOAD_WINDOW = 6;
-const RETAIN_PAGES = 24;
-const MAX_EXTRACT_PER_TICK = 8;
 
 export function ComicPane({
   book,
@@ -42,6 +38,7 @@ export function ComicPane({
   const [manualScale, setManualScale] = useState(1);
   const [error, setError] = useState("");
   const [viewport, setViewport] = useState({ top: 0, height: 900 });
+  const [loadingLabel, setLoadingLabel] = useState(t("loading"));
   // Bumped whenever a spread's measured height changes, to recompute offsets.
   const [measureTick, setMeasureTick] = useState(0);
 
@@ -76,6 +73,11 @@ export function ComicPane({
   const stableScrollAnchorRef = useRef<PageScrollAnchor | undefined>(undefined);
   const resizeScrollAnchorRef = useRef<PageScrollAnchor | undefined>(undefined);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const {
+    profile: preloadProfile,
+    sampleScrollPosition,
+    resetScrollVelocity
+  } = useAdaptivePreload(preferences.preloadIntensity);
 
   const gap = layout === "webtoon" ? 0 : 28;
   const estimateExtent = useMemo(() => {
@@ -107,7 +109,7 @@ export function ComicPane({
     offsets,
     viewport.top - topPad,
     viewport.top + viewport.height - topPad,
-    RENDER_WINDOW
+    preloadProfile.renderWindow
   );
   const currentSpread = anchorSpread(offsets, viewport.top + viewport.height * 0.35 - topPad);
 
@@ -185,6 +187,7 @@ export function ComicPane({
       figureRefs.current.clear();
       stableScrollAnchorRef.current = undefined;
       resizeScrollAnchorRef.current = undefined;
+      resetScrollVelocity();
     };
 
     async function load() {
@@ -195,6 +198,7 @@ export function ComicPane({
       reset();
 
       try {
+        setLoadingLabel("解析漫画");
         let source: ComicSource;
         if (book.format === "zip" || book.format === "cbz") {
           const blob = await fetch(book.fileUrl).then((response) => response.blob());
@@ -212,6 +216,7 @@ export function ComicPane({
         }
 
         sourceRef.current = source;
+        setLoadingLabel("渲染首页");
         setPageCount(source.pages.length);
         setPageUrls(new Array(source.pages.length).fill(""));
       } catch {
@@ -227,7 +232,7 @@ export function ComicPane({
       sourceRef.current = null;
       reset();
     };
-  }, [book.fileUrl, book.format, t]);
+  }, [book.fileUrl, book.format, resetScrollVelocity, t]);
 
   // ── Extract / release window ────────────────────────────────────────────────
   useEffect(() => {
@@ -239,8 +244,9 @@ export function ComicPane({
       currentSpread,
       visibleStart,
       visibleEnd,
-      preloadWindow: PRELOAD_WINDOW,
-      retainPages: RETAIN_PAGES,
+      preloadWindow: preloadProfile.preloadWindow,
+      retainPages: preloadProfile.retainPages,
+      prioritizedSpread: currentSpread,
       extracted: extractedRef.current
     });
 
@@ -259,7 +265,7 @@ export function ComicPane({
     let fired = 0;
     for (const index of plan.extract) {
       if (requestedRef.current.has(index)) continue;
-      if (fired >= MAX_EXTRACT_PER_TICK) break;
+      if (fired >= preloadProfile.maxExtractPerTick) break;
       fired += 1;
       requestedRef.current.add(index);
       void source
@@ -278,7 +284,7 @@ export function ComicPane({
           requestedRef.current.delete(index);
         });
     }
-  }, [pageCount, spreads, currentSpread, visibleStart, visibleEnd]);
+  }, [pageCount, spreads, currentSpread, visibleStart, visibleEnd, preloadProfile]);
 
   // ── Restore on jump ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -296,6 +302,7 @@ export function ComicPane({
   const updateProgress = useCallback(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
+    sampleScrollPosition(scroller.scrollTop);
     setViewport({ top: scroller.scrollTop, height: scroller.clientHeight });
     const max = scroller.scrollHeight - scroller.clientHeight;
     const current = scroller.scrollTop;
@@ -312,7 +319,7 @@ export function ComicPane({
         pageOffset: anchor?.pageOffset
       })
     );
-  }, [onProgress, readScrollAnchor]);
+  }, [onProgress, readScrollAnchor, sampleScrollPosition]);
 
   // ── Container resize (sidebar / settings / window) ──────────────────────────
   useEffect(() => {
@@ -405,7 +412,7 @@ export function ComicPane({
   }
 
   if (!pageCount) {
-    return <LoadingState label={t("loading")} />;
+    return <LoadingState label={loadingLabel} />;
   }
 
   return (

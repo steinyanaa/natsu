@@ -4,6 +4,42 @@
   padding: 10px 2px 24px;
 }
 
+.continue-card {
+  display: grid;
+  gap: 5px;
+  width: min(520px, 100%);
+  margin: 0 0 14px;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in oklab, var(--reader-accent) 18%, transparent);
+  border-radius: 22px;
+  color: var(--reader-ink);
+  text-align: left;
+  background:
+    radial-gradient(circle at 12% 12%, color-mix(in oklab, var(--reader-accent) 24%, transparent), transparent 38%),
+    color-mix(in oklab, var(--md-sys-color-surface) 88%, transparent);
+  box-shadow: 0 12px 28px rgb(37 55 69 / 8%);
+}
+
+.continue-card-kicker {
+  color: var(--reader-accent);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.continue-card strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 18px;
+}
+
+.continue-card span:last-child {
+  color: var(--reader-muted);
+  font-size: 12px;
+}
+
 .book-shelf.grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, 188px);

@@ -91,4 +91,19 @@ describe("planComicWindow", () => {
     expect(plan.extract).toEqual(expect.arrayContaining([0, 1, 2]));
     expect(plan.extract.every((i) => i >= 0 && i < 3)).toBe(true);
   });
+
+  it("can prioritize the anchor spread before the wider visible window", () => {
+    const plan = planComicWindow({
+      spreads: singleSpreads(6),
+      currentSpread: 4,
+      prioritizedSpread: 4,
+      visibleStart: 1,
+      visibleEnd: 4,
+      preloadWindow: 1,
+      retainPages: 10,
+      extracted: []
+    });
+
+    expect(plan.extract.slice(0, 4)).toEqual([4, 1, 2, 3]);
+  });
 });

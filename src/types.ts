@@ -20,6 +20,8 @@ export type ReaderImageMode = "manual" | "fit-screen";
 export type ComicFitMode = "width" | "height" | "page" | "original" | "manual";
 export type ComicLayout = "single" | "double" | "webtoon";
 export type ReadingDirection = "ltr" | "rtl";
+export type ReaderPreloadIntensity = "low" | "balanced" | "high";
+export type ReaderPageTurnDistance = "compact" | "normal" | "full";
 export type OnlineSourceKind = "gutenberg" | "url" | "json" | "html" | "rss";
 
 export interface ThemeCustomColors {
@@ -105,6 +107,9 @@ export interface ReaderPreferences {
   readingDirection: ReadingDirection;
   comicCoverSolo: boolean;
   mangaSnapToPage: boolean;
+  preloadIntensity?: ReaderPreloadIntensity;
+  pageTurnDistance?: ReaderPageTurnDistance;
+  readerChromeDelayMs?: number;
   /** Night-reading filter for comic/PDF pages. Undefined = off. */
   comicNightFilter?: "off" | "sepia" | "dim" | "invert";
   immersive: boolean;

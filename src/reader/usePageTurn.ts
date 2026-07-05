@@ -3,6 +3,7 @@ import type * as React from "react";
 import type { ParsedTextDocument, ReaderPreferences } from "../types";
 import type { ReaderMode } from "../types";
 import { recordPageTurn } from "../stats/speedTracker";
+import { resolveTurnDistance } from "./pageTurnDistance";
 
 export function usePageTurn(
   scrollerRef: React.RefObject<HTMLDivElement | null>,
@@ -32,28 +33,32 @@ export function usePageTurn(
 
       const isReduced = preferences.motion === "reduced" || preferences.reduceMotion;
       const pageTurnStyle = preferences.pageTurnStyle ?? "slide";
+      const pageDistance = resolveTurnDistance({
+        axis: effectiveReaderMode === "paged" ? "x" : "y",
+        viewportWidth: scroller.clientWidth,
+        viewportHeight: scroller.clientHeight,
+        preference: preferences.pageTurnDistance
+      });
 
       if (effectiveReaderMode === "paged" && !isReduced && pageTurnStyle === "curl") {
-        // Show curl overlay, then scroll
         setCurlDir(direction);
-        const target = scroller.scrollLeft + direction * Math.max(320, scroller.clientWidth * 0.86);
-        setTimeout(() => {
+        const target = scroller.scrollLeft + direction * pageDistance;
+        window.setTimeout(() => {
           scroller.scrollLeft = target;
-        }, 180); // scroll halfway through curl for realism
+        }, 180);
         suspendProgress(performance.now() + 650);
         scheduleScrollSettle(650);
         return;
       }
 
       if (effectiveReaderMode === "paged" && !isReduced && pageTurnStyle === "fade") {
-        // fade：短暂淡出，滚动后淡入
         scroller.classList.add("page-turn-fade-out");
-        const target = scroller.scrollLeft + direction * Math.max(320, scroller.clientWidth * 0.86);
-        setTimeout(() => {
+        const target = scroller.scrollLeft + direction * pageDistance;
+        window.setTimeout(() => {
           scroller.scrollLeft = target;
           scroller.classList.remove("page-turn-fade-out");
           scroller.classList.add("page-turn-fade-in");
-          setTimeout(() => scroller.classList.remove("page-turn-fade-in"), 200);
+          window.setTimeout(() => scroller.classList.remove("page-turn-fade-in"), 200);
         }, 130);
         suspendProgress(performance.now() + 400);
         scheduleScrollSettle(400);
@@ -65,14 +70,25 @@ export function usePageTurn(
       suspendProgress(performance.now() + (behavior === "smooth" ? 480 : 120));
 
       if (effectiveReaderMode === "paged") {
-        scroller.scrollBy({ left: direction * Math.max(320, scroller.clientWidth * 0.86), behavior });
+        scroller.scrollBy({ left: direction * pageDistance, behavior });
       } else {
-        scroller.scrollBy({ top: direction * Math.max(320, scroller.clientHeight * 0.82), behavior });
+        scroller.scrollBy({ top: direction * pageDistance, behavior });
       }
 
       scheduleScrollSettle(behavior === "smooth" ? 420 : 0);
     },
-    [scrollerRef, preferences.motion, preferences.pageTurnStyle, effectiveReaderMode, preferences.reduceMotion, scheduleScrollSettle, suspendProgress, chapters, activeChapterIndex]
+    [
+      activeChapterIndex,
+      chapters,
+      effectiveReaderMode,
+      preferences.motion,
+      preferences.pageTurnDistance,
+      preferences.pageTurnStyle,
+      preferences.reduceMotion,
+      scheduleScrollSettle,
+      scrollerRef,
+      suspendProgress
+    ]
   );
 
   return { curlDir, setCurlDir, nudgePage };

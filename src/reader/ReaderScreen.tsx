@@ -32,6 +32,7 @@ import { shouldPersistProgress, shouldUpdateProgressState } from "./readerProgre
 import { shouldPersistReadingSession } from "./readingSessionPersistence";
 import { formatChapterEta } from "./chapterEta";
 import { shouldRevealChromeFromPointer } from "./readerChromePointer";
+import { resolveTurnDistance } from "./pageTurnDistance";
 
 type ReaderPanelTab = "contents" | "bookmarks" | "notes";
 interface ReaderToast {
@@ -96,7 +97,7 @@ export function ReaderScreen({
   const readerPanelOpen = tocOpen || settingsOpen;
   const supportsReadingFocus = ["epub", "txt", "mobi", "azw3"].includes(book.format);
 
-  const { controlsVisible, cursorHidden, revealChrome, hideChrome } = useReaderChrome(readerPanelOpen);
+  const { controlsVisible, cursorHidden, revealChrome, hideChrome } = useReaderChrome(readerPanelOpen, preferences.readerChromeDelayMs);
 
   const { pomodoroAlert, dismissPomodoroAlert } = useReadingSession(preferences.wellness);
 
@@ -328,7 +329,13 @@ export function ReaderScreen({
       const isComicSnap = scroller.classList.contains("comic-pages") && scroller.classList.contains("comic-snap");
       const distance =
         isComicSnap || isMangaSnapDisabled
-          ? Math.max(320, scroller.clientHeight - 72)
+          ? resolveTurnDistance({
+              axis: "y",
+              viewportWidth: scroller.clientWidth,
+              viewportHeight: scroller.clientHeight,
+              preference: preferences.pageTurnDistance,
+              context: "manga-snap"
+            })
           : repeated
           ? 58
           : 108;
@@ -353,7 +360,7 @@ export function ReaderScreen({
         revealChrome();
       }
     },
-    [findReaderScroller, hideChrome, preferences.motion, preferences.reduceMotion, revealChrome]
+    [findReaderScroller, hideChrome, preferences.motion, preferences.pageTurnDistance, preferences.reduceMotion, revealChrome]
   );
 
   const handleStageClick = useCallback(

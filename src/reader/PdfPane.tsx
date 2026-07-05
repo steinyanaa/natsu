@@ -7,6 +7,7 @@ import { nowProgress } from "./utils";
 import { ErrorState, LoadingState } from "./ReaderState";
 import { useRenderQueue, type RenderQueue } from "./useRenderQueue";
 import { isPdfRenderCancellation, nextPdfPageRenderState, type PdfPageRenderState } from "./pdfRenderState";
+import { useAdaptivePreload } from "./useAdaptivePreload";
 import * as pdfjs from "pdfjs-dist";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -67,13 +68,19 @@ export function PdfPane({
   const scale = fit === "manual" ? manualScale : autoScale;
   const [error, setError] = useState("");
   const [viewport, setViewport] = useState({ top: 0, height: 900 });
+  const [loadingLabel, setLoadingLabel] = useState(t("loading"));
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const progressRafRef = useRef<number | undefined>(undefined);
   const stableScrollAnchorRef = useRef<PageScrollAnchor | undefined>(undefined);
   const resizeScrollAnchorRef = useRef<PageScrollAnchor | undefined>(undefined);
   const estimatedPageHeight = Math.round(1080 * scale + 36);
-  const renderWindow = 4;
-  const renderQueue = useRenderQueue(2);
+  const {
+    profile: preloadProfile,
+    sampleScrollPosition,
+    resetScrollVelocity
+  } = useAdaptivePreload(preferences.preloadIntensity);
+  const renderWindow = preloadProfile.pdfRenderWindow;
+  const renderQueue = useRenderQueue(preloadProfile.pdfConcurrency);
   const visibleStart = Math.max(0, Math.floor(viewport.top / estimatedPageHeight) - renderWindow);
   const visibleEnd = Math.min(
     pageCount - 1,
@@ -163,8 +170,10 @@ export function PdfPane({
       setPdf(undefined);
       stableScrollAnchorRef.current = undefined;
       resizeScrollAnchorRef.current = undefined;
+      resetScrollVelocity();
 
       try {
+        setLoadingLabel("解析 PDF");
         loadingTask = pdfjs.getDocument({
           url: book.fileUrl,
           rangeChunkSize: 65536,
@@ -174,6 +183,7 @@ export function PdfPane({
         loadedPdf = await loadingTask.promise;
 
         if (!cancelled) {
+          setLoadingLabel("渲染首页");
           setPdf(loadedPdf);
           setPageCount(loadedPdf.numPages);
         }
@@ -191,7 +201,7 @@ export function PdfPane({
       void loadingTask?.destroy?.();
       void loadedPdf?.destroy?.();
     };
-  }, [book.fileUrl, t]);
+  }, [book.fileUrl, resetScrollVelocity, t]);
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -213,6 +223,7 @@ export function PdfPane({
   const updateProgress = useCallback(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
+    sampleScrollPosition(scroller.scrollTop);
     setViewport({ top: scroller.scrollTop, height: scroller.clientHeight });
     const max = scroller.scrollHeight - scroller.clientHeight;
     const current = scroller.scrollTop;
@@ -229,7 +240,7 @@ export function PdfPane({
         pageOffset: anchor?.pageOffset
       })
     );
-  }, [onProgress, readScrollAnchor]);
+  }, [onProgress, readScrollAnchor, sampleScrollPosition]);
 
   useEffect(() => {
     const scroller = scrollerRef.current;
@@ -307,7 +318,7 @@ export function PdfPane({
   }
 
   if (!pdf) {
-    return <LoadingState label={t("loading")} />;
+    return <LoadingState label={loadingLabel} />;
   }
 
   return (

@@ -73,6 +73,9 @@ const fallbackPreferences: ReaderPreferences = {
   readingDirection: "ltr",
   comicCoverSolo: true,
   mangaSnapToPage: true,
+  preloadIntensity: "balanced",
+  pageTurnDistance: "normal",
+  readerChromeDelayMs: 2400,
   immersive: false,
   preferencesVersion: 6,
   dailyGoalMinutes: 30,
@@ -118,7 +121,10 @@ function normalizePreferences(preferences?: Partial<ReaderPreferences>): ReaderP
     customColors: {
       ...defaults.customColors,
       ...preferences?.customColors
-    }
+    },
+    preloadIntensity: preferences?.preloadIntensity ?? defaults.preloadIntensity,
+    pageTurnDistance: preferences?.pageTurnDistance ?? defaults.pageTurnDistance,
+    readerChromeDelayMs: preferences?.readerChromeDelayMs ?? defaults.readerChromeDelayMs
   };
 }
 
@@ -244,6 +250,13 @@ export function App() {
   }, [activeBook, coverUrls, preferences]);
 
   const t = useMemo(() => createTranslator(preferences.language), [preferences.language]);
+  const recentBook = useMemo(
+    () =>
+      [...books]
+        .filter((book) => book.lastOpenedAt || book.progress)
+        .sort((a, b) => (b.lastOpenedAt ?? b.importedAt).localeCompare(a.lastOpenedAt ?? a.importedAt))[0],
+    [books]
+  );
 
   // Boot: load preferences, books, collections
   useEffect(() => {
@@ -584,6 +597,19 @@ export function App() {
             onOpenExternal={(url: string) => window.readerApi.openExternal(url)}
             onClose={() => setOnlineOpen(false)}
           />
+        ) : null}
+
+        {section !== "stats" && recentBook ? (
+          <button
+            className="continue-card pressable"
+            type="button"
+            onClick={() => void openBook(recentBook)}
+            aria-label={`${t("continueReading")} ${recentBook.title}`}
+          >
+            <span className="continue-card-kicker">{t("continueReading")}</span>
+            <strong>{recentBook.title}</strong>
+            <span>{Math.round((recentBook.progress?.percent ?? 0) * 100)}% 路 {recentBook.format.toUpperCase()}</span>
+          </button>
         ) : null}
 
         {section === "stats" ? (

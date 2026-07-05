@@ -21,16 +21,15 @@
 
 ## Latest release / 最新版本
 
-**v1.7.0** is a manga & PDF smoothness release, plus a storage slim-down:
+**v1.7.1** focuses on reader smoothness, cleaner architecture, and a more polished continuation flow:
 
-- **漫画懒解压 + 真实高度虚拟化** — 打开漫画不再等整本压缩包解压完才显示第一页；只解码视口附近的页、滑远的页释放，打开 500 页 CBZ 从「等全本」变「等首屏」，滚动用实测高度的偏移模型，看过的页不再跳。
-- **PDF 流式加载** — 自定义协议支持 HTTP Range，几百 MB 的 PDF 按需取页、不再整本进内存。
-- **漫画逐页 snap + 整屏翻页 + 跨页大图识别** — 单/双页吸附到页顶，翻页前进一整屏；横向跨页插画在双页布局下自动独占一页。
-- **漫画夜间滤镜** — 暖色 / 调暗 / 反色三档，夜读白底漫画不刺眼。
-- **页码 seek 条 + 缩略图预览** — 漫画底部跳页条，拖动跳页、悬停显示该页缩略图（懒加载）；翻页时浮现 `12 / 240` 页码 HUD。
-- **存储瘦身** — 阅读 session 拆到独立 store，保存不再重写整个书库（幂等迁移，数据不变）。
+- **Adaptive comic/PDF preloading** - the render and preload windows now respond to scroll speed and the new preload intensity setting, keeping fast page turns responsive without permanently holding too much memory.
+- **Shared smoothness architecture** - scroll velocity sampling and preload profile selection live in focused helpers/hooks instead of being duplicated across Comic and PDF panes.
+- **More stable anchors** - page/chapter anchors now update independently from percent-only progress, so resize, font, panel, and layout changes keep the reader closer to the same position.
+- **Reading feel controls** - Settings adds page-turn distance, toolbar auto-hide delay, and preload intensity controls.
+- **Continue card** - the library surfaces the most recent book with progress for faster resume.
 
-Earlier, **v1.6.2** was a hotfix release for reader paging, loading, and the notes panel.
+Earlier, **v1.7.0** was the manga/PDF lazy loading, snapping, thumbnail seek, and storage slim-down release.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full history.
 

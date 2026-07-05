@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.7.1] - 2026-07-05
+
+Reader smoothness and architecture cleanup release.
+
+### Added
+
+- **Adaptive preloading** - Comic and PDF readers adjust render/preload windows from scroll speed and `preloadIntensity`, prioritizing fast page turns while keeping steady-state memory bounded.
+- **Reading feel settings** - new `pageTurnDistance`, `readerChromeDelayMs`, and preload intensity controls for page-turn distance, toolbar auto-hide timing, and comic/PDF preload strength.
+- **Continue card** - the library surfaces the most recent book with progress and format for faster resume.
+
+### Changed
+
+- **Preload architecture** - extracted `adaptivePreload` pure helpers and `useAdaptivePreload`, so Comic/PDF share velocity sampling and profile selection instead of duplicating state and thresholds.
+- **Unified page-turn distance** - text paging, manga snap turns, and reader keyboard navigation use `resolveTurnDistance(...)` for consistent page-turn feel.
+- **Stable progress anchors** - progress state updates compare `chapterId/chapterOffset/pageIndex/pageOffset`, preserving more accurate resume anchors even when percent movement is tiny.
+- **Clearer loading stages** - Comic, PDF, and EPUB readers now show more specific parsing / first-page rendering loading states.
+
+### Validation
+
+- `npm run verify` (49 test files / 268 tests)
+- `npm run build`
+- `npm run dist`
+
 ## [1.7.0] - 2026-06-13
 
 漫画与 PDF 阅读丝滑度专项 + 存储瘦身。
